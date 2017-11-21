@@ -187,6 +187,10 @@
   use turbulence,   only: gamu,gamv,gamh,gams
   use turbulence,   only: Rig
   use turbulence,   only: kappa
+! use variables in module turbulence
+! Qing Li, 20171120
+  use turbulence,   only: tke,tkeo,eps,L,kb,epsb,P,B,Pb,gamb,cmue1,cmue2
+  use turbulence,   only: gam,an,as,at,r,xRf,uu,vv,ww
 
 #ifdef EXTRA_OUTPUT
   use turbulence,   only: turb1,turb2,turb3,turb4,turb5
@@ -298,19 +302,19 @@
 
 !  coefficient of flux profile for momentum in their
 !  1/3 power law regimes (am=1.26)
-   REALTYPE, parameter :: am      = 1.257
+   REALTYPE, parameter :: kpp_am  = 1.257
 
 !  coefficient of flux profile for momentum in their
 !  1/3 power law regimes (as=-28.86)
-   REALTYPE, parameter :: as      = -28.86
+   REALTYPE, parameter :: kpp_as  = -28.86
 
 !  coefficient of flux profile for momentum in their
 !  1/3 power law regimes (cm=8.38)
-   REALTYPE, parameter :: cm      = 8.38
+   REALTYPE, parameter :: kpp_cm      = 8.38
 
 !  coefficient of flux profile for momentum in their
 !  1/3 power law regimes (cs=98.96)
-   REALTYPE, parameter :: cs      = 98.96
+   REALTYPE, parameter :: kpp_cs      = 98.96
 
 !  maximum stability parameter "zeta" value of the 1/3
 !  power law regime of flux profile for momentum (zetam=-0.2)
@@ -489,6 +493,96 @@
    if (rc /= 0) stop 'init_turbulence: Error allocating (h_r)'
    h_r = _ZERO_
 
+!  allocate memory defined in module turbulence
+!  Qing Li, 20171120
+
+   LEVEL2 'allocation memory..'
+   allocate(tke(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (tke)'
+   tke = _ZERO_
+
+   allocate(tkeo(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (tkeo)'
+   tkeo = _ZERO_
+
+   allocate(eps(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (eps)'
+   eps = _ZERO_
+
+   allocate(L(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (L)'
+   L = _ZERO_
+
+   LEVEL2 'allocation memory..'
+   allocate(kb(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (kb)'
+   kb = _ZERO_
+
+   LEVEL2 'allocation memory..'
+   allocate(epsb(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (epsb)'
+   epsb = _ZERO_
+
+   allocate(P(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (P)'
+   P = _ZERO_
+
+   allocate(B(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (B)'
+   B = _ZERO_
+
+   allocate(Pb(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (Pb)'
+   Pb = _ZERO_
+
+   allocate(gamb(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (gamb)'
+   gamb = _ZERO_
+
+   allocate(cmue1(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (cmue1)'
+   cmue1 = _ZERO_
+
+   allocate(cmue2(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (cmue2)'
+   cmue2 = _ZERO_
+
+   allocate(gam(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (gam)'
+   gam = _ZERO_
+
+   allocate(an(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (an)'
+   an = _ZERO_
+
+   allocate(as(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (as)'
+   as = _ZERO_
+
+   allocate(at(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (at)'
+   at = _ZERO_
+
+   allocate(r(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (r)'
+   r = _ZERO_
+
+   allocate(xRf(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (xRf)'
+   xRf = _ZERO_
+
+   allocate(uu(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (uu)'
+   uu = _ZERO_
+
+   allocate(vv(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (vv)'
+   vv = _ZERO_
+
+   allocate(ww(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (ww)'
+   ww = _ZERO_
+
 # ifdef EXTRA_OUTPUT
 
    allocate(turb1(0:nlev),stat=rc)
@@ -598,12 +692,12 @@
 
 
 !  pre-compute coefficient for turbulent shear velocity
-   Vtc=Cv*sqrt(-betaT)/(sqrt(cs*epsilon)*Ric*kappa*kappa)
+   Vtc=Cv*sqrt(-betaT)/(sqrt(kpp_cs*epsilon)*Ric*kappa*kappa)
 
 
 !  pre-compute proportionality coefficient for
 !  boundary layer non-local transport
-   Cg=Cstar*kappa*(cs*kappa*epsilon)**(1.0/3.0)
+   Cg=Cstar*kappa*(kpp_cs*kappa*epsilon)**(1.0/3.0)
 
 
 !  set acceleration of gravity and reference density
@@ -1983,12 +2077,12 @@
       if (zetapar.gt.zetam) then
          wm=kappa*u_taus*(_ONE_-16.0*zetapar)**0.25
       else
-         wm=kappa*(am*u_taus3-cm*zetahat)**r3
+         wm=kappa*(kpp_am*u_taus3-kpp_cm*zetahat)**r3
       endif
       if (zetapar.gt.zetas) then
          ws=kappa*u_taus*(_ONE_-16.0*zetapar)**0.5
       else
-         ws=kappa*(as*u_taus3-cs*zetahat)**r3
+         ws=kappa*(kpp_as*u_taus3-kpp_cs*zetahat)**r3
       endif
    endif
 

@@ -2089,6 +2089,10 @@
  end subroutine wscale
 !EOC
 
+
+!-----------------------------------------------------------------------
+!BOP
+!
 ! !IROUTINE: Clean up the kpp module
 !
 ! !INTERFACE:
@@ -2133,9 +2137,113 @@
 
    return
    end subroutine clean_kpp
+!EOC
+
 
 !-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Calculate the Langmuir enhancement factor
+!
+! !INTERFACE:
+   REALTYPE function kpp_efactor_model(u10, ustar, hbl)
+!
+! !DESCRIPTION:
+!  Calculate the Langmuir enhancement factor from the 10-meter wind (m/s),
+!  friction velocity (m/s) and the boundary layer depth (m).
+!
+! TODO: More detailed description  <24-11-17, Qing Li> !
+!
+! !USES:
+   IMPLICIT NONE
+   REALTYPE, intent(in) :: &
+       ! 10 meter wind (m/s)
+       u10, &
+       ! water-side surface friction velocity (m/s)
+       ustar, &
+       ! boundary layer depth (m)
+       hbl
+!
+! !REVISION HISTORY:
+!  Original author(s): Qing Li
+!
+!EOP
+!-----------------------------------------------------------------------
+! !LOCAL VARIABLES:
+   REALTYPE, parameter :: pi=3.14159265358979323846
+   REALTYPE, parameter :: gravity = 9.81
+   REALTYPE, parameter :: &
+       ! ratio of U19.5 to U10 (Holthuijsen, 2007)
+       u19p5_to_u10 = 1.075, &
+       ! ratio of mean frequency to peak frequency for
+       ! Pierson-Moskowitz spectrum (Webb, 2011)
+       fm_to_fp = 1.296, &
+       ! ratio of surface Stokes drift to U10
+       us_to_u10 = 0.0162, &
+       ! loss ratio of Stokes transport
+       r_loss = 0.667
 
+   REALTYPE :: us, hm0, fm, fp, vstokes, kphil, kstar
+   REALTYPE :: z0, z0i, r1, r2, r3, r4, tmp, us_sl, lasl_sqr_i
+!
+!-----------------------------------------------------------------------
+!BOC
+   if (u10 .gt. _ZERO_ .and. ustar .gt. _ZERO_) then
+      ! surface Stokes drift
+      us = us_to_u10*u10
+      !
+      ! significant wave height from Pierson-Moskowitz
+      ! spectrum (Bouws, 1998)
+      hm0 = 0.0246*u10**2
+      !
+      ! peak frequency (PM, Bouws, 1998)
+      tmp = 2.0*pi*u19p5_to_u10*u10
+      fp = 0.877*gravity/tmp
+      !
+      ! mean frequency
+      fm = fm_to_fp*fp
+      !
+      ! total Stokes transport (a factor r_loss is applied to account
+      !  for the effect of directional spreading, multidirectional waves
+      !  and the use of PM peak frequency and PM significant wave height
+      !  on estimating the Stokes transport)
+      vstokes = 0.125*pi*r_loss*fm*hm0**2
+      !
+      ! the general peak wavenumber for Phillips' spectrum
+      ! (Breivik et al., 2016) with correction of directional spreading
+      kphil = 0.176*us/vstokes
+      !
+      ! surface layer averaged Stokes dirft with Stokes drift profile
+      ! estimated from Phillips' spectrum (Breivik et al., 2016)
+      ! the directional spreading effect from Webb and Fox-Kemper, 2015
+      ! is also included
+      kstar = kphil*2.56
+      ! surface layer
+      z0 = 0.2*abs(hbl)
+      z0i = _ONE_/z0
+      ! term 1 to 4
+      r1 = (0.151/kphil*z0i-0.84) &
+            *(_ONE_-exp(-2.0*kphil*z0))
+      r2 = -(0.84+0.0591/kphil*z0i) &
+             *sqrt(2.0*pi*kphil*z0) &
+             *erfc(sqrt(2.0*kphil*z0))
+      r3 = (0.0632/kstar*z0i+0.125) &
+            *(_ONE_-exp(-2.0*kstar*z0))
+      r4 = (0.125+0.0946/kstar*z0i) &
+             *sqrt(2.0*pi*kstar*z0) &
+             *erfc(sqrt(2.0*kstar*z0))
+      us_sl = us*(0.715+r1+r2+r3+r4)
+      !
+      ! enhancement factor (Li et al., 2016)
+      lasl_sqr_i = us_sl/ustar
+      kpp_efactor_model = sqrt(_ONE_ &
+                 +_ONE_/1.5**2*lasl_sqr_i &
+                 +_ONE_/5.4**4*lasl_sqr_i**2)
+   else
+      kpp_efactor_model = _ONE_
+   endif
+   end function kpp_efactor_model
+!EOC
 
 !-----------------------------------------------------------------------
 

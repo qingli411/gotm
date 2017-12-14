@@ -98,6 +98,10 @@
          <sss_method>0</sss_method>
          <sss_file>sss_file.dat</sss_file>
          <ssuv_method>0</ssuv_method>
+         <u10_method>0</u10_method>
+         <const_tx>0.0</const_u10>
+         <const_ty>0.0</const_v10>
+         <u10_file>u10_file.dat</u10_file>
       </airsea>
    </airsea>
    <gotmturb>
@@ -200,6 +204,8 @@
          <kpp_interior>True</kpp_interior>
          <clip_mld>False</clip_mld>
          <Ric>0.3</Ric>
+         <langmuir_method>0</langmuir_method>
+         <langmuir_file>langmuir_file.dat</langmuir_file>
       </kpp>
    </kpp>
    <obs>

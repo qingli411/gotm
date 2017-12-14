@@ -396,6 +396,40 @@
                <option value="1" label="use relative wind speed" />
             </options>
          </element>
+         <element name="u10_method" type="int" label="type of 10-meter wind">
+            <condition type="eq" variable="./calc_fluxes" value="False" />
+            <options>
+               <option value="0" label="none"/>
+               <option value="1" label="constant 10-meter wind given" />
+               <option value="2" label="10-meter wind given from file u10_file" />
+            </options>
+         </element>
+         <element name="const_u10" type="float" label="x-component of 10-meter wind" unit="m/s"
+				minInclusive="-100" maxInclusive="100">
+            <condition type="and">
+               <condition type="eq" variable="./calc_fluxes" value="False" />
+               <condition type="eq" variable="./u10_method" value="1" />
+            </condition>
+         </element>
+         <element name="const_v10" type="float" label="y-component of 10-meter wind" unit="m/s"
+				minInclusive="-100" maxInclusive="100">
+            <condition type="and">
+               <condition type="eq" variable="./calc_fluxes" value="False" />
+               <condition type="eq" variable="./u10_method" value="1" />
+            </condition>
+         </element>
+         <element name="u10_file" type="gotmdatafile" label="custom 10-meter wind" description="file with u10 and v10 given in m/s">
+            <condition type="and">
+               <condition type="eq" variable="./calc_fluxes" value="False" />
+               <condition type="eq" variable="./u10_method" value="2" />
+            </condition>
+            <fileinfo type="pointsintime">
+               <filevariables>
+                  <filevariable name="u10" label="x-component of 10-meter wind" unit="m/s" />
+                  <filevariable name="v10" label="y-component of 10-meter wind" unit="m/s" />
+               </filevariables>
+            </fileinfo>
+         </element>
       </element>
    </element>
    <element name="gotmturb" label="turbulence">
@@ -700,6 +734,26 @@
          <element name="kpp_interior" type="bool" label=".true. for active interior mixing" />
          <element name="clip_mld" type="bool" label=".true. for clipping of MLD at MO or Ekman scale" />
          <element name="Ric" type="float" label="critical value of bulk Richardson number" />
+         <element name="langmuir_method" type="int" label="method how Langmuir turbulence is included">
+            <options>
+               <option value="0" label="none"/>
+               <option value="1" label="Langmuir mixing, enhancement factor approximated by a simple enhancement facator model based on empirical wave spectrum" />
+               <option value="2" label="Langmuir mixing, enhancement factor given from file langmuir_file" />
+               <option value="3" label="Langmuir mixing + Langmuir enhanced entrainment" />
+            </options>
+         </element>
+         <element name="langmuir_file" type="gotmdatafile" label="custom input data for Langmuir turbulence parameterization" description="file with enhancement factor">
+            <condition type="or">
+               <condition type="eq" variable="./langmuir_method" value="2" />
+               <condition type="eq" variable="./langmuir_method" value="3" />
+            </condition>
+            <fileinfo type="pointsintime">
+               <filevariables>
+                  <filevariable name="ef" label="enhancement factor" unit="1" />
+                  <filevariable name="la" label="Langmuir number" unit="1" />
+               </filevariables>
+            </fileinfo>
+         </element>
       </element>
    </element>
    <element name="obs" label="observations">

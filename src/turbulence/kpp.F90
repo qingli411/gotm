@@ -181,6 +181,7 @@
 ! Finally, provided {\tt clip\_mld=.true.} in {\tt kpp.nml}, the boundary layer is cut
 ! if it exceeds the Ekman or the Monin-Obukhov length scale, see \cite{Largeetal94}.
 !
+! TODO: Documentation of Langmuir turbulence parameterization in KPP <14-12-17, Qing Li> !
 ! !USES:
 
   use turbulence,   only: num,nuh,nus
@@ -329,10 +330,10 @@
 
 !  method of Langmuir turbulence parameterization
 !  Qing Li, 20171213
-   integer, parameter ::  kpp_lt_nolangmuir = 0
-   integer, parameter ::  kpp_lt_efactor_model = 1
-   integer, parameter ::  kpp_lt_efactor_read = 2
-   integer, parameter ::  kpp_lt_entrainment = 3
+   integer, parameter ::  KPP_LT_NOLANGMUIR = 0
+   integer, parameter ::  KPP_LT_EFACTOR_MODEL = 1
+   integer, parameter ::  KPP_LT_EFACTOR_READ = 2
+   integer, parameter ::  KPP_LT_ENTRAINMENT = 3
 
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
@@ -704,15 +705,15 @@
 
 !  message of Langmuir turbulence parameterization
 !  Qing Li, 20171213
-   if (langmuir_method .eq. kpp_lt_nolangmuir) then
+   if (langmuir_method .eq. KPP_LT_NOLANGMUIR) then
       LEVEL3 'Langmuir turbulence parameterization   - not active -   '
    else
       LEVEL3 'Langmuir turbulence parameterization       - active -   '
-      if (langmuir_method .eq. kpp_lt_efactor_model) then
+      if (langmuir_method .eq. KPP_LT_EFACTOR_MODEL) then
          LEVEL4 'Approximate enhancement factor from simple model'
-      else if (langmuir_method .eq. kpp_lt_efactor_read) then
+      else if (langmuir_method .eq. KPP_LT_EFACTOR_READ) then
          LEVEL4 'Read enhancement factor from file'
-      else if (langmuir_method .eq. kpp_lt_entrainment) then
+      else if (langmuir_method .eq. KPP_LT_ENTRAINMENT) then
          LEVEL4 'Langmuir mixing + Langmuir enhanced entrainment'
       else
          LEVEL4 'Method not supported'
@@ -1271,9 +1272,9 @@
 ! Qing Li, 20171213
    ! 10-meter wind
    wind10m = sqrt(u10**2+v10**2)
-   if (langmuir_method .eq. kpp_lt_efactor_model) then
+   if (langmuir_method .eq. KPP_LT_EFACTOR_MODEL) then
       efactor = kpp_efactor_model(wind10m, u_taus, z_w(nlev)-zsbl)
-   else if (langmuir_method .eq. kpp_lt_efactor_read) then
+   else if (langmuir_method .eq. KPP_LT_EFACTOR_READ) then
        ! TODO: read from file <13-12-17, Qing Li> !
       efactor = _ONE_
    else
@@ -1474,12 +1475,12 @@
 !  Update Langmuir enhancement factor
 !-----------------------------------------------------------------------
 ! Qing Li, 20171213
-   if (langmuir_method .eq. kpp_lt_efactor_model) then
+   if (langmuir_method .eq. KPP_LT_EFACTOR_MODEL) then
       efactor = kpp_efactor_model(wind10m, u_taus, z_w(nlev)-zsbl)
-   else if (langmuir_method .eq. kpp_lt_efactor_read) then
+   else if (langmuir_method .eq. KPP_LT_EFACTOR_READ) then
        ! TODO: read from file <13-12-17, Qing Li> !
       efactor = _ONE_
-   else if (langmuir_method .eq. kpp_lt_entrainment) then
+   else if (langmuir_method .eq. KPP_LT_ENTRAINMENT) then
        ! TODO: efactor for entrainment <13-12-17, Qing Li> !
       efactor = _ONE_
    else

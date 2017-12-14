@@ -246,6 +246,12 @@
 ! {\tt sss\_method}      & 0: no independent SSS observation is read from file                    \\
 !                          & 2: independent SSS observation is read from file, only for output      \\
 ! {\tt sss\_file}        & file with date and SSS (sea surface salinity) in psu                   \\
+! {\tt u10\_method}      & 0: 10-meter wind not prescribed                                        \\
+!                          & 1: constant 10-meter wind {\tt const\_u10}, {\tt const\_v10} given   \\
+!                          & 2: surface momentum fluxes given from file {\tt u10\_file}           \\
+! {\tt const\_u10}       & $x$-component of constant 10-meter wind in m\,s$^{-1}$                 \\
+! {\tt const\_v10}       & $y$-component of constant 10-meter wind in m\,s$^{-1}$                 \\
+! {\tt u10\_file}        & File with date, {\tt u10} and {\tt v10} given                          \\
 !  \end{tabular}
 !
 ! !USES:

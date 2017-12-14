@@ -129,6 +129,7 @@
    integer                   :: sst_method
    integer                   :: sss_method
    integer                   :: ssuv_method
+   integer                   :: u10_method
    logical, public           :: rain_impact
    logical, public           :: calc_evaporation
 
@@ -139,6 +140,7 @@
    character(len=PATH_MAX)   :: precip_file
    character(len=PATH_MAX)   :: sss_file
    character(len=PATH_MAX)   :: sst_file
+   character(len=PATH_MAX)   :: u10_file
 
    REALTYPE                  :: wind_factor
    REALTYPE                  :: const_swr
@@ -149,6 +151,11 @@
    REALTYPE                  :: const_precip
    REALTYPE                  :: precip_factor
    REALTYPE                  :: dlon,dlat
+   REALTYPE                  :: const_u10, const_v10
+!  allow reading u10 from file separately when calc_fluxes = .false.
+!  for Langmuir parameterization
+!  by u10_method, u10_file, const_u10, const_v10
+!  Qing Li, 20171214
 !
 ! !BUGS:
 !  Wind speed - w - is not entirely correct.
@@ -272,7 +279,12 @@
                      precip_method,const_precip,precip_file,precip_factor,&
                      sst_method, sst_file, &
                      sss_method, sss_file, &
-                     ssuv_method
+                     ssuv_method, &
+                     u10_method, u10_file, const_u10, const_v10
+!  allow reading u10 from file separately when calc_fluxes = .false.
+!  for Langmuir parameterization
+!  by u10_method, u10_file, const_u10, const_v10
+!  Qing Li, 20171214
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -379,6 +391,10 @@
    sst_file = ''
    sss_method=0
    sss_file = ''
+   u10_method = 0
+   const_u10 = _ZERO_
+   const_v10 = _ZERO_
+   u10_file = ''
 
 !  Read namelist variables from file.
    open(namlst,file='airsea.nml',action='read',status='old',err=90)
@@ -471,6 +487,20 @@
             call register_input_0d(momentumflux_file,2,ty,'surface momentum flux: y-direction')
             LEVEL2 'Reading momentum fluxes from:'
             LEVEL3 trim(momentumflux_file)
+         case default
+      end select
+
+!     The 10-meter wind, for Langmuir turbulence parameterization in kpp.F90
+!     Qing Li, 20171214
+      select case (u10_method)
+         case (CONSTVAL)
+            u10 = const_u10
+            v10 = const_v10
+         case (FROMFILE)
+            call register_input_0d(u10_file,1,u10,'10-meter wind: x-direction')
+            call register_input_0d(u10_file,2,v10,'10-meter wind: y-direction')
+            LEVEL2 'Reading 10-meter wind from:'
+            LEVEL3 trim(u10_file)
          case default
       end select
 
@@ -946,6 +976,7 @@
    LEVEL2 'back_radiation_method',back_radiation_method
    LEVEL2 'heat_method',heat_method
    LEVEL2 'momentum_method',momentum_method
+   LEVEL2 'u10_method',u10_method
    LEVEL2 'precip_method',precip_method
    LEVEL2 'sst_method',sst_method
    LEVEL2 'sss_method',sss_method
@@ -958,6 +989,7 @@
    LEVEL2 'swr_file',swr_file
    LEVEL2 'heatflux_file',heatflux_file
    LEVEL2 'momentumflux_file',momentumflux_file
+   LEVEL2 'u10_file',u10_file
    LEVEL2 'precip_file',precip_file
    LEVEL2 'sss_file',sss_file
    LEVEL2 'sst_file',sst_file

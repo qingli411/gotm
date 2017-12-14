@@ -191,6 +191,9 @@
 ! Qing Li, 20171120
   use turbulence,   only: tke,tkeo,eps,L,kb,epsb,P,B,Pb,gamb,cmue1,cmue2
   use turbulence,   only: gam,an,as,at,r,xRf,uu,vv,ww
+! use variables in module airsea
+! Qing Li, 20171214
+  use airsea,       only: u10, v10
 
 #ifdef EXTRA_OUTPUT
   use turbulence,   only: turb1,turb2,turb3,turb4,turb5
@@ -1183,9 +1186,6 @@
 !
 ! !LOCAL VARIABLES:
    REALTYPE, parameter          :: eps      = 1.0E-10
-! TODO: u10 is set for test here, need to be passed in <13-12-17, Qing Li> !
-! Qing Li, 20171213
-   REALTYPE, parameter          :: u10      = 5.0
 
    integer                      :: k,ksbl
    integer                      :: kk,kref
@@ -1224,6 +1224,8 @@
 !  Thickness of surface layer
 !  Qing Li, 20171213
    REALTYPE                     :: surfthick
+!  10-meter wind
+   REALTYPE                     :: wind10m
 
 !-----------------------------------------------------------------------
 !BOC
@@ -1267,9 +1269,10 @@
 !  Get Langmuir enhancement factor
 !-----------------------------------------------------------------------
 ! Qing Li, 20171213
+   ! 10-meter wind
+   wind10m = sqrt(u10**2+v10**2)
    if (langmuir_method .eq. kpp_lt_efactor_model) then
-      ! TODO: need to pass in u10  <13-12-17, Qing Li> !
-      efactor = kpp_efactor_model(u10, u_taus, z_w(nlev)-zsbl)
+      efactor = kpp_efactor_model(wind10m, u_taus, z_w(nlev)-zsbl)
    else if (langmuir_method .eq. kpp_lt_efactor_read) then
        ! TODO: read from file <13-12-17, Qing Li> !
       efactor = _ONE_
@@ -1472,8 +1475,7 @@
 !-----------------------------------------------------------------------
 ! Qing Li, 20171213
    if (langmuir_method .eq. kpp_lt_efactor_model) then
-      ! TODO: need to pass in u10  <13-12-17, Qing Li> !
-      efactor = kpp_efactor_model(u10, u_taus, z_w(nlev)-zsbl)
+      efactor = kpp_efactor_model(wind10m, u_taus, z_w(nlev)-zsbl)
    else if (langmuir_method .eq. kpp_lt_efactor_read) then
        ! TODO: read from file <13-12-17, Qing Li> !
       efactor = _ONE_

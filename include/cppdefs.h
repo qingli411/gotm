@@ -80,4 +80,6 @@
 #define KPP_IP_FC
 #undef KPP_CLIP_GS
 #define KPP_SALINITY
-
+! average reference density and velocity in the surface layer
+! Qing Li, 20171213
+#define KPP_AVGSLAYER_REF

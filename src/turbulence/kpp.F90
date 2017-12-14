@@ -324,6 +324,13 @@
 !  power law regime of flux profile for tracers (zetas=-1.0)
    REALTYPE, parameter :: zetas   = -1.0
 
+!  method of Langmuir turbulence parameterization
+!  Qing Li, 20171213
+   integer, parameter ::  kpp_lt_nolangmuir = 0
+   integer, parameter ::  kpp_lt_efactor_model = 1
+   integer, parameter ::  kpp_lt_efactor_read = 2
+   integer, parameter ::  kpp_lt_entrainment = 3
+
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
 !
@@ -367,6 +374,10 @@
    integer                               ::    ksblOld
    REALTYPE                              ::    zsblOld
 
+!  method to parameterize the effects of Langmuir turbulence
+!  Qing Li, 20171213
+   integer                               ::    langmuir_method
+   character(len=PATH_MAX)               ::    langmuir_file
 !
 !
 !EOP
@@ -430,7 +441,8 @@
    integer                             :: rc
 
    namelist /kpp/                      kpp_sbl,kpp_bbl,kpp_interior,    &
-                                       clip_mld,Ric
+                                       clip_mld,Ric,langmuir_method,    &
+                                       langmuir_file
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -687,6 +699,23 @@
       LEVEL3 'Bottom layer mixing algorithm          - not active -   '
    endif
 
+!  message of Langmuir turbulence parameterization
+!  Qing Li, 20171213
+   if (langmuir_method .eq. kpp_lt_nolangmuir) then
+      LEVEL3 'Langmuir turbulence parameterization   - not active -   '
+   else
+      LEVEL3 'Langmuir turbulence parameterization       - active -   '
+      if (langmuir_method .eq. kpp_lt_efactor_model) then
+         LEVEL4 'Approximate enhancement factor from simple model'
+      else if (langmuir_method .eq. kpp_lt_efactor_read) then
+         LEVEL4 'Read enhancement factor from file'
+      else if (langmuir_method .eq. kpp_lt_entrainment) then
+         LEVEL4 'Langmuir mixing + Langmuir enhanced entrainment'
+      else
+         LEVEL4 'Method not supported'
+      end if
+   end if
+
    LEVEL2 '--------------------------------------------------------'
 
 
@@ -866,7 +895,6 @@
       nuh = _ZERO_
       nus = _ZERO_
    endif
-
 
 !-----------------------------------------------------------------------
 ! compute surface boundary layer mixing
@@ -1147,7 +1175,6 @@
 !  Coriolis parameter (rad/s)
    REALTYPE                                      :: f
 
-
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
@@ -1156,8 +1183,12 @@
 !
 ! !LOCAL VARIABLES:
    REALTYPE, parameter          :: eps      = 1.0E-10
+! TODO: u10 is set for test here, need to be passed in <13-12-17, Qing Li> !
+! Qing Li, 20171213
+   REALTYPE, parameter          :: u10      = 5.0
 
    integer                      :: k,ksbl
+   integer                      :: kk,kref
 
    REALTYPE                     :: Bo
    REALTYPE                     :: Bfsfc
@@ -1187,6 +1218,12 @@
    REALTYPE, dimension (0:nlev) :: Bflux
    REALTYPE, dimension (0:nlev) :: FC
 
+!  Langmuir enhancement factor
+!  Qing Li, 20171213
+   REALTYPE                     :: efactor
+!  Thickness of surface layer
+!  Qing Li, 20171213
+   REALTYPE                     :: surfthick
 
 !-----------------------------------------------------------------------
 !BOC
@@ -1227,15 +1264,33 @@
    enddo
 
 !-----------------------------------------------------------------------
+!  Get Langmuir enhancement factor
+!-----------------------------------------------------------------------
+! Qing Li, 20171213
+   if (langmuir_method .eq. kpp_lt_efactor_model) then
+      ! TODO: need to pass in u10  <13-12-17, Qing Li> !
+      efactor = kpp_efactor_model(u10, u_taus, z_w(nlev)-zsbl)
+   else if (langmuir_method .eq. kpp_lt_efactor_read) then
+       ! TODO: read from file <13-12-17, Qing Li> !
+      efactor = _ONE_
+   else
+      ! no enhancement factor applied to ws in bulk Richardson number
+      ! when Langmuir enhanced entrainment is on
+      efactor = _ONE_
+   end if
+
+!-----------------------------------------------------------------------
 !  Compute potential density and velocity components surface reference
 !  values.
 !-----------------------------------------------------------------------
-
+!  update the reference potential density and velocity below if the
+!  surface layer is thicker than the uppermost grid and if the tag
+!  KPP_AVGSLAYER_REF is defined in cppdefs.h
+!  Qing Li, 20171213
 !  simply use uppermost value
    Rref = rho(nlev)
    Uref =   u(nlev)
    Vref =   v(nlev)
-
 
 !-----------------------------------------------------------------------
 !  Compute critical function, FC, for bulk Richardson number
@@ -1254,8 +1309,37 @@
          sigma=depth
       endif
 
-      call wscale (Bflux(k),u_taus,sigma,wm,ws)
+      call wscale (Bflux(k),u_taus,sigma,efactor,wm,ws)
 
+#ifdef KPP_AVGSLAYER_REF
+!-----------------------------------------------------------------------
+!  Update potential density and velocity components surface reference
+!  values.
+!-----------------------------------------------------------------------
+! Qing Li, 20171213
+      ! determine which layer contains surface layer
+      surfthick = epsilon*depth
+      do kk = nlev,k,-1
+         if (z_w(nlev)-z_w(kk-1) .ge. surfthick) then
+            kref = kk
+            exit
+         end if
+      end do
+      ! Update Rref, Uref and Vref
+      if (kref < nlev) then
+         Rref = rho(kref)*(surfthick+z_w(kref))
+         Uref =   u(kref)*(surfthick+z_w(kref))
+         Vref =   v(kref)*(surfthick+z_w(kref))
+         do kk = nlev,kref+1,-1
+            Rref = Rref + rho(kk)*h(kk)
+            Uref = Uref +   u(kk)*h(kk)
+            Vref = Vref +   v(kk)*h(kk)
+         end do
+         Rref = Rref/surfthick
+         Uref = Uref/surfthick
+         Vref = Vref/surfthick
+      end if
+#endif
 
 #ifdef KPP_TWOPOINT_REF
 
@@ -1384,6 +1468,23 @@
    Bfsfc   = Bo + (bRadSrf - bRadSbl)
 
 !-----------------------------------------------------------------------
+!  Update Langmuir enhancement factor
+!-----------------------------------------------------------------------
+! Qing Li, 20171213
+   if (langmuir_method .eq. kpp_lt_efactor_model) then
+      ! TODO: need to pass in u10  <13-12-17, Qing Li> !
+      efactor = kpp_efactor_model(u10, u_taus, z_w(nlev)-zsbl)
+   else if (langmuir_method .eq. kpp_lt_efactor_read) then
+       ! TODO: read from file <13-12-17, Qing Li> !
+      efactor = _ONE_
+   else if (langmuir_method .eq. kpp_lt_entrainment) then
+       ! TODO: efactor for entrainment <13-12-17, Qing Li> !
+      efactor = _ONE_
+   else
+      efactor = _ONE_
+   end if
+
+!-----------------------------------------------------------------------
 !  Compute tubulent velocity scales (wm,ws) at "zsbl".
 !-----------------------------------------------------------------------
 
@@ -1398,7 +1499,7 @@
 
    sigma=cff*(z_w(nlev)-zsbl)
 
-   call wscale (Bfsfc,u_taus,sigma,wm,ws)
+   call wscale (Bfsfc,u_taus,sigma,efactor,wm,ws)
 
 
 !-----------------------------------------------------------------------
@@ -1523,7 +1624,7 @@
             sigma=depth
          endif
 
-         call wscale(Bflux(k),u_taus,sigma,wm, ws)
+         call wscale(Bflux(k),u_taus,sigma,efactor,wm, ws)
 !
 !        Set polynomial coefficients for shape function.
          sigma = depth/(zbl+eps)
@@ -1660,6 +1761,9 @@
 !
 ! !LOCAL VARIABLES:
    REALTYPE, parameter          :: eps      = 1.0E-10
+!  Langmuir enhancement factor should always be 1 in this subroutine
+!  Qing Li, 20171213
+   REALTYPE, parameter          :: efactor  = _ONE_
 
    integer                      :: k,kbbl
 
@@ -1749,7 +1853,7 @@
          sigma=depth
       endif
 
-      call wscale (Bflux(k),u_taub,sigma,wm,ws)
+      call wscale (Bflux(k),u_taub,sigma,efactor,wm,ws)
 
 
 
@@ -1867,7 +1971,7 @@
 
    sigma=cff*zbl
 
-   call wscale (Bfbot,u_taub,sigma,wm,ws)
+   call wscale (Bfbot,u_taub,sigma,efactor,wm,ws)
 
 
 !-----------------------------------------------------------------------
@@ -1951,7 +2055,7 @@
             sigma=depth
          endif
 
-         call wscale(Bflux(k),u_taub,sigma,wm, ws)
+         call wscale(Bflux(k),u_taub,sigma,efactor,wm, ws)
 !
 !        Set polynomial coefficients for shape function.
          sigma = depth/(zbl+eps)
@@ -1991,7 +2095,7 @@
 ! !IROUTINE: Compute the velocity scale\label{sec:wscale}
 !
 ! !INTERFACE:
-   subroutine wscale(Bfsfc,u_taus,d,wm,ws)
+   subroutine wscale(Bfsfc,u_taus,d,efactor,wm,ws)
 !
 ! !DESCRIPTION:
 !  This routine computes the turbulent velocity scale for momentum
@@ -2028,6 +2132,9 @@
 ! The different functional forms of $\Phi_\phi(\zeta)$ for unstable flows
 ! are discussed in \cite{Largeetal94}.
 
+! Qing Li, 20171213
+! pass in Langmuir enhancement factor
+! TODO: documentation <13-12-17, Qing Li> !
 
 ! !USES:
    IMPLICIT NONE
@@ -2042,7 +2149,11 @@
 
 !  (limited) distance (m)
    REALTYPE, intent(in)                :: d
-!
+
+!  Langmuir enhancement factor
+! Qing Li, 20171213
+   REALTYPE, intent(in)                :: efactor
+
 ! !OUTPUT PARAMETERS:
 
 !  velocity scale (m/s)
@@ -2085,6 +2196,10 @@
          ws=kappa*(kpp_as*u_taus3-kpp_cs*zetahat)**r3
       endif
    endif
+!  apply the Langmuir enhancement factor on the turbulent velocity scale
+!  Qing Li, 20171213
+   ws=ws*efactor
+   wm=wm*efactor
 
  end subroutine wscale
 !EOC

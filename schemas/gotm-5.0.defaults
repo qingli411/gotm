@@ -99,8 +99,8 @@
          <sss_file>sss_file.dat</sss_file>
          <ssuv_method>0</ssuv_method>
          <u10_method>0</u10_method>
-         <const_tx>0.0</const_u10>
-         <const_ty>0.0</const_v10>
+         <const_u10>0.0</const_u10>
+         <const_v10>0.0</const_v10>
          <u10_file>u10_file.dat</u10_file>
       </airsea>
    </airsea>

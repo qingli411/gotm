@@ -79,6 +79,9 @@
 !  Pointers to first files with observed profiles and observed scalars.
    type (type_profile_file),    pointer :: first_profile_file
    type (type_timeseries_file), pointer :: first_timeseries_file
+!  Pointer to first file with observed spectrum
+!  Qing Li, 20171217
+   type (type_profile_file),    pointer :: first_spectrum_file
 
 !  Unit to use for next data file.
    integer :: next_unit_no
@@ -120,6 +123,8 @@
    next_unit_no = first_unit_no
    nullify(first_profile_file)
    nullify(first_timeseries_file)
+!  Qing Li, 20171217
+   nullify(first_spectrum_file)
 
    LEVEL1 'done'
 

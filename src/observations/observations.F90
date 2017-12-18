@@ -63,6 +63,10 @@
 !  observed profile of turbulent dissipation rates
    REALTYPE, public, dimension(:), allocatable, target :: epsprof
 
+!  observed wave frequency, energy spectrum and direction
+!  Qing Li, 20171217
+   REALTYPE, public, dimension(:), allocatable, target :: wav_freq, wav_spec, wav_dir
+
 !  ralaxation times for salinity and temperature
    REALTYPE, public, dimension(:), allocatable, target :: SRelaxTau
    REALTYPE, public, dimension(:), allocatable         :: TRelaxTau
@@ -151,7 +155,7 @@
    integer, public           :: w_adv_discr
 
 !  Sea surface elevations - 'zetaspec' namelist
-   integer,public            :: zeta_method
+   integer, public           :: zeta_method
    character(LEN=PATH_MAX)   :: zeta_file
    REALTYPE, public          :: zeta_scale
    REALTYPE, public          :: zeta_offset
@@ -164,11 +168,18 @@
    REALTYPE, public          :: phase_2
 
 !  Wind waves - 'wave_nml' namelist
-   integer,public            :: wave_method
+   integer, public           :: wave_method
    character(LEN=PATH_MAX)   :: wave_file
    REALTYPE, public          :: Hs
    REALTYPE, public          :: Tz
    REALTYPE, public          :: phiw
+
+!  Wave spectrum - 'wave_spec' namelist
+!  Qing Li, 20171217
+   integer, public           :: spec_method
+   integer, public           :: nfreq
+   character(LEN=PATH_MAX)   :: spec_file
+
 
 !  Observed velocity profile profiles - typically from ADCP
    integer                   :: vel_prof_method
@@ -284,6 +295,11 @@
 
    namelist /wave_nml/                                          &
             wave_method,wave_file,Hs,Tz,phiw
+
+!  wave spectrum namelist
+!  Qing Li, 20171217
+   namelist /wave_spec/                                          &
+            spec_method,nfreq,spec_file
 
    namelist /velprofile/ vel_prof_method,vel_prof_file,         &
             vel_relax_tau,vel_relax_ramp
@@ -401,6 +417,12 @@
    Tz=_ZERO_
    phiw=_ZERO_
 
+!  Wave spectrum - 'wave_spec' namelist
+!  Qing Li, 20171217
+   spec_method=0
+   nfreq=64
+   spec_file='spec.dat'
+
 !  Observed velocity profile profiles - typically from ADCP
    vel_prof_method=0
    vel_prof_file='velprof.dat'
@@ -430,6 +452,8 @@
    read(namlst,nml=eprofile,err=90)
    read(namlst,nml=bprofile,err=91)
    read(namlst,nml=o2_profile,err=92)
+   ! Qing Li, 20171217
+   read(namlst,nml=wave_spec,err=93)
    close(namlst)
 
    allocate(sprof(0:nlev),stat=rc)
@@ -518,6 +542,20 @@
    allocate(o2_prof(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_observations: Error allocating (o2_prof)'
    o2_prof = _ZERO_
+
+!  allocate wave spectrum variables
+!  Qing Li, 20171217
+   allocate(wav_freq(1:nfreq),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (wav_freq)'
+   wav_freq = _ZERO_
+
+   allocate(wav_spec(1:nfreq),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (wav_spec)'
+   wav_spec = _ZERO_
+
+   allocate(wav_dir(1:nfreq),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (wav_dir)'
+   wav_dir = _ZERO_
 
 !  The salinity profile
    select case (s_prof_method)
@@ -724,6 +762,23 @@
          stop 'init_observations()'
    end select
 
+!  Wave spectrum
+!  Qing Li, 20171217
+   select case (spec_method)
+      case (NOTHING)
+!        No spectrum input
+      case (CONSTANT)
+!        Empirical spectrum
+      case (FROMFILE)
+         call register_input_spec(spec_file,1,wav_spec,'observed wave spectrum: band energy spectrum')
+         call register_input_spec(spec_file,2,wav_dir,'observed wave spectrum: band mean direction')
+         LEVEL2 'Reading wave spectrum data from:'
+         LEVEL3 trim(spec_file)
+      case default
+         LEVEL1 'A non-valid spec_method has been given ',spec_method
+         stop 'init_observations()'
+   end select
+
 !  The observed velocity profile
    select case (vel_prof_method)
       case (NOTHING)
@@ -806,6 +861,9 @@
 91 FATAL 'I could not read "bprofile" namelist'
    stop 'init_observations'
 92 FATAL 'I could not read "o2_profile" namelist'
+   stop 'init_observations'
+! Qing Li, 20171217
+93 FATAL 'I could not read "wave_spec" namelist'
    stop 'init_observations'
 
    end subroutine init_observations
@@ -901,6 +959,10 @@
    if (allocated(vprof)) deallocate(vprof)
    if (allocated(epsprof)) deallocate(epsprof)
    if (allocated(o2_prof)) deallocate(o2_prof)
+!  Qing Li, 20171217
+   if (allocated(wav_freq)) deallocate(wav_freq)
+   if (allocated(wav_spec)) deallocate(wav_spec)
+   if (allocated(wav_dir)) deallocate(wav_dir)
    LEVEL2 'done.'
 
    end subroutine clean_observations
@@ -942,6 +1004,10 @@
    if (allocated(epsprof)) LEVEL2 'epsprof',epsprof
    if (allocated(SRelaxTau)) LEVEL2 'SRelaxTau',SRelaxTau
    if (allocated(TRelaxTau)) LEVEL2 'TRelaxTau',TRelaxTau
+!  Qing Li, 20171217
+   if (allocated(wav_freq)) LEVEL2 'wav_freq',wav_freq
+   if (allocated(wav_spec)) LEVEL2 'wav_spec',wav_spec
+   if (allocated(wav_dir)) LEVEL2 'wav_dir',wav_dir
    LEVEL2 'zeta,dpdx,dpdy,h_press',zeta,dpdx,dpdy,h_press
    LEVEL2 'w_adv,w_height',w_adv,w_height
    LEVEL2 'A,g1,g2',A,g1,g2
@@ -983,6 +1049,10 @@
 
    LEVEL2 'wave_nml namelist',                                  &
             wave_method,wave_file,Hs,Tz,phiw
+
+!  Qing Li, 20171217
+   LEVEL2 'wave_spec namelist',                                  &
+            spec_method,nfreq,spec_file
 
    LEVEL2 'observed velocity profiles namelist',                &
             vel_prof_method,vel_prof_file,                      &

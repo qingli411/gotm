@@ -65,7 +65,7 @@
 
 !  observed wave frequency, energy spectrum and direction
 !  Qing Li, 20171217
-   REALTYPE, public, dimension(:), allocatable, target :: wav_freq, wav_spec, wav_dir
+   REALTYPE, public, dimension(:), allocatable, target :: wav_freq, wav_spec, wav_ussp, wav_vssp
 
 !  ralaxation times for salinity and temperature
    REALTYPE, public, dimension(:), allocatable, target :: SRelaxTau
@@ -553,9 +553,13 @@
    if (rc /= 0) STOP 'init_observations: Error allocating (wav_spec)'
    wav_spec = _ZERO_
 
-   allocate(wav_dir(nfreq),stat=rc)
-   if (rc /= 0) STOP 'init_observations: Error allocating (wav_dir)'
-   wav_dir = _ZERO_
+   allocate(wav_ussp(nfreq),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (wav_ussp)'
+   wav_ussp = _ZERO_
+
+   allocate(wav_vssp(nfreq),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (wav_vssp)'
+   wav_vssp = _ZERO_
 
 !  The salinity profile
    select case (s_prof_method)
@@ -766,12 +770,15 @@
 !  Qing Li, 20171217
    select case (spec_method)
       case (NOTHING)
-!        No spectrum input
+         wav_spec = _ZERO_
+         wav_ussp = _ZERO_
+         wav_vssp = _ZERO_
       case (CONSTANT)
 !        Empirical spectrum
       case (FROMFILE)
-         call register_input_1d_spec(spec_file,1,wav_spec,'observed wave spectrum: band energy spectrum')
-         call register_input_1d_spec(spec_file,2,wav_dir,'observed wave spectrum: band mean direction')
+         call register_input_1d_spec(spec_file,1,wav_spec,'observed band wave energy spectrum')
+         call register_input_1d_spec(spec_file,2,wav_ussp,'observed band Stokes spectrum: x-direction')
+         call register_input_1d_spec(spec_file,3,wav_vssp,'observed band Stokes spectrum: y-direction')
          LEVEL2 'Reading wave spectrum data from:'
          LEVEL3 trim(spec_file)
       case default
@@ -962,7 +969,8 @@
 !  Qing Li, 20171217
    if (allocated(wav_freq)) deallocate(wav_freq)
    if (allocated(wav_spec)) deallocate(wav_spec)
-   if (allocated(wav_dir)) deallocate(wav_dir)
+   if (allocated(wav_ussp)) deallocate(wav_ussp)
+   if (allocated(wav_vssp)) deallocate(wav_vssp)
    LEVEL2 'done.'
 
    end subroutine clean_observations
@@ -1007,7 +1015,8 @@
 !  Qing Li, 20171217
    if (allocated(wav_freq)) LEVEL2 'wav_freq',wav_freq
    if (allocated(wav_spec)) LEVEL2 'wav_spec',wav_spec
-   if (allocated(wav_dir)) LEVEL2 'wav_dir',wav_dir
+   if (allocated(wav_ussp)) LEVEL2 'wav_ussp',wav_ussp
+   if (allocated(wav_vssp)) LEVEL2 'wav_vssp',wav_vssp
    LEVEL2 'zeta,dpdx,dpdy,h_press',zeta,dpdx,dpdy,h_press
    LEVEL2 'w_adv,w_height',w_adv,w_height
    LEVEL2 'A,g1,g2',A,g1,g2

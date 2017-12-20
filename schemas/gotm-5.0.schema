@@ -1230,6 +1230,28 @@
             </fileinfo>
          </element>
       </element>
+      <element name="wave_spec" label="wind wave spectrum" description="Wind induced wave spectrum can be specified. Used to include the effects of Stokes drift and Langmuir turbulence.">
+         <element name="spec_method" type="int" label="method to prescribe the wave spectrum">
+            <options>
+               <option value="0" label="nothing is done - all variables equal 0" />
+               <option value="1" label="constant values" />
+               <option value="2" label="time varying variables read from file" />
+            </options>
+         </element>
+         <element name="nfreq" type="int" label="number of frequency bands">
+            <condition type="eq" variable="./spec_method" value="2" />
+         </element>
+         <element name="spec_file" type="gotmdatafile" label="filename for file wave spectrum">
+            <condition type="eq" variable="./spec_method" value="2" />
+            <fileinfo type="profilesintime">
+               <filevariables>
+                  <filevariable name="wav_spec" label="band wave energy spectrum" />
+                  <filevariable name="wav_ussp" label="band Stokes drift spectrum: x-direction" />
+                  <filevariable name="wav_vssp" label="band Stokes drift spectrum: y-direction" />
+               </filevariables>
+            </fileinfo>
+         </element>
+      </element>
    </element>
 
    <element name="seagrass" label="seagrass model" optional="True">

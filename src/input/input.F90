@@ -212,82 +212,6 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Register a 1d input variable for spectrum.
-!
-! !INTERFACE:
-   subroutine register_input_1d_spec(path,icolumn,data,name,scale_factor)
-!
-! !DESCRIPTION:
-!
-! !INPUT PARAMETERS:
-   character(len=*), intent(in) :: path,name
-   integer,          intent(in) :: icolumn
-   REALTYPE,target              :: data(:)
-   REALTYPE,optional,intent(in) :: scale_factor
-!
-! !REVISION HISTORY:
-!  Original author(s): Jorn Bruggeman
-!  Based on register_input_1d
-!  Qing Li, 20171219
-!
-!EOP
-!
-! !LOCAL VARIABLES:
-   type (type_profile_file),pointer :: file
-   type (type_1d_variable), pointer :: variable
-!
-!-----------------------------------------------------------------------
-!BOC
-
-   if (path=='') call fatal_error('input::register_input_1d_spec', 'Empty file path specified to read variable '//trim(name)//' from.')
-
-!  Find a file object for the specified file path; create one if it does exist yet.
-   if (.not.associated(first_spectrum_file)) then
-      allocate(first_spectrum_file)
-      file => first_spectrum_file
-   else
-      file => first_spectrum_file
-      do while (associated(file))
-         if (file%path==path.and.file%unit==-1) exit
-         file => file%next
-      end do
-      if (.not.associated(file)) then
-         file => first_spectrum_file
-         do while (associated(file%next))
-            file => file%next
-         end do
-         allocate(file%next)
-         file => file%next
-      end if
-   end if
-   file%path = path
-
-!  Create a variable object for the specified column index
-   if (associated(file%first_variable)) then
-!     Append a new variable object to the linked list.
-      variable => file%first_variable
-      do while (associated(variable%next))
-         variable => variable%next
-      end do
-      allocate(variable%next)
-      variable => variable%next
-   else
-!     This file does not have any associated variables; create the first.
-      allocate(file%first_variable)
-      variable => file%first_variable
-   end if
-
-   variable%index = icolumn
-   variable%data => data
-   variable%data = _ZERO_
-   if (present(scale_factor)) variable%scale_factor = scale_factor
-
-   end subroutine register_input_1d_spec
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
 ! !IROUTINE: Register a 0d input variable.
 !
 ! !INTERFACE:
@@ -405,46 +329,6 @@
    end do
 
    end subroutine do_input
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Read input spectrum
-!
-! !INTERFACE:
-  subroutine do_input_spec(jul,secs,nfreq,freq)
-!
-! !DESCRIPTION:
-!  Read wave spectrum for the current time.
-!
-! !USES:
-!
-! !INPUT PARAMETERS:
-   integer,  intent(in)  :: jul,secs
-   integer,  intent(in)  :: nfreq
-! !OUTPUT PARAMETERS:
-   REALTYPE, intent(out) :: freq(nfreq)
-!
-! !REVISION HISTORY:
-!  Original author(s): Jorn Bruggeman
-!  Added by Qing Li, 2017-12-19
-!
-!EOP
-!
-! !LOCAL VARIABLES:
-   type (type_profile_file),   pointer :: spectrum_file
-!-----------------------------------------------------------------------
-!BOC
-
-!  Loop over files with observed spectrum.
-   spectrum_file => first_spectrum_file
-   do while (associated(spectrum_file))
-      call get_observed_spectrum(spectrum_file,jul,secs,nfreq,freq)
-      spectrum_file => spectrum_file%next
-   end do
-
-   end subroutine do_input_spec
 !EOC
 
 !-----------------------------------------------------------------------
@@ -595,160 +479,6 @@
    end if
 
    end subroutine get_observed_profiles
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Initialize a single input file with wave spectrum data
-!
-! !INTERFACE:
-   subroutine initialize_spectrum_file(info,nfreq)
-!
-! !DESCRIPTION:
-!  Initialize a single file with observed wave spectrum.
-!
-! !USES:
-!
-! !INPUT PARAMETERS:
-   type (type_profile_file),intent(inout) :: info
-   integer,                 intent(in)    :: nfreq
-!
-! !REVISION HISTORY:
-!  Original author(s): Jorn Bruggeman
-!  Added by Qing Li, 20171219
-!
-!EOP
-!
-! !LOCAL VARIABLES:
-   type (type_1d_variable),pointer :: curvar
-   integer :: nvar
-   integer :: rc
-   integer :: ios
-!
-!-----------------------------------------------------------------------
-!BOC
-!  Open the input file.
-   open(next_unit_no,file=info%path,status='old',action='read',iostat=ios)
-   if (ios /= 0) call fatal_error('input::initialize_spectrum_file', 'Unable to open "'//trim(info%path)//'" for reading')
-
-!  Opening was successful - store the file unit, and increment the next unit with 1.
-   info%unit = next_unit_no
-   next_unit_no = next_unit_no + 1
-
-!  Determine the maximum number of columns that we need to read.
-   nvar = 0
-   curvar => info%first_variable
-   do while (associated(curvar))
-      nvar = max(nvar,curvar%index)
-      curvar => curvar%next
-   end do
-
-   allocate(info%prof1(nfreq,nvar),stat=rc)
-   if (rc /= 0) stop 'input::initialize_spectrum_file: Error allocating memory (prof1)'
-   info%prof1 = _ZERO_
-
-   allocate(info%prof2(nfreq,nvar),stat=rc)
-   if (rc /= 0) stop 'input::initialize_spectrum_file: Error allocating memory (prof2)'
-   info%prof2 = _ZERO_
-
-   allocate(info%alpha(nfreq,nvar),stat=rc)
-   if (rc /= 0) stop 'input::initialize_spectrum_file: Error allocating memory (alpha)'
-   info%alpha = _ZERO_
-
-   end subroutine initialize_spectrum_file
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Read spectrum data from a single input file
-!
-! !INTERFACE:
-   subroutine get_observed_spectrum(info,jul,secs,nfreq,freq)
-!
-! !DESCRIPTION:
-!  Get wave spectrum for the current time from a single input file.
-!  This reads in new observations if necessary (and available),
-!  and performs linear interpolation in time and vertical space.
-!
-! !USES:
-   use time, only: time_diff,julian_day
-!
-! !INPUT PARAMETERS:
-   integer,                 intent(in)   :: jul,secs
-   integer,                 intent(in)   :: nfreq
-!
-! !INPUT/OUTPUT PARAMETERS:
-   type(type_profile_file), intent(inout):: info
-!
-! !OUTPUT PARAMETERS:
-   REALTYPE,                intent(out)  :: freq(nfreq)
-!
-! !REVISION HISTORY:
-!  Original author(s): Jorn Bruggeman
-!  Added by Qing Li, 20171219
-!
-!EOP
-!
-! !LOCAL VARIABLES:
-   integer                      :: rc
-   integer                      :: yy,mm,dd,hh,min,ss
-   REALTYPE                     :: t,dt
-   type (type_1d_variable),pointer :: curvar
-   character(len=8)             :: strline
-!
-!-----------------------------------------------------------------------
-!BOC
-   if (info%unit==-1) call initialize_spectrum_file(info,nfreq)
-
-!  This part reads in new values if necessary.
-   if(.not. info%one_profile .and. time_diff(info%jul2,info%secs2,jul,secs)<0) then
-      do
-         info%jul1 = info%jul2
-         info%secs1 = info%secs2
-         info%prof1 = info%prof2
-         call read_spectrum(info%unit,nfreq,ubound(info%prof2,2),yy,mm,dd,hh,min,ss,freq,info%prof2,info%lines,rc)
-         if(rc/=0) then
-            if(info%nprofiles==1) then
-               LEVEL3 'Only one set of spectrum is present in '//trim(info%path)//'.'
-               info%one_profile = .true.
-               curvar => info%first_variable
-               do while (associated(curvar))
-                  curvar%data = curvar%scale_factor*info%prof1(:,curvar%index)
-                  curvar => curvar%next
-               end do
-            elseif (rc<0) then
-               call fatal_error('input:get_observed_spectrum', 'End of file reached while attempting to read new data from '//trim(info%path)//'. Does this file span the entire simulated period?')
-            else
-               write (strline,'(i0)') info%lines
-               call fatal_error('input:get_observed_spectrum', 'Error reading spectrum from '//trim(info%path)//' at line '//trim(strline))
-            end if
-            exit
-         else
-            info%nprofiles = info%nprofiles + 1
-            call julian_day(yy,mm,dd,info%jul2)
-            info%secs2 = hh*3600 + min*60 + ss
-            if(time_diff(info%jul2,info%secs2,jul,secs)>0) exit
-         end if
-      end do
-      if( .not. info%one_profile) then
-         dt = time_diff(info%jul2,info%secs2,info%jul1,info%secs1)
-         info%alpha = (info%prof2-info%prof1)/dt
-      end if
-   end if
-
-!  Do the time interpolation - only if more than one profile
-   if( .not. info%one_profile) then
-      t = time_diff(jul,secs,info%jul1,info%secs1)
-      curvar => info%first_variable
-      do while (associated(curvar))
-         curvar%data = curvar%scale_factor*(info%prof1(:,curvar%index) + t*info%alpha(:,curvar%index))
-         curvar => curvar%next
-      end do
-   end if
-
-   end subroutine get_observed_spectrum
 !EOC
 
 !-----------------------------------------------------------------------
@@ -945,6 +675,27 @@
    end do
    nullify(first_timeseries_file)
 
+   ! Qing Li, 20171220
+   profile_file => first_spectrum_file
+   do while (associated(profile_file))
+      curvar_1d => profile_file%first_variable
+      do while (associated(curvar_1d))
+         nextvar_1d => curvar_1d%next
+         deallocate(curvar_1d)
+         curvar_1d => nextvar_1d
+      end do
+
+      next_profile_file => profile_file%next
+      if (profile_file%unit/=-1) close(profile_file%unit)
+      if (allocated(profile_file%prof1)) deallocate(profile_file%prof1)
+      if (allocated(profile_file%prof2)) deallocate(profile_file%prof2)
+      if (allocated(profile_file%alpha)) deallocate(profile_file%alpha)
+      deallocate(profile_file)
+
+      profile_file => next_profile_file
+   end do
+   nullify(first_spectrum_file)
+
    end subroutine close_input
 !EOC
 
@@ -1096,6 +847,276 @@
 !-----------------------------------------------------------------------
 !BOP
 !
+! !IROUTINE: Register a 1d input variable for spectrum.
+!
+! !INTERFACE:
+   subroutine register_input_1d_spec(path,icolumn,data,name,scale_factor)
+!
+! !DESCRIPTION:
+!
+! !INPUT PARAMETERS:
+   character(len=*), intent(in) :: path,name
+   integer,          intent(in) :: icolumn
+   REALTYPE,target              :: data(:)
+   REALTYPE,optional,intent(in) :: scale_factor
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!  Based on register_input_1d
+!  Qing Li, 20171219
+!
+!EOP
+!
+! !LOCAL VARIABLES:
+   type (type_profile_file),pointer :: file
+   type (type_1d_variable), pointer :: variable
+!
+!-----------------------------------------------------------------------
+!BOC
+
+   if (path=='') call fatal_error('input::register_input_1d_spec', 'Empty file path specified to read variable '//trim(name)//' from.')
+
+!  Find a file object for the specified file path; create one if it does exist yet.
+   if (.not.associated(first_spectrum_file)) then
+      allocate(first_spectrum_file)
+      file => first_spectrum_file
+   else
+      file => first_spectrum_file
+      do while (associated(file))
+         if (file%path==path.and.file%unit==-1) exit
+         file => file%next
+      end do
+      if (.not.associated(file)) then
+         file => first_spectrum_file
+         do while (associated(file%next))
+            file => file%next
+         end do
+         allocate(file%next)
+         file => file%next
+      end if
+   end if
+   file%path = path
+
+!  Create a variable object for the specified column index
+   if (associated(file%first_variable)) then
+!     Append a new variable object to the linked list.
+      variable => file%first_variable
+      do while (associated(variable%next))
+         variable => variable%next
+      end do
+      allocate(variable%next)
+      variable => variable%next
+   else
+!     This file does not have any associated variables; create the first.
+      allocate(file%first_variable)
+      variable => file%first_variable
+   end if
+
+   variable%index = icolumn
+   variable%data => data
+   variable%data = _ZERO_
+   if (present(scale_factor)) variable%scale_factor = scale_factor
+
+   end subroutine register_input_1d_spec
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Read input spectrum
+!
+! !INTERFACE:
+  subroutine do_input_spec(jul,secs,nfreq,freq)
+!
+! !DESCRIPTION:
+!  Read wave spectrum for the current time.
+!
+! !USES:
+!
+! !INPUT PARAMETERS:
+   integer,  intent(in)  :: jul,secs
+   integer,  intent(in)  :: nfreq
+! !OUTPUT PARAMETERS:
+   REALTYPE, intent(out) :: freq(nfreq)
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!  Added by Qing Li, 2017-12-19
+!
+!EOP
+!
+! !LOCAL VARIABLES:
+   type (type_profile_file),   pointer :: spectrum_file
+!-----------------------------------------------------------------------
+!BOC
+
+!  Loop over files with observed spectrum.
+   spectrum_file => first_spectrum_file
+   do while (associated(spectrum_file))
+      call get_observed_spectrum(spectrum_file,jul,secs,nfreq,freq)
+      spectrum_file => spectrum_file%next
+   end do
+
+   end subroutine do_input_spec
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialize a single input file with wave spectrum data
+!
+! !INTERFACE:
+   subroutine initialize_spectrum_file(info,nfreq)
+!
+! !DESCRIPTION:
+!  Initialize a single file with observed wave spectrum.
+!
+! !USES:
+!
+! !INPUT PARAMETERS:
+   type (type_profile_file),intent(inout) :: info
+   integer,                 intent(in)    :: nfreq
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!  Added by Qing Li, 20171219
+!
+!EOP
+!
+! !LOCAL VARIABLES:
+   type (type_1d_variable),pointer :: curvar
+   integer :: nvar
+   integer :: rc
+   integer :: ios
+!
+!-----------------------------------------------------------------------
+!BOC
+!  Open the input file.
+   open(next_unit_no,file=info%path,status='old',action='read',iostat=ios)
+   if (ios /= 0) call fatal_error('input::initialize_spectrum_file', 'Unable to open "'//trim(info%path)//'" for reading')
+
+!  Opening was successful - store the file unit, and increment the next unit with 1.
+   info%unit = next_unit_no
+   next_unit_no = next_unit_no + 1
+
+!  Determine the maximum number of columns that we need to read.
+   nvar = 0
+   curvar => info%first_variable
+   do while (associated(curvar))
+      nvar = max(nvar,curvar%index)
+      curvar => curvar%next
+   end do
+
+   allocate(info%prof1(nfreq,nvar),stat=rc)
+   if (rc /= 0) stop 'input::initialize_spectrum_file: Error allocating memory (prof1)'
+   info%prof1 = _ZERO_
+
+   allocate(info%prof2(nfreq,nvar),stat=rc)
+   if (rc /= 0) stop 'input::initialize_spectrum_file: Error allocating memory (prof2)'
+   info%prof2 = _ZERO_
+
+   allocate(info%alpha(nfreq,nvar),stat=rc)
+   if (rc /= 0) stop 'input::initialize_spectrum_file: Error allocating memory (alpha)'
+   info%alpha = _ZERO_
+
+   end subroutine initialize_spectrum_file
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Read spectrum data from a single input file
+!
+! !INTERFACE:
+   subroutine get_observed_spectrum(info,jul,secs,nfreq,freq)
+!
+! !DESCRIPTION:
+!  Get wave spectrum for the current time from a single input file.
+!  This reads in new observations if necessary (and available),
+!  and performs linear interpolation in time and vertical space.
+!
+! !USES:
+   use time, only: time_diff,julian_day
+!
+! !INPUT PARAMETERS:
+   integer,                 intent(in)   :: jul,secs
+   integer,                 intent(in)   :: nfreq
+!
+! !INPUT/OUTPUT PARAMETERS:
+   type(type_profile_file), intent(inout):: info
+!
+! !OUTPUT PARAMETERS:
+   REALTYPE,                intent(out)  :: freq(nfreq)
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!  Added by Qing Li, 20171219
+!
+!EOP
+!
+! !LOCAL VARIABLES:
+   integer                      :: rc
+   integer                      :: yy,mm,dd,hh,min,ss
+   REALTYPE                     :: t,dt
+   type (type_1d_variable),pointer :: curvar
+   character(len=8)             :: strline
+!
+!-----------------------------------------------------------------------
+!BOC
+   if (info%unit==-1) call initialize_spectrum_file(info,nfreq)
+
+!  This part reads in new values if necessary.
+   if(.not. info%one_profile .and. time_diff(info%jul2,info%secs2,jul,secs)<0) then
+      do
+         info%jul1 = info%jul2
+         info%secs1 = info%secs2
+         info%prof1 = info%prof2
+         call read_spectrum(info%unit,nfreq,ubound(info%prof2,2),yy,mm,dd,hh,min,ss,freq,info%prof2,info%lines,rc)
+         if(rc/=0) then
+            if(info%nprofiles==1) then
+               LEVEL3 'Only one set of spectrum is present in '//trim(info%path)//'.'
+               info%one_profile = .true.
+               curvar => info%first_variable
+               do while (associated(curvar))
+                  curvar%data = curvar%scale_factor*info%prof1(:,curvar%index)
+                  curvar => curvar%next
+               end do
+            elseif (rc<0) then
+               call fatal_error('input:get_observed_spectrum', 'End of file reached while attempting to read new data from '//trim(info%path)//'. Does this file span the entire simulated period?')
+            else
+               write (strline,'(i0)') info%lines
+               call fatal_error('input:get_observed_spectrum', 'Error reading spectrum from '//trim(info%path)//' at line '//trim(strline))
+            end if
+            exit
+         else
+            info%nprofiles = info%nprofiles + 1
+            call julian_day(yy,mm,dd,info%jul2)
+            info%secs2 = hh*3600 + min*60 + ss
+            if(time_diff(info%jul2,info%secs2,jul,secs)>0) exit
+         end if
+      end do
+      if( .not. info%one_profile) then
+         dt = time_diff(info%jul2,info%secs2,info%jul1,info%secs1)
+         info%alpha = (info%prof2-info%prof1)/dt
+      end if
+   end if
+
+!  Do the time interpolation - only if more than one profile
+   if( .not. info%one_profile) then
+      t = time_diff(jul,secs,info%jul1,info%secs1)
+      curvar => info%first_variable
+      do while (associated(curvar))
+         curvar%data = curvar%scale_factor*(info%prof1(:,curvar%index) + t*info%alpha(:,curvar%index))
+         curvar => curvar%next
+      end do
+   end if
+
+   end subroutine get_observed_spectrum
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
 ! !IROUTINE: read_spectrum
 !
 ! !INTERFACE:
@@ -1117,8 +1138,8 @@
 !
 ! !OUTPUT PARAMETERS:
    integer, intent(out)                :: yy,mm,dd,hh,min,ss
-   REALTYPE, allocatable, intent(out)  :: freq(:)
-   REALTYPE, allocatable, intent(out)  :: spec(:,:)
+   REALTYPE, intent(out)               :: freq(nfreq)
+   REALTYPE, intent(out)               :: spec(nfreq,cols)
    integer, intent(out)                :: ios
 !
 ! !REVISION HISTORY:
@@ -1154,11 +1175,6 @@
 !  check if N is consistent with nfreq
    if (N /= nfreq) stop 'read_spectrum: Dimension of spectrum data inconsistent with nfreq'
 
-   allocate(freq(N),stat=rc)
-   if (rc /= 0) stop 'read_spectrum: Error allocating memory (freq)'
-   allocate(spec(N,cols),stat=rc)
-   if (rc /= 0) stop 'read_spectrum: Error allocating memory (spec)'
-
    if(up_down .eq. 1) then
       idx1=1; idx2 = N; stride=1
    else
@@ -1183,8 +1199,6 @@
    end subroutine read_spectrum
 !EOC
 
-   subroutine fatal_error(location,error)
-      character(len=*),  intent(in) :: location,error
    subroutine fatal_error(location,error)
       character(len=*),  intent(in) :: location,error
 

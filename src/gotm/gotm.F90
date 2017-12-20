@@ -228,6 +228,9 @@
 
 !  Call do_input to make sure observed profiles are up-to-date.
    call do_input(julianday,secondsofday,nlev,z)
+!  Read wave spectrum
+!  Qing Li, 20171219
+   call do_input_spec(julianday,secondsofday,nfreq,wav_freq)
 
    !  Update the grid based on true initial zeta (possibly read from file by do_input).
    call updategrid(nlev,dt,zeta)
@@ -277,6 +280,7 @@
    call init_gotm_fabm_input(namlst,'fabm_input.nml',nlev,h(1:nlev))
 #endif
 
+! TODO: Why call do_input again? <19-12-17, Qing Li> !
    call do_input(julianday,secondsofday,nlev,z)
 
 !  Call stratification to make sure density has sensible value.
@@ -388,6 +392,10 @@
 !     all observations/data
       call do_input(julianday,secondsofday,nlev,z)
       call get_all_obs(julianday,secondsofday,nlev,z)
+
+!     Update wave spectrum
+!     Qing Li, 20171219
+      call do_input_spec(julianday,secondsofday,nfreq,wav_freq)
 
 !     external forcing
       if( calc_fluxes ) then

@@ -545,15 +545,15 @@
 
 !  allocate wave spectrum variables
 !  Qing Li, 20171217
-   allocate(wav_freq(1:nfreq),stat=rc)
+   allocate(wav_freq(nfreq),stat=rc)
    if (rc /= 0) STOP 'init_observations: Error allocating (wav_freq)'
    wav_freq = _ZERO_
 
-   allocate(wav_spec(1:nfreq),stat=rc)
+   allocate(wav_spec(nfreq),stat=rc)
    if (rc /= 0) STOP 'init_observations: Error allocating (wav_spec)'
    wav_spec = _ZERO_
 
-   allocate(wav_dir(1:nfreq),stat=rc)
+   allocate(wav_dir(nfreq),stat=rc)
    if (rc /= 0) STOP 'init_observations: Error allocating (wav_dir)'
    wav_dir = _ZERO_
 
@@ -770,8 +770,8 @@
       case (CONSTANT)
 !        Empirical spectrum
       case (FROMFILE)
-         call register_input_spec(spec_file,1,wav_spec,'observed wave spectrum: band energy spectrum')
-         call register_input_spec(spec_file,2,wav_dir,'observed wave spectrum: band mean direction')
+         call register_input_1d_spec(spec_file,1,wav_spec,'observed wave spectrum: band energy spectrum')
+         call register_input_1d_spec(spec_file,2,wav_dir,'observed wave spectrum: band mean direction')
          LEVEL2 'Reading wave spectrum data from:'
          LEVEL3 trim(spec_file)
       case default

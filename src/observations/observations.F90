@@ -25,6 +25,7 @@
 !
 ! !USES:
    use input
+   use meanflow,   only: gravity
 
    IMPLICIT NONE
 
@@ -929,6 +930,61 @@
    end subroutine get_all_obs
 !EOC
 
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: stokes_drift
+!
+! !INTERFACE:
+   subroutine stokes_drift(freq,wav_ussp,wav_vssp,nlev,z,ustokes,vstokes)
+!
+! !DESCRIPTION:
+!  Calculate the Stokes drift profile from wave spectrum.
+! TODO: Documentation  <20-12-17, Qing Li> !
+!
+! !USES:
+
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)                 :: nlev
+   REALTYPE, intent(in)                :: wav_ussp(:), wav_vssp(:)
+   REALTYPE, intent(in)                :: z(:), freq(:)
+!
+! !OUTPUT PARAMETERS:
+   REALTYPE, intent(out)               :: ustokes(0:nlev), vstokes(0:nlev)
+
+! !REVISION HISTORY:
+!  Original author(s): Qing Li
+!
+!EOP
+! !LOCAL VARIABLES:
+   integer                             :: i, k, nfreq
+   REALTYPE                            :: factor
+   REALTYPE, dimension(:), allocatable :: factor2
+!-----------------------------------------------------------------------
+!BOC
+!  number of frequency bands
+   nfreq = len(freq)
+!  initialization
+   allocate(factor2(nfreq))
+   ustokes = _ZERO_
+   vstokes = _ZERO_
+!  some factors
+   factor = 16.*pi**3/gravity
+   do i=1,nfreq
+      factor2(i) = 8.*pi**2*freq(i)**2/gravity
+   end do
+   do k=0,nlev
+      do i=1,nfreq
+         ustokes(k) = ustokes(k)+wav_ussp(i)*exp(factor2(i)*z(k))
+         vstokes(k) = vstokes(k)+wav_vssp(i)*exp(factor2(i)*z(k))
+      end do
+   end do
+   deallocate(factor2)
+
+   end subroutine stokes_drift
+!EOC
 !-----------------------------------------------------------------------
 !BOP
 !

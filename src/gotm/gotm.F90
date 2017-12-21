@@ -231,6 +231,9 @@
 !  Read wave spectrum
 !  Qing Li, 20171219
    call do_input_spec(julianday,secondsofday,nfreq,wav_freq)
+!  Calculate Stokes drift
+!  Qing Li, 20171220
+   call stokes_drift(wav_freq,wav_ussp,wav_vssp,nlev,z,ustokes,vstokes)
 
    !  Update the grid based on true initial zeta (possibly read from file by do_input).
    call updategrid(nlev,dt,zeta)
@@ -396,6 +399,9 @@
 !     Update wave spectrum
 !     Qing Li, 20171219
       call do_input_spec(julianday,secondsofday,nfreq,wav_freq)
+!     Update Stokes drift
+!     Qing Li, 20171220
+      call stokes_drift(wav_freq,wav_ussp,wav_vssp,nlev,z,ustokes,vstokes)
 
 !     external forcing
       if( calc_fluxes ) then

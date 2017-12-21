@@ -37,6 +37,9 @@
 #ifdef _PRINTSTATE_
    public print_state_observations
 #endif
+!  Stokes drift
+!  Qing Li, 20171220
+   public stokes_drift
 !
 ! !PUBLIC DATA MEMBERS:
 !
@@ -67,6 +70,9 @@
 !  observed wave frequency, energy spectrum and direction
 !  Qing Li, 20171217
    REALTYPE, public, dimension(:), allocatable, target :: wav_freq, wav_spec, wav_ussp, wav_vssp
+!  Stokes drift
+!  Qing Li, 20171220
+   REALTYPE, public, dimension(:), allocatable         :: ustokes, vstokes
 
 !  ralaxation times for salinity and temperature
    REALTYPE, public, dimension(:), allocatable, target :: SRelaxTau
@@ -562,6 +568,14 @@
    if (rc /= 0) STOP 'init_observations: Error allocating (wav_vssp)'
    wav_vssp = _ZERO_
 
+   allocate(ustokes(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (ustokes)'
+   ustokes = _ZERO_
+
+   allocate(vstokes(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (vstokes)'
+   vstokes = _ZERO_
+
 !  The salinity profile
    select case (s_prof_method)
       case (NOTHING)
@@ -949,7 +963,7 @@
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: nlev
    REALTYPE, intent(in)                :: wav_ussp(:), wav_vssp(:)
-   REALTYPE, intent(in)                :: z(:), freq(:)
+   REALTYPE, intent(in)                :: z(0:nlev), freq(:)
 !
 ! !OUTPUT PARAMETERS:
    REALTYPE, intent(out)               :: ustokes(0:nlev), vstokes(0:nlev)
@@ -959,29 +973,26 @@
 !
 !EOP
 ! !LOCAL VARIABLES:
-   integer                             :: i, k, nfreq
+   integer                             :: i, k
    REALTYPE                            :: factor
-   REALTYPE, dimension(:), allocatable :: factor2
+   REALTYPE                            :: factor2(nfreq)
 !-----------------------------------------------------------------------
 !BOC
-!  number of frequency bands
-   nfreq = len(freq)
 !  initialization
-   allocate(factor2(nfreq))
    ustokes = _ZERO_
    vstokes = _ZERO_
 !  some factors
-   factor = 16.*pi**3/gravity
+   factor = 16.*pi**3./gravity
    do i=1,nfreq
-      factor2(i) = 8.*pi**2*freq(i)**2/gravity
+      factor2(i) = 8.*pi**2.*freq(i)**2./gravity
    end do
-   do k=0,nlev
+!  Stokes drift calculated at the grid center (z), z(0) is not used
+   do k=1,nlev
       do i=1,nfreq
-         ustokes(k) = ustokes(k)+wav_ussp(i)*exp(factor2(i)*z(k))
-         vstokes(k) = vstokes(k)+wav_vssp(i)*exp(factor2(i)*z(k))
+         ustokes(k) = ustokes(k)+factor*wav_ussp(i)*exp(factor2(i)*z(k))
+         vstokes(k) = vstokes(k)+factor*wav_vssp(i)*exp(factor2(i)*z(k))
       end do
    end do
-   deallocate(factor2)
 
    end subroutine stokes_drift
 !EOC

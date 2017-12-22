@@ -69,7 +69,7 @@
 
 !  observed wave frequency, energy spectrum and direction
 !  Qing Li, 20171217
-   REALTYPE, public, dimension(:), allocatable, target :: wav_freq, wav_spec, wav_ussp, wav_vssp
+   REALTYPE, public, dimension(:), allocatable, target :: wav_freq, wav_spec, wav_xcmp, wav_ycmp
 !  Stokes drift
 !  Qing Li, 20171220
    REALTYPE, public, dimension(:), allocatable         :: ustokes, vstokes
@@ -560,13 +560,13 @@
    if (rc /= 0) STOP 'init_observations: Error allocating (wav_spec)'
    wav_spec = _ZERO_
 
-   allocate(wav_ussp(nfreq),stat=rc)
-   if (rc /= 0) STOP 'init_observations: Error allocating (wav_ussp)'
-   wav_ussp = _ZERO_
+   allocate(wav_xcmp(nfreq),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (wav_xcmp)'
+   wav_xcmp = _ZERO_
 
-   allocate(wav_vssp(nfreq),stat=rc)
-   if (rc /= 0) STOP 'init_observations: Error allocating (wav_vssp)'
-   wav_vssp = _ZERO_
+   allocate(wav_ycmp(nfreq),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (wav_ycmp)'
+   wav_ycmp = _ZERO_
 
    allocate(ustokes(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_observations: Error allocating (ustokes)'
@@ -786,14 +786,14 @@
    select case (spec_method)
       case (NOTHING)
          wav_spec = _ZERO_
-         wav_ussp = _ZERO_
-         wav_vssp = _ZERO_
+         wav_xcmp = _ZERO_
+         wav_ycmp = _ZERO_
       case (CONSTANT)
 !        Empirical spectrum
       case (FROMFILE)
          call register_input_1d_spec(spec_file,1,wav_spec,'observed band wave energy spectrum')
-         call register_input_1d_spec(spec_file,2,wav_ussp,'observed band Stokes spectrum: x-direction')
-         call register_input_1d_spec(spec_file,3,wav_vssp,'observed band Stokes spectrum: y-direction')
+         call register_input_1d_spec(spec_file,2,wav_xcmp,'observed band directional component: x-direction')
+         call register_input_1d_spec(spec_file,3,wav_ycmp,'observed band directional component: y-direction')
          LEVEL2 'Reading wave spectrum data from:'
          LEVEL3 trim(spec_file)
       case default
@@ -950,7 +950,7 @@
 ! !IROUTINE: stokes_drift
 !
 ! !INTERFACE:
-   subroutine stokes_drift(freq,wav_ussp,wav_vssp,nlev,z,ustokes,vstokes)
+   subroutine stokes_drift(freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,ustokes,vstokes)
 !
 ! !DESCRIPTION:
 !  Calculate the Stokes drift profile from wave spectrum.
@@ -962,7 +962,7 @@
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: nlev
-   REALTYPE, intent(in)                :: wav_ussp(:), wav_vssp(:)
+   REALTYPE, intent(in)                :: wav_spec(:), wav_xcmp(:), wav_ycmp(:)
    REALTYPE, intent(in)                :: z(0:nlev), freq(:)
 !
 ! !OUTPUT PARAMETERS:
@@ -974,23 +974,24 @@
 !EOP
 ! !LOCAL VARIABLES:
    integer                             :: i, k
-   REALTYPE                            :: factor
-   REALTYPE                            :: factor2(nfreq)
+   REALTYPE                            :: factor(nfreq), factor2(nfreq)
 !-----------------------------------------------------------------------
 !BOC
 !  initialization
    ustokes = _ZERO_
    vstokes = _ZERO_
 !  some factors
-   factor = 16.*pi**3./gravity
    do i=1,nfreq
       factor2(i) = 8.*pi**2.*freq(i)**2./gravity
+      factor(i) = 2.*pi*freq(i)*factor2(i)
    end do
 !  Stokes drift calculated at the grid center (z), z(0) is not used
    do k=1,nlev
       do i=1,nfreq
-         ustokes(k) = ustokes(k)+factor*wav_ussp(i)*exp(factor2(i)*z(k))
-         vstokes(k) = vstokes(k)+factor*wav_vssp(i)*exp(factor2(i)*z(k))
+         ustokes(k) = ustokes(k) &
+             +factor(i)*wav_spec(i)*wav_xcmp(i)*exp(factor2(i)*z(k))
+         vstokes(k) = vstokes(k) &
+             +factor(i)*wav_spec(i)*wav_ycmp(i)*exp(factor2(i)*z(k))
       end do
    end do
 
@@ -1036,8 +1037,8 @@
 !  Qing Li, 20171217
    if (allocated(wav_freq)) deallocate(wav_freq)
    if (allocated(wav_spec)) deallocate(wav_spec)
-   if (allocated(wav_ussp)) deallocate(wav_ussp)
-   if (allocated(wav_vssp)) deallocate(wav_vssp)
+   if (allocated(wav_xcmp)) deallocate(wav_xcmp)
+   if (allocated(wav_ycmp)) deallocate(wav_ycmp)
    LEVEL2 'done.'
 
    end subroutine clean_observations
@@ -1082,8 +1083,8 @@
 !  Qing Li, 20171217
    if (allocated(wav_freq)) LEVEL2 'wav_freq',wav_freq
    if (allocated(wav_spec)) LEVEL2 'wav_spec',wav_spec
-   if (allocated(wav_ussp)) LEVEL2 'wav_ussp',wav_ussp
-   if (allocated(wav_vssp)) LEVEL2 'wav_vssp',wav_vssp
+   if (allocated(wav_xcmp)) LEVEL2 'wav_xcmp',wav_xcmp
+   if (allocated(wav_ycmp)) LEVEL2 'wav_ycmp',wav_ycmp
    LEVEL2 'zeta,dpdx,dpdy,h_press',zeta,dpdx,dpdy,h_press
    LEVEL2 'w_adv,w_height',w_adv,w_height
    LEVEL2 'A,g1,g2',A,g1,g2

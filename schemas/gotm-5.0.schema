@@ -1246,8 +1246,8 @@
             <fileinfo type="profilesintime">
                <filevariables>
                   <filevariable name="wav_spec" label="band wave energy spectrum" />
-                  <filevariable name="wav_ussp" label="band Stokes drift spectrum: x-direction" />
-                  <filevariable name="wav_vssp" label="band Stokes drift spectrum: y-direction" />
+                  <filevariable name="wav_xcmp" label="band directional component: x-direction" />
+                  <filevariable name="wav_ycmp" label="band directional component: y-direction" />
                </filevariables>
             </fileinfo>
          </element>

@@ -950,7 +950,7 @@
 ! !IROUTINE: stokes_drift
 !
 ! !INTERFACE:
-   subroutine stokes_drift(freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,ustokes,vstokes)
+   subroutine stokes_drift(freq,spec,xcmp,ycmp,nlev,z,ustokes,vstokes)
 !
 ! !DESCRIPTION:
 !  Calculate the Stokes drift profile from wave spectrum.
@@ -962,7 +962,7 @@
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: nlev
-   REALTYPE, intent(in)                :: wav_spec(:), wav_xcmp(:), wav_ycmp(:)
+   REALTYPE, intent(in)                :: spec(:), xcmp(:), ycmp(:)
    REALTYPE, intent(in)                :: z(0:nlev), freq(:)
 !
 ! !OUTPUT PARAMETERS:
@@ -988,12 +988,11 @@
 !  Stokes drift calculated at the grid center (z), z(0) is not used
    do k=1,nlev
       do i=1,nfreq
-         ustokes(k) = ustokes(k) &
-             +factor(i)*wav_spec(i)*wav_xcmp(i)*exp(factor2(i)*z(k))
-         vstokes(k) = vstokes(k) &
-             +factor(i)*wav_spec(i)*wav_ycmp(i)*exp(factor2(i)*z(k))
+         ustokes(k) = ustokes(k)+factor(i)*spec(i)*xcmp(i)*exp(factor2(i)*z(k))
+         vstokes(k) = vstokes(k)+factor(i)*spec(i)*ycmp(i)*exp(factor2(i)*z(k))
       end do
    end do
+!  tails
 
    end subroutine stokes_drift
 !EOC

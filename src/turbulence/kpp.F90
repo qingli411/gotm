@@ -195,6 +195,8 @@
 ! use variables in module airsea
 ! Qing Li, 20171214
   use airsea,       only: u10, v10
+  use meanflow,     only: pi, gravity
+  use observations, only: nfreq, wav_freq, wav_spec, wav_xcmp, wav_ycmp
 
 #ifdef EXTRA_OUTPUT
   use turbulence,   only: turb1,turb2,turb3,turb4,turb5
@@ -333,7 +335,8 @@
    integer, parameter ::  KPP_LT_NOLANGMUIR = 0
    integer, parameter ::  KPP_LT_EFACTOR_MODEL = 1
    integer, parameter ::  KPP_LT_EFACTOR_READ = 2
-   integer, parameter ::  KPP_LT_ENTRAINMENT = 3
+   integer, parameter ::  KPP_LT_EFACTOR_SPEC = 3
+   integer, parameter ::  KPP_LT_ENTRAINMENT = 4
 
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
@@ -713,6 +716,8 @@
          LEVEL4 'Approximate enhancement factor from simple model'
       else if (langmuir_method .eq. KPP_LT_EFACTOR_READ) then
          LEVEL4 'Read enhancement factor from file'
+      else if (langmuir_method .eq. KPP_LT_EFACTOR_SPEC) then
+         LEVEL4 'Calculate enhancement factor from wave spectrum'
       else if (langmuir_method .eq. KPP_LT_ENTRAINMENT) then
          LEVEL4 'Langmuir mixing + Langmuir enhanced entrainment'
       else
@@ -1277,6 +1282,9 @@
    else if (langmuir_method .eq. KPP_LT_EFACTOR_READ) then
        ! TODO: read from file <13-12-17, Qing Li> !
       efactor = _ONE_
+   else if (langmuir_method .eq. KPP_LT_EFACTOR_SPEC) then
+      efactor = kpp_efactor_spec(wav_freq, wav_spec, wav_xcmp, wav_ycmp, &
+          u10, v10, u_taus, z_w(nlev)-zsbl)
    else
       ! no enhancement factor applied to ws in bulk Richardson number
       ! when Langmuir enhanced entrainment is on
@@ -1480,12 +1488,16 @@
    else if (langmuir_method .eq. KPP_LT_EFACTOR_READ) then
        ! TODO: read from file <13-12-17, Qing Li> !
       efactor = _ONE_
+   else if (langmuir_method .eq. KPP_LT_EFACTOR_SPEC) then
+      efactor = kpp_efactor_spec(wav_freq, wav_spec, wav_xcmp, wav_ycmp, &
+          u10, v10, u_taus, z_w(nlev)-zsbl)
    else if (langmuir_method .eq. KPP_LT_ENTRAINMENT) then
        ! TODO: efactor for entrainment <13-12-17, Qing Li> !
       efactor = _ONE_
    else
       efactor = _ONE_
    end if
+   LEVEL2 'efactor = ', efactor
 
 !-----------------------------------------------------------------------
 !  Compute tubulent velocity scales (wm,ws) at "zsbl".
@@ -2257,6 +2269,88 @@
    end subroutine clean_kpp
 !EOC
 
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Calculate the Langmuir enhancement factor
+!
+! !INTERFACE:
+   REALTYPE function kpp_efactor_spec(freq,spec,xcmp,ycmp,u10,v10,ustar,hbl)
+!
+! !DESCRIPTION:
+!  Calculate the Langmuir enhancement factor from wave spectrum.
+!  Li et al, 2016, OM
+!
+! TODO: More detailed description  <22-12-17, Qing Li> !
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   REALTYPE, intent(in)                :: spec(:), xcmp(:), ycmp(:)
+   REALTYPE, intent(in)                :: freq(:)
+   REALTYPE, intent(in)                :: u10, v10, ustar, hbl
+!
+! !REVISION HISTORY:
+!  Original author(s): Qing Li
+!
+!EOP
+!-----------------------------------------------------------------------
+! !LOCAL VARIABLES:
+   integer                             :: i
+   REALTYPE                            :: ussl, vssl, us0, lasl_sqr_i
+   REALTYPE                            :: hs, hsl, thetaww, alphal
+   REALTYPE                            :: tmp, factor, factor2
+   REALTYPE                            :: dfreq
+!
+!-----------------------------------------------------------------------
+!BOC
+!-----------------------------------------------------------------------
+!  initialization
+   ussl = _ZERO_
+   vssl = _ZERO_
+   us0  = _ZERO_
+   hs   = _ZERO_
+   tmp  = _ZERO_
+!  surface layer
+   hsl = 0.2*abs(hbl)
+!  calculate the significant wave height, surface Stokes drift and
+!  surface layer averaged Stokes drift
+   factor = 2.*pi/hsl
+   do i=1,nfreq
+      factor2 = 8.*pi**2.*freq(i)**2./gravity
+      tmp  = tmp + spec(i)
+      us0 = us0 + 2.*pi*freq(i)*factor2*spec(i)
+      ussl = ussl + factor*freq(i)*spec(i)*xcmp(i)*(_ONE_-exp(-factor2*hsl))
+      vssl = vssl + factor*freq(i)*spec(i)*ycmp(i)*(_ONE_-exp(-factor2*hsl))
+   end do
+   hs = 4.*sqrt(tmp)
+!  add contribution from a f^-5 tails
+   factor = 4.*pi**2.*freq(nfreq)**2./3./hsl &
+       *(_ONE_-(_ONE_-16.*pi**2.*freq(nfreq)**2.*hsl/gravity) &
+       *exp(-8.*pi**2.*freq(nfreq)**2.*hsl/gravity))
+   dfreq = freq(nfreq)-freq(nfreq-1)
+   ussl = ussl + factor*xcmp(nfreq)*spec(nfreq)/dfreq
+   vssl = vssl + factor*ycmp(nfreq)*spec(nfreq)/dfreq
+
+   if (us0 .gt. _ZERO_) then
+!      angles between wind and waves
+       thetaww = atan2(vssl,ussl)-atan2(v10,u10)
+!      angles between wind and LCs
+       alphal = atan(sin(thetaww) &
+           /(ustar/us0/kappa*log(max(abs(hbl/4./hs),_ONE_))+cos(thetaww)))
+       ! enhancement factor
+       lasl_sqr_i = sqrt(ussl**2.+vssl**2.)*abs(cos(thetaww-alphal)) &
+           /ustar/abs(cos(alphal))
+       kpp_efactor_spec = min(5.0, abs(cos(alphal))*sqrt(_ONE_ &
+                  +_ONE_/1.5**2.*lasl_sqr_i &
+                  +_ONE_/5.4**4.*lasl_sqr_i**2.))
+   else
+       kpp_efactor_spec = _ONE_
+   end if
+
+   end function kpp_efactor_spec
+!EOC
 
 !-----------------------------------------------------------------------
 !BOP
@@ -2288,8 +2382,6 @@
 !EOP
 !-----------------------------------------------------------------------
 ! !LOCAL VARIABLES:
-   REALTYPE, parameter :: pi=3.14159265358979323846
-   REALTYPE, parameter :: gravity = 9.81
    REALTYPE, parameter :: &
        ! ratio of U19.5 to U10 (Holthuijsen, 2007)
        u19p5_to_u10 = 1.075, &
@@ -2312,7 +2404,7 @@
       !
       ! significant wave height from Pierson-Moskowitz
       ! spectrum (Bouws, 1998)
-      hm0 = 0.0246*u10**2
+      hm0 = 0.0246*u10**2.
       !
       ! peak frequency (PM, Bouws, 1998)
       tmp = 2.0*pi*u19p5_to_u10*u10
@@ -2355,15 +2447,13 @@
       ! enhancement factor (Li et al., 2016)
       lasl_sqr_i = us_sl/ustar
       kpp_efactor_model = sqrt(_ONE_ &
-                 +_ONE_/1.5**2*lasl_sqr_i &
-                 +_ONE_/5.4**4*lasl_sqr_i**2)
+                 +_ONE_/1.5**2.*lasl_sqr_i &
+                 +_ONE_/5.4**4.*lasl_sqr_i**2.)
    else
       kpp_efactor_model = _ONE_
    endif
    end function kpp_efactor_model
 !EOC
-
-!-----------------------------------------------------------------------
 
  end module kpp
 

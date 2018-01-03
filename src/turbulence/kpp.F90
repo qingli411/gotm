@@ -1497,7 +1497,8 @@
    else
       efactor = _ONE_
    end if
-   LEVEL2 'efactor = ', efactor
+   ! DEBUG QL
+   ! LEVEL2 'efactor = ', efactor
 
 !-----------------------------------------------------------------------
 !  Compute tubulent velocity scales (wm,ws) at "zsbl".

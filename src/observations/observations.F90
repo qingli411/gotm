@@ -974,6 +974,7 @@
 !EOP
 ! !LOCAL VARIABLES:
    integer                             :: i, k
+   REALTYPE                            :: tmp
    REALTYPE                            :: factor(nfreq), factor2(nfreq)
 !-----------------------------------------------------------------------
 !BOC
@@ -991,8 +992,13 @@
          ustokes(k) = ustokes(k)+factor(i)*spec(i)*xcmp(i)*exp(factor2(i)*z(k))
          vstokes(k) = vstokes(k)+factor(i)*spec(i)*ycmp(i)*exp(factor2(i)*z(k))
       end do
+!     add contribution from a f^-5 tail
+      tmp = pi*freq(nfreq)*factor(nfreq) &
+          *(exp(factor2(nfreq)*z(k))-sqrt(pi*factor2(nfreq)*abs(z(k))) &
+          *(_ONE_-erf(sqrt(factor2(nfreq)*abs(z(k))))))
+      ustokes(k) = ustokes(k)+tmp*spec(nfreq)*xcmp(nfreq)
+      vstokes(k) = vstokes(k)+tmp*spec(nfreq)*ycmp(nfreq)
    end do
-!  tails
 
    end subroutine stokes_drift
 !EOC

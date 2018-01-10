@@ -233,10 +233,10 @@
    call do_input_spec(julianday,secondsofday,nfreq,wav_freq)
 !  Calculate Stokes drift
 !  Qing Li, 20171220
-   call stokes_drift(wav_freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,ustokes,vstokes)
+   call stokes_drift(wav_freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,zi,ustokes,vstokes)
    ! DEBUG QL
    ! do k=0,nlev
-   !    LEVEL2 'z = ', z(k), ' us = ', ustokes(k), ' vs = ', vstokes(k)
+   !    LEVEL2 'z = ', z(k), ' zi = ', zi(k), ' us = ', ustokes(k), ' vs = ', vstokes(k)
    ! end do
 
    !  Update the grid based on true initial zeta (possibly read from file by do_input).
@@ -405,7 +405,7 @@
       call do_input_spec(julianday,secondsofday,nfreq,wav_freq)
 !     Update Stokes drift
 !     Qing Li, 20171220
-      call stokes_drift(wav_freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,ustokes,vstokes)
+      call stokes_drift(wav_freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,zi,ustokes,vstokes)
 
 !     external forcing
       if( calc_fluxes ) then

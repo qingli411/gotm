@@ -950,7 +950,7 @@
 ! !IROUTINE: stokes_drift
 !
 ! !INTERFACE:
-   subroutine stokes_drift(freq,spec,xcmp,ycmp,nlev,z,ustokes,vstokes)
+   subroutine stokes_drift(freq,spec,xcmp,ycmp,nlev,z,zi,ustokes,vstokes)
 !
 ! !DESCRIPTION:
 !  Calculate the Stokes drift profile from wave spectrum.
@@ -963,7 +963,7 @@
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: nlev
    REALTYPE, intent(in)                :: spec(:), xcmp(:), ycmp(:)
-   REALTYPE, intent(in)                :: z(0:nlev), freq(:)
+   REALTYPE, intent(in)                :: z(0:nlev), zi(0:nlev), freq(:)
 !
 ! !OUTPUT PARAMETERS:
    REALTYPE, intent(out)               :: ustokes(0:nlev), vstokes(0:nlev)
@@ -974,7 +974,8 @@
 !EOP
 ! !LOCAL VARIABLES:
    integer                             :: i, k
-   REALTYPE                            :: tmp
+   REALTYPE                            :: const, tmp, dz, kdz, freqc
+   REALTYPE                            :: aplus, aminus, iplus, iminus
    REALTYPE                            :: factor(nfreq), factor2(nfreq)
 !-----------------------------------------------------------------------
 !BOC
@@ -982,20 +983,47 @@
    ustokes = _ZERO_
    vstokes = _ZERO_
 !  some factors
+   const = 8.*pi**2./gravity
    do i=1,nfreq
-      factor2(i) = 8.*pi**2.*freq(i)**2./gravity
+      factor2(i) = const*freq(i)**2.
       factor(i) = 2.*pi*freq(i)*factor2(i)
    end do
+! cutoff frequency
+   freqc = 1.5*freq(nfreq)-0.5*freq(nfreq-1)
 !  Stokes drift calculated at the grid center (z), z(0) is not used
+   ! do k=1,nlev
+   !    do i=1,nfreq
+   !       ustokes(k) = ustokes(k)+factor(i)*spec(i)*xcmp(i)*exp(factor2(i)*z(k))
+   !       vstokes(k) = vstokes(k)+factor(i)*spec(i)*ycmp(i)*exp(factor2(i)*z(k))
+   !    end do
+! !     add contribution from a f^-5 tail
+   !    tmp = pi*freq(nfreq)*factor(nfreq) &
+   !        *(exp(factor2(nfreq)*z(k))-sqrt(pi*factor2(nfreq)*abs(z(k))) &
+   !        *(_ONE_-erf(sqrt(factor2(nfreq)*abs(z(k))))))
+   !    ustokes(k) = ustokes(k)+tmp*spec(nfreq)*xcmp(nfreq)
+   !    vstokes(k) = vstokes(k)+tmp*spec(nfreq)*ycmp(nfreq)
+   ! end do
+!  Stokes drift averaged over the grid cell, z(0) is not used
    do k=1,nlev
+      dz = zi(k)-zi(k-1)
       do i=1,nfreq
-         ustokes(k) = ustokes(k)+factor(i)*spec(i)*xcmp(i)*exp(factor2(i)*z(k))
-         vstokes(k) = vstokes(k)+factor(i)*spec(i)*ycmp(i)*exp(factor2(i)*z(k))
+         kdz = factor2(i)*dz/2.
+         if (kdz .lt. 100.) then
+             tmp = sinh(kdz)/kdz*factor(i)*spec(i)*exp(factor2(i)*z(k))
+         else
+             tmp = factor(i)*spec(i)*exp(factor2(i)*z(k))
+         end if
+         ustokes(k) = ustokes(k)+tmp*xcmp(i)
+         vstokes(k) = vstokes(k)+tmp*ycmp(i)
       end do
 !     add contribution from a f^-5 tail
-      tmp = pi*freq(nfreq)*factor(nfreq) &
-          *(exp(factor2(nfreq)*z(k))-sqrt(pi*factor2(nfreq)*abs(z(k))) &
-          *(_ONE_-erf(sqrt(factor2(nfreq)*abs(z(k))))))
+      aplus  = -const*freqc**2.*(z(i)+dz/2.)
+      aminus = -const*freqc**2.*(z(i)-dz/2.)
+      iplus  = 2.*aplus/3.*(sqrt(pi*aplus)*erfc(sqrt(aplus)) \
+              -(_ONE_-0.5/aplus)*exp(-aplus))
+      iminus = 2.*aplus/3.*(sqrt(pi*aplus)*erfc(sqrt(aplus)) \
+              -(_ONE_-0.5/aplus)*exp(-aplus))
+      tmp = 2.*pi*freqc**2./dz*spec(nfreq)*(iplus-iminus)
       ustokes(k) = ustokes(k)+tmp*spec(nfreq)*xcmp(nfreq)
       vstokes(k) = vstokes(k)+tmp*spec(nfreq)*ycmp(nfreq)
    end do

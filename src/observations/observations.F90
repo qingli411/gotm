@@ -1016,9 +1016,9 @@
          ustokes(k) = ustokes(k)+tmp*xcmp(i)
          vstokes(k) = vstokes(k)+tmp*ycmp(i)
       end do
-!     add contribution from a f^-5 tail
-      aplus  = -const*freqc**2.*(z(i)+dz/2.)
-      aminus = -const*freqc**2.*(z(i)-dz/2.)
+!     add contribution from a f^-5 tail (aplus > 0)
+      aplus  = max(SMALL, -const*freqc**2.*zi(k))
+      aminus = -const*freqc**2.*zi(k-1)
       iplus  = 2.*aplus/3.*(sqrt(pi*aplus)*erfc(sqrt(aplus)) \
               -(_ONE_-0.5/aplus)*exp(-aplus))
       iminus = 2.*aplus/3.*(sqrt(pi*aplus)*erfc(sqrt(aplus)) \

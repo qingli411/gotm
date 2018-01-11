@@ -196,6 +196,10 @@
    if (allocated(epsprof)) then
       call fm%register('eps_obs', 'm2/s3', 'observed dissipation', dimensions=(/id_dim_z/), data1d=epsprof(1:nlev), category='turbulence')
    end if
+   ! Stokes drift
+   ! Qing Li, 20180110
+   call fm%register('u_stokes', 'm/s', 'Stokes drift x-component', dimensions=(/id_dim_z/), data1d=ustokes(1:nlev), category='velocities')
+   call fm%register('v_stokes', 'm/s', 'Stokes drift y-component', dimensions=(/id_dim_z/), data1d=vstokes(1:nlev), category='velocities')
 
    return
    end subroutine register_observation_variables

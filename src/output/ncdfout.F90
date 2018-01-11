@@ -96,6 +96,9 @@
    integer, private          :: NN_id,NN_obs_id
    integer, private          :: sigma_t_id,sigma_t_obs_id
    integer, private          :: tke_id,kb_id,l_id
+!  id for ustokes and vstokes
+!  Qing Li, 20180110
+   integer, private          :: ustokes_id, vstokes_id
 # ifdef EXTRA_OUTPUT
    integer, private          :: mean1_id,mean2_id,mean3_id,mean4_id,mean5_id
    integer, private          :: turb1_id,turb2_id,turb3_id,turb4_id,turb5_id
@@ -354,6 +357,12 @@
 
    iret = nf90_def_var(ncid,'o2_obs',NCDF_FLOAT_PRECISION,dim4d,o2_obs_id)
    call check_err(iret)
+!  save ustokes and vstokes
+!  Qing Li, 20180110
+   iret = nf90_def_var(ncid,'u_stokes',NCDF_FLOAT_PRECISION,dim4d,ustokes_id)
+   call check_err(iret)
+   iret = nf90_def_var(ncid,'v_stokes',NCDF_FLOAT_PRECISION,dim4d,vstokes_id)
+   call check_err(iret)
 
 # ifdef EXTRA_OUTPUT
    iret = nf90_def_var(ncid,'mean1',NCDF_FLOAT_PRECISION,dim4d,mean1_id)
@@ -462,6 +471,10 @@
    iret = set_attributes(ncid,SS_obs_id,units='1/s2',long_name='observed shear frequency')
    iret = set_attributes(ncid,NN_obs_id,units='1/s2',long_name='observed buoyancy frequency')
    iret = set_attributes(ncid,sigma_t_obs_id,units='kg/m3',long_name='observed sigma_t')
+   ! Stokes drift
+   ! Qing Li, 20180110
+   iret = set_attributes(ncid,ustokes_id,units='m/s',long_name='Stokes drift x-component')
+   iret = set_attributes(ncid,vstokes_id,units='m/s',long_name='Stokes drift y-component')
 
 !  x,y,zi,t
    iret = set_attributes(ncid,num_id,units='m2/s',long_name='viscosity')
@@ -553,6 +566,9 @@
    use kpp,          only: zsbl,zbbl
    use observations, only: zeta,uprof,vprof,tprof,sprof,epsprof,o2_prof
    use eqstate,      only: eqstate1
+   ! Stokes drift
+   ! Qing Li, 20180110
+   use observations, only: ustokes, vstokes
 # ifdef EXTRA_OUTPUT
    use meanflow,     only: mean1,mean2,mean3,mean4,mean5
    use turbulence,   only: turb1,turb2,turb3,turb4,turb5
@@ -665,6 +681,10 @@
    iret = store_data(ncid,temp_obs_id,XYZT_SHAPE,nlev,array=tprof)
    iret = store_data(ncid,SS_id,XYZT_SHAPE,nlev,array=SS)
    iret = store_data(ncid,NN_id,XYZT_SHAPE,nlev,array=NN)
+   ! Stokes drift
+   ! Qing Li, 20180110
+   iret = store_data(ncid,ustokes_id,XYZT_SHAPE,nlev,array=ustokes)
+   iret = store_data(ncid,vstokes_id,XYZT_SHAPE,nlev,array=vstokes)
 
    dum(1:nlev)=-buoy(1:nlev)*rho_0/gravity+rho_0-1000.
    iret = store_data(ncid,sigma_t_id,XYZT_SHAPE,nlev,array=dum)

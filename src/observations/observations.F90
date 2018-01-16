@@ -1021,11 +1021,11 @@
       aminus = -const*freqc**2.*zi(k-1)
       iplus  = 2.*aplus/3.*(sqrt(pi*aplus)*erfc(sqrt(aplus)) \
               -(_ONE_-0.5/aplus)*exp(-aplus))
-      iminus = 2.*aplus/3.*(sqrt(pi*aplus)*erfc(sqrt(aplus)) \
-              -(_ONE_-0.5/aplus)*exp(-aplus))
+      iminus = 2.*aminus/3.*(sqrt(pi*aminus)*erfc(sqrt(aminus)) \
+              -(_ONE_-0.5/aminus)*exp(-aminus))
       tmp = 2.*pi*freqc**2./dz*spec(nfreq)*(iplus-iminus)
-      ustokes(k) = ustokes(k)+tmp*spec(nfreq)*xcmp(nfreq)
-      vstokes(k) = vstokes(k)+tmp*spec(nfreq)*ycmp(nfreq)
+      ustokes(k) = ustokes(k)+tmp*xcmp(nfreq)
+      vstokes(k) = vstokes(k)+tmp*ycmp(nfreq)
    end do
 
    end subroutine stokes_drift

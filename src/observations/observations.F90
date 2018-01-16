@@ -974,7 +974,7 @@
 !EOP
 ! !LOCAL VARIABLES:
    integer                             :: i, k
-   REALTYPE                            :: const, tmp, dz, kdz, freqc
+   REALTYPE                            :: const, tmp, dz, kdz, freqc, dfreqc
    REALTYPE                            :: aplus, aminus, iplus, iminus
    REALTYPE                            :: factor(nfreq), factor2(nfreq)
 !-----------------------------------------------------------------------
@@ -990,6 +990,7 @@
    end do
 ! cutoff frequency
    freqc = 1.5*freq(nfreq)-0.5*freq(nfreq-1)
+   dfreqc = freq(nfreq)-freq(nfreq-1)
 !  Stokes drift calculated at the grid center (z), z(0) is not used
    ! do k=1,nlev
    !    do i=1,nfreq
@@ -997,11 +998,11 @@
    !       vstokes(k) = vstokes(k)+factor(i)*spec(i)*ycmp(i)*exp(factor2(i)*z(k))
    !    end do
 ! !     add contribution from a f^-5 tail
-   !    tmp = pi*freq(nfreq)*factor(nfreq) &
+   !    tmp = pi*freq(nfreq)*factor(nfreq)*spec(nfreq)/dfreqc &
    !        *(exp(factor2(nfreq)*z(k))-sqrt(pi*factor2(nfreq)*abs(z(k))) &
    !        *(_ONE_-erf(sqrt(factor2(nfreq)*abs(z(k))))))
-   !    ustokes(k) = ustokes(k)+tmp*spec(nfreq)*xcmp(nfreq)
-   !    vstokes(k) = vstokes(k)+tmp*spec(nfreq)*ycmp(nfreq)
+   !    ustokes(k) = ustokes(k)+tmp*xcmp(nfreq)
+   !    vstokes(k) = vstokes(k)+tmp*ycmp(nfreq)
    ! end do
 !  Stokes drift averaged over the grid cell, z(0) is not used
    do k=1,nlev
@@ -1023,7 +1024,7 @@
               -(_ONE_-0.5/aplus)*exp(-aplus))
       iminus = 2.*aminus/3.*(sqrt(pi*aminus)*erfc(sqrt(aminus)) \
               -(_ONE_-0.5/aminus)*exp(-aminus))
-      tmp = 2.*pi*freqc**2./dz*spec(nfreq)*(iplus-iminus)
+      tmp = 2.*pi*freqc**2./dz*spec(nfreq)/dfreqc*(iplus-iminus)
       ustokes(k) = ustokes(k)+tmp*xcmp(nfreq)
       vstokes(k) = vstokes(k)+tmp*ycmp(nfreq)
    end do

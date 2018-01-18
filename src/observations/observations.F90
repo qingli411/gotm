@@ -974,7 +974,8 @@
 !EOP
 ! !LOCAL VARIABLES:
    integer                             :: i, k
-   REALTYPE                            :: const, tmp, dz, kdz, freqc, dfreqc
+   REALTYPE                            :: const, tmp, fct, fct2
+   REALTYPE                            :: dz, kdz, freqc, dfreqc
    REALTYPE                            :: aplus, aminus, iplus, iminus
    REALTYPE                            :: factor(nfreq), factor2(nfreq)
 !-----------------------------------------------------------------------
@@ -998,9 +999,11 @@
    !       vstokes(k) = vstokes(k)+factor(i)*spec(i)*ycmp(i)*exp(factor2(i)*z(k))
    !    end do
 ! !     add contribution from a f^-5 tail
-   !    tmp = pi*freq(nfreq)*factor(nfreq)*spec(nfreq)/dfreqc &
-   !        *(exp(factor2(nfreq)*z(k))-sqrt(pi*factor2(nfreq)*abs(z(k))) &
-   !        *(_ONE_-erf(sqrt(factor2(nfreq)*abs(z(k))))))
+   !    fct2 = const*freqc**2
+   !    fct = 2.*pi*freqc*fct2
+   !    tmp = freqc*fct*spec(nfreq)/dfreqc &
+   !        *(exp(fct2*z(k))-sqrt(pi*fct2*abs(z(k))) &
+   !        *(_ONE_-erf(sqrt(fct2*abs(z(k))))))
    !    ustokes(k) = ustokes(k)+tmp*xcmp(nfreq)
    !    vstokes(k) = vstokes(k)+tmp*ycmp(nfreq)
    ! end do

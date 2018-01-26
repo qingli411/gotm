@@ -204,21 +204,39 @@
 
   !use eqstate
 
-  IMPLICIT NONE
+#ifdef KPP_CVMIX
+!  use CVMix
+   use cvmix_kinds_and_types, only : cvmix_data_type,          &
+                                     cvmix_global_params_type
+   use cvmix_kpp,             only : cvmix_init_kpp,                           &
+                                     cvmix_get_kpp_real,                       &
+                                     cvmix_kpp_compute_OBL_depth,              &
+                                     cvmix_kpp_compute_kOBL_depth,             &
+                                     cvmix_kpp_compute_bulk_Richardson,        &
+                                     cvmix_kpp_compute_unresolved_shear,       &
+                                     cvmix_kpp_compute_turbulent_scales,       &
+                                     cvmix_kpp_compute_shape_function_coeffs,  &
+                                     cvmix_kpp_efactor_read,                   &
+                                     cvmix_kpp_efactor_model,                  &
+                                     cvmix_coeffs_kpp
+   use cvmix_put_get,         only : cvmix_put
+#endif
 
-  private
+   IMPLICIT NONE
+
+   private
 
 ! !PUBLIC MEMBER FUNCTIONS:
 !
-  public init_kpp, do_kpp, clean_kpp
+   public init_kpp, do_kpp, clean_kpp
 
 ! !PUBLIC DATA MEMBERS:
 !
-! z-position of surface boundary layer depth
-  REALTYPE, public                 :: zsbl
+!  z-position of surface boundary layer depth
+   REALTYPE, public                 :: zsbl
 
-! z-position of bottom boundary layer depth
-  REALTYPE, public                 :: zbbl
+!  z-position of bottom boundary layer depth
+   REALTYPE, public                 :: zbbl
 
 
 ! !DEFINED PARAMETERS:
@@ -338,6 +356,7 @@
    integer, parameter ::  KPP_LT_EFACTOR_SPEC = 3
    integer, parameter ::  KPP_LT_ENTRAINMENT = 4
 
+!
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
 !
@@ -372,6 +391,10 @@
 !  use clipping of MLD at Ekman and Monin-Oboukhov scale
    logical                               ::    clip_mld
 
+!  use CVMix
+!  Qing Li, 20180126
+   logical                               ::    lcvmix
+
 !  positions of grid faces and centers
    REALTYPE, dimension(:), allocatable   ::    z_w,z_r
 
@@ -385,6 +408,12 @@
 !  Qing Li, 20171213
    integer                               ::    langmuir_method
    character(len=PATH_MAX)               ::    langmuir_file
+
+#ifdef KPP_CVMIX
+!  CVMix datatypes
+   type(cvmix_data_type)                 ::    CVmix_vars
+   type(cvmix_global_params_type)        ::    CVmix_params
+#endif
 !
 !
 !EOP
@@ -447,9 +476,12 @@
    integer                             :: k
    integer                             :: rc
 
+!  Qing Li, 20180126
+   logical                             :: llangmuir_efactor
+
    namelist /kpp/                      kpp_sbl,kpp_bbl,kpp_interior,    &
-                                       clip_mld,Ric,langmuir_method,    &
-                                       langmuir_file
+                                       clip_mld,Ric,lcvmix,             &
+                                       langmuir_method,langmuir_file
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -463,6 +495,12 @@
 
    read(namlst,nml=kpp,err=81)
    close (namlst)
+
+#ifndef KPP_CVMIX
+!  force lcvmix to be false if CVMix library is not loaded
+!  Qing Li, 20180126
+   lcvmix = .false.
+#endif
 
    LEVEL2 'done.'
 
@@ -709,8 +747,10 @@
 !  message of Langmuir turbulence parameterization
 !  Qing Li, 20171213
    if (langmuir_method .eq. KPP_LT_NOLANGMUIR) then
+      llangmuir_efactor = .false.
       LEVEL3 'Langmuir turbulence parameterization   - not active -   '
    else
+      llangmuir_efactor = .true.
       LEVEL3 'Langmuir turbulence parameterization       - active -   '
       if (langmuir_method .eq. KPP_LT_EFACTOR_MODEL) then
          LEVEL4 'Approximate enhancement factor from simple model'
@@ -727,21 +767,36 @@
 
    LEVEL2 '--------------------------------------------------------'
 
+   if (lcvmix) then
+!     CVMix: initialize parameter datatype
+!     Qing Li, 20180126
+      call cvmix_init_kpp(ri_crit=Ric,                                &
+                          ! interp_type=interp_type,                    &
+                          ! lEkman=lcheckekmo,                          &
+                          ! lMonOb=lcheckekmo,                          &
+                          llangmuirEF=llangmuir_efactor,              &
+                          MatchTechnique='MatchGradient',             &
+                          ! lnoDGat1=lnoDGat1,                          &
+                          surf_layer_ext = epsilon)
+      call cvmix_put(CVmix_vars, 'nlev', nlev)
+      call cvmix_put(CVmix_vars, 'max_nlev', nlev)
+      call cvmix_put(CVmix_vars, 'ocn_depth', h0)
+      call cvmix_put(CVmix_params, 'Gravity', kpp_g)
+   else
+!     pre-compute coefficient for turbulent shear velocity
+      Vtc=Cv*sqrt(-betaT)/(sqrt(kpp_cs*epsilon)*Ric*kappa*kappa)
 
 
-!  pre-compute coefficient for turbulent shear velocity
-   Vtc=Cv*sqrt(-betaT)/(sqrt(kpp_cs*epsilon)*Ric*kappa*kappa)
+!     pre-compute proportionality coefficient for
+!     boundary layer non-local transport
+      Cg=Cstar*kappa*(kpp_cs*kappa*epsilon)**(1.0/3.0)
 
 
-!  pre-compute proportionality coefficient for
-!  boundary layer non-local transport
-   Cg=Cstar*kappa*(kpp_cs*kappa*epsilon)**(1.0/3.0)
-
-
-!  set acceleration of gravity and reference density
-   g        = kpp_g
-   rho_0    = kpp_rho_0
-   gorho0   = g/rho_0
+!     set acceleration of gravity and reference density
+      g        = kpp_g
+      rho_0    = kpp_rho_0
+      gorho0   = g/rho_0
+   end if
 
    LEVEL1 'done.'
 
@@ -891,6 +946,12 @@
       z_r(k) = z_r(k-1) + h_r(k-1)
    enddo
 
+!  update grid in CVMix
+!  Qing Li, 20180126
+   if (lcvmix) then
+      CVmix_vars%zw_iface => z_w(0:nlev)
+      CVmix_vars%zt_cntr  => z_r(1:nlev)
+   endif
 
 
 !-----------------------------------------------------------------------
@@ -1278,7 +1339,12 @@
    ! 10-meter wind
    wind10m = sqrt(u10**2+v10**2)
    if (langmuir_method .eq. KPP_LT_EFACTOR_MODEL) then
-      efactor = kpp_efactor_model(wind10m, u_taus, z_w(nlev)-zsbl)
+      if (lcvmix) then
+         efactor = cvmix_kpp_efactor_model(wind10m, u_taus, &
+                 z_w(nlev)-zsbl, CVmix_params)
+      else
+         efactor = kpp_efactor_model(wind10m, u_taus, z_w(nlev)-zsbl)
+      end if
    else if (langmuir_method .eq. KPP_LT_EFACTOR_READ) then
        ! TODO: read from file <13-12-17, Qing Li> !
       efactor = _ONE_
@@ -1321,7 +1387,14 @@
          sigma=depth
       endif
 
-      call wscale (Bflux(k),u_taus,sigma,efactor,wm,ws)
+      if (lcvmix) then
+         call cvmix_kpp_compute_turbulent_scales(epsilon,sigma, &
+             Bflux(k),u_taus,                                   &
+             langmuir_Efactor=efactor,                          &
+             w_s=ws,w_m=wm)
+      else
+         call wscale (Bflux(k),u_taus,sigma,efactor,wm,ws)
+      end if
 
 #ifdef KPP_AVGSLAYER_REF
 !-----------------------------------------------------------------------
@@ -1387,17 +1460,22 @@
 !!$      Vk = c1*  v(k+1) + c2*  v(k) + c3*  v(k-1)
 #endif
 
-!     compute numerator and denominator of Ri_b
-      Ritop = -gorho0*(Rref-Rk)*depth
+      if (lcvmix) then
+!        calculate the Bulk Richardson number
 
-      Ribot = (Uref-Uk)**2+(Vref-Vk)**2 +                               &
+      else
+!        compute numerator and denominator of Ri_b
+         Ritop = -gorho0*(Rref-Rk)*depth
+
+         Ribot = (Uref-Uk)**2+(Vref-Vk)**2 +                               &
               Vtc*depth*ws*sqrt(abs(NN(k)))
 
 # ifdef KPP_IP_FC
-      FC(k) = Ritop-Ric*Ribot
+         FC(k) = Ritop-Ric*Ribot
 # else
-      FC(k) = Ritop/(Ribot+eps)
+         FC(k) = Ritop/(Ribot+eps)
 # endif
+      end if
 
    enddo  ! inner grid faces
 

@@ -83,3 +83,6 @@
 ! average reference density and velocity in the surface layer
 ! Qing Li, 20171213
 #define KPP_AVGSLAYER_REF
+! use CVMix for KPP
+! Qing Li, 20180126
+#define KPP_CVMIX

@@ -468,6 +468,7 @@
    call cvmix_put(CVmix_vars, 'nlev', nlev)
    call cvmix_put(CVmix_vars, 'max_nlev', nlev)
    call cvmix_put(CVmix_vars, 'ocn_depth', h0)
+   call cvmix_put(CVmix_params, 'Gravity', kpp_g)
 
    LEVEL1 'done.'
 
@@ -550,11 +551,640 @@
 !
 !-----------------------------------------------------------------------
 !BOC
-   call cvmix_put(CVmix_vars, 'Coriolis', f)
-   continue
 !
-   end subroutine do_kpp_cvmix
+!-----------------------------------------------------------------------
+! Update model grid
+!-----------------------------------------------------------------------
+
+!  Compute distance between centers (between rho-points)
+!  Note that h is the distance between faces (between w-points)
+   do k=1,nlev-1
+      h_r(k) = 0.5*(h(k)+ h(k+1))
+   enddo
+
+!  Compute position of interfaces (w-points)
+   z_w(0) = - h0
+   do k=1,nlev
+      z_w(k) = z_w(k-1) + h(k)
+   enddo
+
+!  Compute position of centers (rho-points)
+   z_r(1) = - h0 + 0.5*h(1)
+   do k=2,nlev
+      z_r(k) = z_r(k-1) + h_r(k-1)
+   enddo
+
+   CVmix_vars%zw_iface => z_w(0:nlev)
+   CVmix_vars%zt_cntr  => z_r(1:nlev)
+
+!-----------------------------------------------------------------------
+! Update Cvmix variables
+!-----------------------------------------------------------------------
+
+   call cvmix_put(CVmix_vars, 'Coriolis', f)
+
+
+!-----------------------------------------------------------------------
+! compute interior mixing
+!-----------------------------------------------------------------------
+
+   if (kpp_interior) then
+      call interior(nlev,NN,NNT,NNS,SS)
+   else
+      num = _ZERO_
+      nuh = _ZERO_
+      nus = _ZERO_
+   endif
+
+!-----------------------------------------------------------------------
+! compute surface boundary layer mixing
+!-----------------------------------------------------------------------
+
+   if (kpp_sbl) then
+      call surface_layer(nlev,h0,h,rho,u,v,NN,u_taus,u_taub,            &
+                         tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f)
+   endif
+
+!-----------------------------------------------------------------------
+! compute bottom boundary layer mixing
+!-----------------------------------------------------------------------
+
+   if (kpp_bbl) then
+      call bottom_layer(nlev,h0,h,rho,u,v,NN,u_taus,u_taub,             &
+                        _ZERO_,_ZERO_,_ZERO_,_ZERO_,tRad,bRad,f)
+   endif
+
+!
+ end subroutine do_kpp_cvmix
 !EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Compute turbulence in the surface layer \label{sec:kppSurface}
+!
+! !INTERFACE:
+   subroutine surface_layer(nlev,h0,h,rho,u,v,NN,u_taus,u_taub,       &
+                            tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f)
+!
+! !DESCRIPTION:
+! In this routine all computations related to turbulence in the surface layer
+! are performed. The algorithms are described in \sect{sec:kpp}. Note that these
+! algorithms are affected by some pre-processor macros defined in {\tt cppdefs.inp},
+! and by the parameters set in {\tt kpp.nml}, see \sect{sec:kpp}.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+!  number of grid cells
+   integer                                       :: nlev
+
+!  bathymetry (m)
+   REALTYPE                                      :: h0
+
+!  thickness of grid cells (m)
+   REALTYPE                                      :: h(0:nlev)
+
+!  potential density at grid centers (kg/m^3)
+   REALTYPE                                      :: rho(0:nlev)
+
+!  velocity components at grid centers (m/s)
+   REALTYPE                                      :: u(0:nlev),v(0:nlev)
+
+!  square of buoyancy frequency (1/s^2)
+   REALTYPE                                      :: NN(0:nlev)
+
+!  surface and bottom friction velocities (m/s)
+   REALTYPE                                      :: u_taus,u_taub
+
+!  surface temperature flux (K m/s) and
+!  salinity flux (sal m/s) (negative for loss)
+   REALTYPE                                      :: tFlux,sFlux
+
+!  surface buoyancy fluxes (m^2/s^3) due to
+!  heat and salinity fluxes
+   REALTYPE                                      :: btFlux,bsFlux
+
+!  radiative flux [ I(z)/(rho Cp) ] (K m/s)
+!  and associated buoyancy flux (m^2/s^3)
+   REALTYPE                                      :: tRad(0:nlev),bRad(0:nlev)
+
+!  Coriolis parameter (rad/s)
+   REALTYPE                                      :: f
+
+!
+! !REVISION HISTORY:
+!  Original author(s): Lars Umlauf
+!
+!EOP
+!
+! !LOCAL VARIABLES:
+   REALTYPE, parameter          :: eps      = 1.0E-10
+
+   integer                      :: k,ksbl
+   integer                      :: kk,kref
+
+   REALTYPE                     :: Bo
+   REALTYPE                     :: Bfsfc
+   REALTYPE                     :: tRadSrf,tRadSbl
+   REALTYPE                     :: bRadSrf,bRadSbl
+   REALTYPE                     :: Gm1
+   REALTYPE                     :: Gt1
+   REALTYPE                     :: Gs1
+   REALTYPE                     :: dGm1dS
+   REALTYPE                     :: dGt1dS
+   REALTYPE                     :: dGs1dS
+   REALTYPE                     :: f1
+   REALTYPE                     :: sl_dpth,sl_z
+   REALTYPE                     :: swdk
+   REALTYPE                     :: wm
+   REALTYPE                     :: ws
+   REALTYPE                     :: zgrid,depth
+
+   REALTYPE                     :: Gm, Gt, Gs, K_bl, Ribot, Ritop, Rk, Rref
+   REALTYPE                     :: Uk, Uref, Ustarb, Vk, Vref
+   REALTYPE                     :: dR,dU,dV
+   REALTYPE                     :: a1, a2, a3
+   REALTYPE                     :: cff,cff_up,cff_dn
+   REALTYPE                     :: c1,c2,c3
+   REALTYPE                     :: dK_bl, hekman, hmonob, sigma, zbl
+
+   REALTYPE, dimension (0:nlev) :: Bflux
+   REALTYPE, dimension (0:nlev) :: FC
+
+!  Langmuir enhancement factor
+!  Qing Li, 20171213
+   REALTYPE                     :: efactor
+!  Thickness of surface layer
+!  Qing Li, 20171213
+   REALTYPE                     :: surfthick
+!  10-meter wind
+   REALTYPE                     :: wind10m
+
+!-----------------------------------------------------------------------
+!BOC
+!
+!
+!-----------------------------------------------------------------------
+!  Get approximation of surface layer depth using "epsilon" and
+!  boundary layer depth from previous time step.
+!-----------------------------------------------------------------------
+!
+   sl_dpth = epsilon*(z_w(nlev)-zsbl)
+   sl_z    = epsilon*zsbl
+!
+!-----------------------------------------------------------------------
+!  Compute total buoyancy flux at W-points.
+!  Bo is negative, if heat is lost or salinity is gained (convection).
+!  It does not include the short wave radiative flux at the surface.
+!-----------------------------------------------------------------------
+!
+    tRadSrf   =   tRad(nlev)
+    bRadSrf   =   bRad(nlev)
+
+!  surface buoyancy flux (negative for buoyancy loss)
+   Bo         = btFlux + bsFlux
+
+!  include effect of short wave radiation
+!  prepare non-local fluxes
+   do k = 0,nlev
+      Bflux(k)  = Bo  + ( bRadSrf - bRad(k) )
+# ifdef NONLOCAL
+      cff       = _ONE_-(0.5+sign(0.5d0,Bflux(k)))
+      gamh(k)   =  -cff*( tFlux + tRadSrf - tRad(k) )
+#  ifdef KPP_SALINITY
+      gams(k)   =  -cff*sFlux
+#  endif
+# endif
+
+   enddo
+
+!-----------------------------------------------------------------------
+!  Get Langmuir enhancement factor
+!-----------------------------------------------------------------------
+! Qing Li, 20171213
+   ! 10-meter wind
+   wind10m = sqrt(u10**2+v10**2)
+   if (langmuir_method .eq. KPP_LT_EFACTOR_MODEL) then
+      efactor = kpp_efactor_model(wind10m, u_taus, z_w(nlev)-zsbl)
+   else if (langmuir_method .eq. KPP_LT_EFACTOR_READ) then
+       ! TODO: read from file <13-12-17, Qing Li> !
+      efactor = _ONE_
+   else if (langmuir_method .eq. KPP_LT_EFACTOR_SPEC) then
+      efactor = kpp_efactor_spec(wav_freq, wav_spec, wav_xcmp, wav_ycmp, &
+          u10, v10, u_taus, z_w(nlev)-zsbl)
+   else
+      ! no enhancement factor applied to ws in bulk Richardson number
+      ! when Langmuir enhanced entrainment is on
+      efactor = _ONE_
+   end if
+
+!-----------------------------------------------------------------------
+!  Compute potential density and velocity components surface reference
+!  values.
+!-----------------------------------------------------------------------
+!  update the reference potential density and velocity below if the
+!  surface layer is thicker than the uppermost grid and if the tag
+!  KPP_AVGSLAYER_REF is defined in cppdefs.h
+!  Qing Li, 20171213
+!  simply use uppermost value
+   Rref = rho(nlev)
+   Uref =   u(nlev)
+   Vref =   v(nlev)
+
+!-----------------------------------------------------------------------
+!  Compute critical function, FC, for bulk Richardson number
+!-----------------------------------------------------------------------
+
+   FC(0   ) = _ZERO_
+   FC(nlev) = _ZERO_
+
+   do k=nlev-1,2,-1
+
+      depth=z_w(nlev)-z_w(k)
+
+      if (Bflux(k).lt._ZERO_) then
+         sigma=min(sl_dpth,depth)
+      else
+         sigma=depth
+      endif
+
+      call wscale (Bflux(k),u_taus,sigma,efactor,wm,ws)
+
+#ifdef KPP_AVGSLAYER_REF
+!-----------------------------------------------------------------------
+!  Update potential density and velocity components surface reference
+!  values.
+!-----------------------------------------------------------------------
+! Qing Li, 20171213
+      ! determine which layer contains surface layer
+      surfthick = epsilon*depth
+      do kk = nlev,k,-1
+         if (z_w(nlev)-z_w(kk-1) .ge. surfthick) then
+            kref = kk
+            exit
+         end if
+      end do
+      ! Update Rref, Uref and Vref
+      if (kref < nlev) then
+         Rref = rho(kref)*(surfthick+z_w(kref))
+         Uref =   u(kref)*(surfthick+z_w(kref))
+         Vref =   v(kref)*(surfthick+z_w(kref))
+         do kk = nlev,kref+1,-1
+            Rref = Rref + rho(kk)*h(kk)
+            Uref = Uref +   u(kk)*h(kk)
+            Vref = Vref +   v(kk)*h(kk)
+         end do
+         Rref = Rref/surfthick
+         Uref = Uref/surfthick
+         Vref = Vref/surfthick
+      end if
+#endif
+
+#ifdef KPP_TWOPOINT_REF
+
+!     interpolate reference value at grid face "k"
+!     from values at grid centers
+
+      cff = _ONE_/h_r(k)
+
+      dR  = cff*( rho(k+1) - rho(k) )
+      dU  = cff*( u  (k+1) - u  (k) )
+      dV  = cff*( v  (k+1) - v  (k) )
+
+      cff = _ONE_/2.0
+
+      Rk  = rho(k) + h(k)*cff*dR
+      Uk  =   u(k) + h(k)*cff*dU
+      Vk  =   v(k) + h(k)*cff*dV
+
+#else
+!     identify reference value at grid face "k"
+!     with value at center above
+
+      Rk = rho(k+1)
+      Uk =   u(k+1)
+      Vk =   v(k+1)
+
+!!$      c1 =  0.6
+!!$      c2 =  0.2
+!!$      c3 =  0.2
+!!$
+!!$      Rk = c1*rho(k+1) + c2*rho(k) + c3*rho(k-1)
+!!$      Uk = c1*  u(k+1) + c2*  u(k) + c3*  u(k-1)
+!!$      Vk = c1*  v(k+1) + c2*  v(k) + c3*  v(k-1)
+#endif
+
+!     compute numerator and denominator of Ri_b
+      Ritop = -gorho0*(Rref-Rk)*depth
+
+      Ribot = (Uref-Uk)**2+(Vref-Vk)**2 +                               &
+              Vtc*depth*ws*sqrt(abs(NN(k)))
+
+# ifdef KPP_IP_FC
+      FC(k) = Ritop-Ric*Ribot
+# else
+      FC(k) = Ritop/(Ribot+eps)
+# endif
+
+   enddo  ! inner grid faces
+
+
+
+!-----------------------------------------------------------------------
+! Linearly interpolate to find "zsbl" where Rib/Ric=1.
+!-----------------------------------------------------------------------
+
+   ksbl = 1         ! ksbl is index of cell containing zsbl
+   zsbl = z_w(0)
+
+# ifdef KPP_IP_FC
+!  look for position of vanishing F_crit
+   do k=nlev,2,-1
+      if ((ksbl.eq.1).and.(FC(k-1).gt._ZERO_)) then
+         zsbl = (z_w(k)*FC(k-1)-z_w(k-1)*FC(k))/(FC(k-1)-FC(k))
+         ksbl = k
+      endif
+   enddo
+# else
+!  look for position of vanishing Ri_b
+   do k=nlev,2,-1
+      if ((ksbl.eq.1).and.((FC(k).lt.Ric).and.(FC(k-1).ge.Ric))) then
+         zsbl = ((FC(k-1)-Ric)*z_w(k) -                                 &
+                         (FC(k)-Ric)*z_w(k-1))/(FC(k-1)-FC(k))
+         ksbl = k
+      endif
+   enddo
+# endif
+
+
+
+!-----------------------------------------------------------------------
+!  Compute total buoyancy flux at surface boundary layer depth
+!-----------------------------------------------------------------------
+
+!  interpolate from interface values to zsbl
+   bRadSbl = ( bRad(ksbl-1)*(z_w(ksbl)-zsbl) +                                &
+               bRad(ksbl  )*(zsbl-z_w(ksbl-1) ) )/ h(ksbl)
+
+   Bfsfc   = Bo + (bRadSrf - bRadsbl)
+
+
+!-----------------------------------------------------------------------
+!  Limit boundary layer depth by Ekman and Monin-Obukhov depths
+!  (under neutral and stable conditions)
+!-----------------------------------------------------------------------
+
+   if (clip_mld) then
+      if ((u_taus.gt._ZERO_).and.(Bfsfc.gt._ZERO_)) then
+         hekman = cekman*u_taus/max(abs(f),eps)
+         hmonob = cmonob*u_taus*u_taus*u_taus/max(kappa*Bfsfc,eps)
+         zsbl   = (z_w(nlev)-min(hekman,hmonob,z_w(nlev)-zsbl))
+      endif
+   endif
+
+
+   zsbl = min(zsbl,z_w(nlev))
+   zsbl = max(zsbl,z_w(0   ))
+
+!  find new boundary layer index "ksbl".
+   ksbl=1
+   do k=nlev,2,-1
+      if ((ksbl.eq.1).and.(z_w(k-1).lt.zsbl)) then
+         ksbl = k
+      endif
+   enddo
+
+
+!-----------------------------------------------------------------------
+!  Compute total buoyancy flux at surface boundary layer depth
+!-----------------------------------------------------------------------
+
+
+   bRadSbl = ( bRad(ksbl-1)*(z_w(ksbl)-zsbl) +                          &
+               bRad(ksbl  )*(zsbl-z_w(ksbl-1) ) )/ h(ksbl)
+
+
+   Bfsfc   = Bo + (bRadSrf - bRadSbl)
+
+!-----------------------------------------------------------------------
+!  Update Langmuir enhancement factor
+!-----------------------------------------------------------------------
+! Qing Li, 20171213
+   if (langmuir_method .eq. KPP_LT_EFACTOR_MODEL) then
+      efactor = kpp_efactor_model(wind10m, u_taus, z_w(nlev)-zsbl)
+   else if (langmuir_method .eq. KPP_LT_EFACTOR_READ) then
+       ! TODO: read from file <13-12-17, Qing Li> !
+      efactor = _ONE_
+   else if (langmuir_method .eq. KPP_LT_EFACTOR_SPEC) then
+      efactor = kpp_efactor_spec(wav_freq, wav_spec, wav_xcmp, wav_ycmp, &
+          u10, v10, u_taus, z_w(nlev)-zsbl)
+   else if (langmuir_method .eq. KPP_LT_ENTRAINMENT) then
+       ! TODO: efactor for entrainment <13-12-17, Qing Li> !
+      efactor = _ONE_
+   else
+      efactor = _ONE_
+   end if
+   ! DEBUG QL
+   ! LEVEL2 'efactor = ', efactor
+
+!-----------------------------------------------------------------------
+!  Compute tubulent velocity scales (wm,ws) at "zsbl".
+!-----------------------------------------------------------------------
+
+   zbl     = z_w(nlev)-zsbl
+   sl_dpth = epsilon*zbl
+
+   if (Bfsfc.gt._ZERO_) then
+      cff  = _ONE_
+   else
+      cff  = epsilon
+   endif
+
+   sigma=cff*(z_w(nlev)-zsbl)
+
+   call wscale (Bfsfc,u_taus,sigma,efactor,wm,ws)
+
+
+!-----------------------------------------------------------------------
+!  Compute nondimensional shape function Gx(sigma) in terms of the
+!  interior diffusivities at sigma=1 (Gm1, Gs1, Gt1) and its vertical
+!  derivative evaluated "zsbl" via interpolation.
+!-----------------------------------------------------------------------
+
+!   original code with kappa-bug
+!   f1 = 5.0*max(_ZERO_,Bfsfc)*kappa/(u_taus*u_taus*u_taus*u_taus+eps)
+
+!  new code code without kappa-bug
+   f1 = 5.0*max(_ZERO_,Bfsfc)/(u_taus*u_taus*u_taus*u_taus+eps)
+
+   if (zsbl.gt.z_w(1)) then
+      ! if boundary layer does not touch lowest grid box
+
+!     abbreviation for "ksbl"
+      k      = ksbl
+      cff    = _ONE_/h(k)
+      cff_dn = cff*(zsbl-z_w(k-1))
+      cff_up = cff*(z_w(k)-zsbl  )
+
+!  Compute nondimensional shape function for viscosity "Gm1" and its
+!  vertical derivative "dGm1dS" evaluated at "zsbl".
+
+      K_bl   = cff_dn*num(k)+cff_up*num(k-1)
+      dK_bl  = cff*(num(k)-num(k-1))
+      Gm1    = K_bl/(zbl*wm+eps)
+
+# ifdef KPP_CLIP_GS
+      dGm1dS = min(_ZERO_,-dK_bl/(wm+eps)-K_bl*f1)
+# else
+      dGm1dS = -dK_bl/(wm+eps) + K_bl*f1
+# endif
+
+!  Compute nondimensional shape function for diffusion of temperature
+!  "Gt1" and its vertical derivative "dGt1dS" evaluated at "zsbl".
+!
+      K_bl   = cff_dn*nuh(k)+cff_up*nuh(k-1)
+      dK_bl  = cff*(nuh(k)-nuh(k-1))
+      Gt1    = K_bl/(zbl*ws+eps)
+
+# ifdef KPP_CLIP_GS
+      dGt1dS = min(_ZERO_,-dK_bl/(ws+eps)-K_bl*f1)
+# else
+      dGt1dS = -dK_bl/(ws+eps) + K_bl*f1
+# endif
+
+# ifdef KPP_SALINITY
+!
+!  Compute nondimensional shape function for diffusion of salinity
+!  "Gs1" and its vertical derivative "dGs1dS" evaluated at "zsbl".
+!
+      K_bl   = cff_dn*nus(k)+cff_up*nus(k-1)
+      dK_bl  = cff*(nus(k)-nus(k-1))
+      Gs1    = K_bl/(zbl*ws+eps)
+
+# ifdef KPP_CLIP_GS
+      dGs1dS = min(_ZERO_,-dK_bl/(ws+eps)-K_bl*f1)
+# else
+      dGs1dS = -dK_bl/(ws+eps) + K_bl*f1
+# endif
+
+# endif
+
+
+   else
+!     If the surface boundary layer extends to the bottom, assume that
+!     the neutral boundary layer similarity theory holds at the bottom.
+!
+      dK_bl  = kappa*u_taub
+      K_bl   = dK_bl*(zsbl-z_w(0))
+
+!     Compute nondimensional bottom shape function for diffusion of
+!     momentum
+
+      Gm1    = K_bl/(zbl*wm+eps)
+
+# ifdef KPP_CLIP_GS
+      dGm1dS = min(_ZERO_,-dK_bl/(wm+eps)-K_bl*f1)
+# else
+      dGm1dS = -dK_bl/(wm+eps) + K_bl*f1
+# endif
+
+
+!     Compute nondimensional bottom shape function for diffusion of
+!     temperature.
+
+      Gt1    = K_bl/(zbl*ws+eps)
+
+# ifdef KPP_CLIP_GS
+      dGs1dS = min(_ZERO_,-dK_bl/(ws+eps)-K_bl*f1)
+# else
+      dGs1dS = -dK_bl/(ws+eps) + K_bl*f1
+# endif
+
+!     Compute nondimensional bottom shape function for diffusion of
+!     salinity.
+# ifdef KPP_SALINITY
+      Gs1    = Gt1
+      dGs1dS = dGt1dS
+# endif
+
+   endif
+!
+!-----------------------------------------------------------------------
+!  Compute surface boundary layer mixing coefficients
+!-----------------------------------------------------------------------
+!
+!  loop over the inner interfaces
+!  (the outermost are not needed)
+   do k=1,nlev-1
+
+      if (k.ge.ksbl) then    ! interface above cell containing zsbl
+
+!        Compute turbulent velocity scales at vertical W-points.
+         depth=z_w(nlev)-z_w(k)
+         if (Bflux(k).lt._ZERO_) then
+            sigma=min(sl_dpth,depth)
+         else
+            sigma=depth
+         endif
+
+         call wscale(Bflux(k),u_taus,sigma,efactor,wm, ws)
+!
+!        Set polynomial coefficients for shape function.
+         sigma = depth/(zbl+eps)
+
+         a1    = sigma-2.0
+         a2    = 3.0-2.0*sigma
+         a3    = sigma-1.0
+!
+!        Compute nondimesional shape functions.
+         Gm = a1+a2*Gm1+a3*dGm1dS
+         Gt = a1+a2*Gt1+a3*dGt1dS
+# ifdef KPP_SALINITY
+         Gs = a1+a2*Gs1+a3*dGs1dS
+# endif
+
+!        Compute boundary layer mixing coefficients, combine them
+!        with interior mixing coefficients.
+         num(k) = depth*wm*(_ONE_+sigma*Gm)
+         nuh(k) = depth*ws*(_ONE_+sigma*Gt)
+# ifdef KPP_SALINITY
+         nus(k) = depth*ws*(_ONE_+sigma*Gs)
+# endif
+# ifdef NONLOCAL
+!        Compute boundary layer nonlocal transport (m/s2).
+         cff      = Cg*(_ONE_-(0.5+sign(0.5d0,Bflux(k))))/(zbl*ws+eps)
+         gamh(k) = cff*nuh(k)*gamh(k)
+#  ifdef KPP_SALINITY
+         gams(k) = cff*nus(k)*gams(k)
+#  endif
+# endif
+
+
+!     Set non-local transport terms to zero outside boundary  layer.
+      else
+# ifdef NONLOCAL
+         gamh(k) = _ZERO_
+#  ifdef KPP_SALINITY
+         gams(k) = _ZERO_
+#  endif
+# endif
+      endif
+
+
+   enddo
+
+!     not non-local fluxes at top and bottom
+      gamh(0   ) = _ZERO_
+      gams(0   ) = _ZERO_
+      gamh(nlev) = _ZERO_
+      gams(nlev) = _ZERO_
+
+
+ end subroutine surface_layer
+!EOC
+
 
 !-----------------------------------------------------------------------
 !BOP

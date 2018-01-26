@@ -61,10 +61,6 @@
 
    use kpp,         only: init_kpp,do_kpp,clean_kpp
 
-!  use KPP from CVMix
-!  Qing Li, 20180126
-   use kpp_cvmix,   only: init_kpp_cvmix,do_kpp_cvmix,clean_kpp_cvmix
-
    use mtridiagonal,only: init_tridiagonal,clean_tridiagonal
    use eqstate,     only: init_eqstate
 
@@ -257,12 +253,6 @@
 !  initialize KPP model
    if (turb_method.eq.99) then
       call init_kpp(namlst,'kpp.nml',nlev,depth,h,gravity,rho_0)
-   endif
-
-!  initialize CVMix KPP
-!  Qing Li, 20180126
-   if (turb_method.eq.98) then
-      call init_kpp_cvmix(namlst,'kpp_cvmix.nml',nlev,depth,h,gravity,rho_0)
    endif
 
    call init_air_sea(namlst,latitude,longitude)
@@ -484,15 +474,6 @@
          call do_kpp(nlev,depth,h,rho,u,v,NN,NNT,NNS,SS,                &
                      u_taus,u_taub,tFlux,btFlux,sFlux,bsFlux,           &
                      tRad,bRad,cori)
-      case (98)
-!        update KPP model (CVMix)
-!        Qing Li, 20180126
-         call convert_fluxes(nlev,gravity,cp,rho_0,heat,precip+evap,    &
-                             rad,T,S,tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
-
-         call do_kpp_cvmix(nlev,depth,h,rho,u,v,NN,NNT,NNS,SS,          &
-                     u_taus,u_taub,tFlux,btFlux,sFlux,bsFlux,           &
-                     tRad,bRad,cori)
       case default
 !        update one-point models
 # ifdef SEAGRASS
@@ -547,9 +528,6 @@
    call clean_meanflow()
 
    if (turb_method.eq.99) call clean_kpp()
-
-   ! Qing Li, 20180126
-   if (turb_method.eq.98) call clean_kpp_cvmix()
 
    call clean_turbulence()
 

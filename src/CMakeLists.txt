@@ -9,8 +9,8 @@ project(gotm Fortran)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 # Set version information.
-set(gotm_VERSION_MAJOR 4)
-set(gotm_VERSION_MINOR 1)
+set(gotm_VERSION_MAJOR 5)
+set(gotm_VERSION_MINOR 0)
 set(gotm_VERSION_PATCH 0)
 set(gotm_VERSION "${gotm_VERSION_MAJOR}.${gotm_VERSION_MINOR}.${gotm_VERSION_PATCH}")
 
@@ -97,6 +97,14 @@ endif()
   endif(GOTM_USE_NetCDF)
 #endif()
 
+# Use CVMix if requested
+# Qing Li, 20180126
+option(GOTM_USE_CVMix "Include CVMix library for KPP" ON)
+if(GOTM_USE_CVMix)
+    find_package(CVMix REQUIRED)
+    include_directories("${CVMix_INCLUDE_DIRS}")
+endif(GOTM_USE_CVMix)
+
 # Global include directories
 include_directories(BEFORE
                     "${PROJECT_SOURCE_DIR}/../include"
@@ -148,6 +156,7 @@ add_library(turbulence
             turbulence/kbalgebraic.F90
             turbulence/kbeq.F90
             turbulence/kpp.F90
+            turbulence/kpp_cvmix.F90
             turbulence/lengthscaleeq.F90
             turbulence/potentialml.F90
             turbulence/production.F90
@@ -350,6 +359,13 @@ set(GOTM_LIBS ${GOTM_LIBS} gotm)
 if(GOTM_USE_NetCDF)
   set(EXTERNAL_LIBS ${EXTERNAL_LIBS} "${NetCDF_LIBRARIES}")
 endif(GOTM_USE_NetCDF)
+
+# CVMix library
+# Qing Li, 20180126
+if(GOTM_USE_CVMix)
+    set(EXTERNAL_LIBS ${EXTERNAL_LIBS} "${CVMix_LIBRARIES}")
+endif(GOTM_USE_CVMix)
+
 
 if(NOT GOTM_BUILD_LIBRARY)
 

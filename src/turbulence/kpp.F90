@@ -208,17 +208,7 @@
 !  use CVMix
    use cvmix_kinds_and_types, only : cvmix_data_type,          &
                                      cvmix_global_params_type
-   use cvmix_kpp,             only : cvmix_init_kpp,                           &
-                                     cvmix_get_kpp_real,                       &
-                                     cvmix_kpp_compute_OBL_depth,              &
-                                     cvmix_kpp_compute_kOBL_depth,             &
-                                     cvmix_kpp_compute_bulk_Richardson,        &
-                                     cvmix_kpp_compute_unresolved_shear,       &
-                                     cvmix_kpp_compute_turbulent_scales,       &
-                                     cvmix_kpp_compute_shape_function_coeffs,  &
-                                     cvmix_kpp_efactor_read,                   &
-                                     cvmix_kpp_efactor_model,                  &
-                                     cvmix_coeffs_kpp
+   use cvmix_kpp
    use cvmix_put_get,         only : cvmix_put
 #endif
 
@@ -772,15 +762,23 @@
 !     Qing Li, 20180126
       call cvmix_init_kpp(ri_crit=Ric,                                &
                           ! interp_type=interp_type,                    &
-                          ! lEkman=lcheckekmo,                          &
-                          ! lMonOb=lcheckekmo,                          &
+                          lEkman=clip_mld,                            &
+                          lMonOb=clip_mld,                            &
                           llangmuirEF=llangmuir_efactor,              &
                           MatchTechnique='MatchGradient',             &
                           ! lnoDGat1=lnoDGat1,                          &
                           surf_layer_ext = epsilon)
+      call cvmix_put_kpp("a_m", kpp_am)
+      call cvmix_put_kpp("a_s", kpp_as)
+      call cvmix_put_kpp("c_m", kpp_cm)
+      call cvmix_put_kpp("c_s", kpp_cs)
+      call cvmix_put_kpp("Cv", Cv)
       call cvmix_put(CVmix_vars, 'nlev', nlev)
       call cvmix_put(CVmix_vars, 'max_nlev', nlev)
       call cvmix_put(CVmix_vars, 'ocn_depth', h0)
+      call cvmix_put(CVmix_vars, 'Mdiff', num)
+      call cvmix_put(CVmix_vars, 'Tdiff', nuh)
+      call cvmix_put(CVmix_vars, 'Sdiff', nus)
       call cvmix_put(CVmix_params, 'Gravity', kpp_g)
    else
 !     pre-compute coefficient for turbulent shear velocity
@@ -791,12 +789,11 @@
 !     boundary layer non-local transport
       Cg=Cstar*kappa*(kpp_cs*kappa*epsilon)**(1.0/3.0)
 
-
-!     set acceleration of gravity and reference density
-      g        = kpp_g
-      rho_0    = kpp_rho_0
-      gorho0   = g/rho_0
    end if
+!  set acceleration of gravity and reference density
+   g        = kpp_g
+   rho_0    = kpp_rho_0
+   gorho0   = g/rho_0
 
    LEVEL1 'done.'
 
@@ -946,13 +943,6 @@
       z_r(k) = z_r(k-1) + h_r(k-1)
    enddo
 
-!  update grid in CVMix
-!  Qing Li, 20180126
-   if (lcvmix) then
-      CVmix_vars%zw_iface => z_w(0:nlev)
-      CVmix_vars%zt_cntr  => z_r(1:nlev)
-   endif
-
 
 !-----------------------------------------------------------------------
 ! compute interior mixing
@@ -971,8 +961,13 @@
 !-----------------------------------------------------------------------
 
    if (kpp_sbl) then
-      call surface_layer(nlev,h0,h,rho,u,v,NN,u_taus,u_taub,            &
+      if (lcvmix) then
+         call surface_layer_cvmix(nlev,h,rho,u,v,NN,u_taus,u_taub,   &
                          tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f)
+      else
+         call surface_layer(nlev,h,rho,u,v,NN,u_taus,u_taub,         &
+                         tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f)
+      end if
    endif
 
 !-----------------------------------------------------------------------
@@ -980,7 +975,7 @@
 !-----------------------------------------------------------------------
 
    if (kpp_bbl) then
-      call bottom_layer(nlev,h0,h,rho,u,v,NN,u_taus,u_taub,             &
+      call bottom_layer(nlev,h,rho,u,v,NN,u_taus,u_taub,             &
                         _ZERO_,_ZERO_,_ZERO_,_ZERO_,tRad,bRad,f)
    endif
 
@@ -1196,7 +1191,7 @@
 ! !IROUTINE: Compute turbulence in the surface layer \label{sec:kppSurface}
 !
 ! !INTERFACE:
-   subroutine surface_layer(nlev,h0,h,rho,u,v,NN,u_taus,u_taub,       &
+   subroutine surface_layer(nlev,h,rho,u,v,NN,u_taus,u_taub,       &
                             tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f)
 !
 ! !DESCRIPTION:
@@ -1211,9 +1206,6 @@
 ! !INPUT PARAMETERS:
 !  number of grid cells
    integer                                       :: nlev
-
-!  bathymetry (m)
-   REALTYPE                                      :: h0
 
 !  thickness of grid cells (m)
    REALTYPE                                      :: h(0:nlev)
@@ -1272,7 +1264,7 @@
    REALTYPE                     :: swdk
    REALTYPE                     :: wm
    REALTYPE                     :: ws
-   REALTYPE                     :: zgrid,depth
+   REALTYPE                     :: depth
 
    REALTYPE                     :: Gm, Gt, Gs, K_bl, Ribot, Ritop, Rk, Rref
    REALTYPE                     :: Uk, Uref, Ustarb, Vk, Vref
@@ -1291,8 +1283,6 @@
 !  Thickness of surface layer
 !  Qing Li, 20171213
    REALTYPE                     :: surfthick
-!  10-meter wind
-   REALTYPE                     :: wind10m
 
 !-----------------------------------------------------------------------
 !BOC
@@ -1334,28 +1324,10 @@
 
 !-----------------------------------------------------------------------
 !  Get Langmuir enhancement factor
+!  Qing Li, 20171213
 !-----------------------------------------------------------------------
-! Qing Li, 20171213
-   ! 10-meter wind
-   wind10m = sqrt(u10**2+v10**2)
-   if (langmuir_method .eq. KPP_LT_EFACTOR_MODEL) then
-      if (lcvmix) then
-         efactor = cvmix_kpp_efactor_model(wind10m, u_taus, &
-                 z_w(nlev)-zsbl, CVmix_params)
-      else
-         efactor = kpp_efactor_model(wind10m, u_taus, z_w(nlev)-zsbl)
-      end if
-   else if (langmuir_method .eq. KPP_LT_EFACTOR_READ) then
-       ! TODO: read from file <13-12-17, Qing Li> !
-      efactor = _ONE_
-   else if (langmuir_method .eq. KPP_LT_EFACTOR_SPEC) then
-      efactor = kpp_efactor_spec(wav_freq, wav_spec, wav_xcmp, wav_ycmp, &
-          u10, v10, u_taus, z_w(nlev)-zsbl)
-   else
-      ! no enhancement factor applied to ws in bulk Richardson number
-      ! when Langmuir enhanced entrainment is on
-      efactor = _ONE_
-   end if
+
+   call enhancement_factor(langmuir_method, u_taus, z_w(nlev)-zsbl, efactor)
 
 !-----------------------------------------------------------------------
 !  Compute potential density and velocity components surface reference
@@ -1386,15 +1358,7 @@
       else
          sigma=depth
       endif
-
-      if (lcvmix) then
-         call cvmix_kpp_compute_turbulent_scales(epsilon,sigma, &
-             Bflux(k),u_taus,                                   &
-             langmuir_Efactor=efactor,                          &
-             w_s=ws,w_m=wm)
-      else
-         call wscale (Bflux(k),u_taus,sigma,efactor,wm,ws)
-      end if
+      call wscale (Bflux(k),u_taus,sigma,efactor,wm,ws)
 
 #ifdef KPP_AVGSLAYER_REF
 !-----------------------------------------------------------------------
@@ -1451,34 +1415,28 @@
       Uk =   u(k+1)
       Vk =   v(k+1)
 
-!!$      c1 =  0.6
-!!$      c2 =  0.2
-!!$      c3 =  0.2
+!!$   c1 =  0.6
+!!$   c2 =  0.2
+!!$   c3 =  0.2
 !!$
-!!$      Rk = c1*rho(k+1) + c2*rho(k) + c3*rho(k-1)
-!!$      Uk = c1*  u(k+1) + c2*  u(k) + c3*  u(k-1)
-!!$      Vk = c1*  v(k+1) + c2*  v(k) + c3*  v(k-1)
+!!$   Rk = c1*rho(k+1) + c2*rho(k) + c3*rho(k-1)
+!!$   Uk = c1*  u(k+1) + c2*  u(k) + c3*  u(k-1)
+!!$   Vk = c1*  v(k+1) + c2*  v(k) + c3*  v(k-1)
 #endif
 
-      if (lcvmix) then
-!        calculate the Bulk Richardson number
+!     compute numerator and denominator of Ri_b
+      Ritop = -gorho0*(Rref-Rk)*depth
 
-      else
-!        compute numerator and denominator of Ri_b
-         Ritop = -gorho0*(Rref-Rk)*depth
-
-         Ribot = (Uref-Uk)**2+(Vref-Vk)**2 +                               &
-              Vtc*depth*ws*sqrt(abs(NN(k)))
+      Ribot = (Uref-Uk)**2+(Vref-Vk)**2 +                               &
+           Vtc*depth*ws*sqrt(abs(NN(k)))
 
 # ifdef KPP_IP_FC
-         FC(k) = Ritop-Ric*Ribot
+      FC(k) = Ritop-Ric*Ribot
 # else
-         FC(k) = Ritop/(Ribot+eps)
+      FC(k) = Ritop/(Ribot+eps)
 # endif
-      end if
 
    enddo  ! inner grid faces
-
 
 
 !-----------------------------------------------------------------------
@@ -1506,7 +1464,6 @@
       endif
    enddo
 # endif
-
 
 
 !-----------------------------------------------------------------------
@@ -1557,26 +1514,15 @@
 
    Bfsfc   = Bo + (bRadSrf - bRadSbl)
 
+   ! DEBUG
+   LEVEL2 'zsbl = ', zsbl, ' Bfsfc = ', Bfsfc
+
 !-----------------------------------------------------------------------
 !  Update Langmuir enhancement factor
+!  Qing Li, 20171213
 !-----------------------------------------------------------------------
-! Qing Li, 20171213
-   if (langmuir_method .eq. KPP_LT_EFACTOR_MODEL) then
-      efactor = kpp_efactor_model(wind10m, u_taus, z_w(nlev)-zsbl)
-   else if (langmuir_method .eq. KPP_LT_EFACTOR_READ) then
-       ! TODO: read from file <13-12-17, Qing Li> !
-      efactor = _ONE_
-   else if (langmuir_method .eq. KPP_LT_EFACTOR_SPEC) then
-      efactor = kpp_efactor_spec(wav_freq, wav_spec, wav_xcmp, wav_ycmp, &
-          u10, v10, u_taus, z_w(nlev)-zsbl)
-   else if (langmuir_method .eq. KPP_LT_ENTRAINMENT) then
-       ! TODO: efactor for entrainment <13-12-17, Qing Li> !
-      efactor = _ONE_
-   else
-      efactor = _ONE_
-   end if
-   ! DEBUG QL
-   ! LEVEL2 'efactor = ', efactor
+
+   call enhancement_factor(langmuir_method, u_taus, z_w(nlev)-zsbl, efactor)
 
 !-----------------------------------------------------------------------
 !  Compute tubulent velocity scales (wm,ws) at "zsbl".
@@ -1594,7 +1540,6 @@
    sigma=cff*(z_w(nlev)-zsbl)
 
    call wscale (Bfsfc,u_taus,sigma,efactor,wm,ws)
-
 
 !-----------------------------------------------------------------------
 !  Compute nondimensional shape function Gx(sigma) in terms of the
@@ -1770,11 +1715,268 @@
       gamh(nlev) = _ZERO_
       gams(nlev) = _ZERO_
 
-
  end subroutine surface_layer
 !EOC
 
 
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Compute turbulence in the surface layer with CVMix
+!            \label{sec:kppSurface}
+!
+! !INTERFACE:
+   subroutine surface_layer_cvmix(nlev,h,rho,u,v,NN,u_taus,u_taub,    &
+                            tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f)
+!
+! !DESCRIPTION:
+! In this routine all computations related to turbulence in the surface layer
+! are performed. CVMix library is used.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+!  number of grid cells
+   integer                                       :: nlev
+
+!  thickness of grid cells (m)
+   REALTYPE                                      :: h(0:nlev)
+
+!  potential density at grid centers (kg/m^3)
+   REALTYPE                                      :: rho(0:nlev)
+
+!  velocity components at grid centers (m/s)
+   REALTYPE                                      :: u(0:nlev),v(0:nlev)
+
+!  square of buoyancy frequency (1/s^2)
+   REALTYPE                                      :: NN(0:nlev)
+
+!  surface and bottom friction velocities (m/s)
+   REALTYPE                                      :: u_taus,u_taub
+
+!  surface temperature flux (K m/s) and
+!  salinity flux (sal m/s) (negative for loss)
+   REALTYPE                                      :: tFlux,sFlux
+
+!  surface buoyancy fluxes (m^2/s^3) due to
+!  heat and salinity fluxes
+   REALTYPE                                      :: btFlux,bsFlux
+
+!  radiative flux [ I(z)/(rho Cp) ] (K m/s)
+!  and associated buoyancy flux (m^2/s^3)
+   REALTYPE                                      :: tRad(0:nlev),bRad(0:nlev)
+
+!  Coriolis parameter (rad/s)
+   REALTYPE                                      :: f
+
+!
+! !REVISION HISTORY:
+!  Original author(s): Qing Li, 20180128
+!
+!EOP
+!
+! !LOCAL VARIABLES:
+   REALTYPE, parameter          :: eps      = 1.0E-10
+
+   integer                      :: k,ksbl
+   integer                      :: kk,kref,kp1
+
+   REALTYPE                     :: Bo,Bfsfc
+   REALTYPE                     :: tRadSrf
+   REALTYPE                     :: bRadSrf,bRadSbl
+   REALTYPE                     :: wm, ws
+   REALTYPE                     :: depth
+   REALTYPE                     :: Rk, Rref
+   REALTYPE                     :: Uk, Uref, Vk, Vref
+   REALTYPE                     :: cff
+
+   REALTYPE, dimension (0:nlev) :: Bflux
+   REALTYPE, dimension (0:nlev) :: RiBulk
+
+!  Langmuir enhancement factor
+!  Qing Li, 20171213
+   REALTYPE                     :: efactor
+!  Thickness of surface layer
+   REALTYPE                     :: surfthick
+
+!-----------------------------------------------------------------------
+!BOC
+!
+!-----------------------------------------------------------------------
+!  Compute total buoyancy flux at W-points.
+!  Bo is negative, if heat is lost or salinity is gained (convection).
+!  It does not include the short wave radiative flux at the surface.
+!-----------------------------------------------------------------------
+!
+    tRadSrf   =   tRad(nlev)
+    bRadSrf   =   bRad(nlev)
+
+!  surface buoyancy flux (negative for buoyancy loss)
+   Bo         = btFlux + bsFlux
+
+!  include effect of short wave radiation
+!  prepare non-local fluxes
+   do k = 0,nlev
+      Bflux(k)  = Bo  + ( bRadSrf - bRad(k) )
+# ifdef NONLOCAL
+      cff       = _ONE_-(0.5+sign(0.5d0,Bflux(k)))
+      gamh(k)   =  -cff*( tFlux + tRadSrf - tRad(k) )
+#  ifdef KPP_SALINITY
+      gams(k)   =  -cff*sFlux
+#  endif
+# endif
+
+   enddo
+
+!-----------------------------------------------------------------------
+!  Update grid in CVMix
+!-----------------------------------------------------------------------
+
+!  CVMix assumes that z indice increase with depth (surface to bottom)
+!  Qing Li, 20180126
+   call cvmix_put(CVmix_vars, 'zw_iface', z_w(nlev:0:-1))
+   call cvmix_put(CVmix_vars, 'zt_cntr',  z_r(nlev:1:-1))
+
+!-----------------------------------------------------------------------
+!  Get Langmuir enhancement factor
+!-----------------------------------------------------------------------
+
+   call enhancement_factor(langmuir_method, u_taus, z_w(nlev)-zsbl, efactor)
+
+!-----------------------------------------------------------------------
+!  Compute potential density and velocity components surface reference
+!  values.
+!-----------------------------------------------------------------------
+
+!  initialize the reference potential density and velocity
+   Rref = rho(nlev)
+   Uref =   u(nlev)
+   Vref =   v(nlev)
+
+!-----------------------------------------------------------------------
+!  Compute bulk Richardson number at grid cell center
+!-----------------------------------------------------------------------
+
+   RiBulk = _ZERO_
+
+   do k=nlev-1,2,-1
+      ! do the calculation at grid cell center
+      kp1 = k+1
+      depth = z_w(nlev)-z_r(kp1)
+      call cvmix_kpp_compute_turbulent_scales(_ONE_,       &
+          depth,Bflux(k),u_taus,                             &
+          langmuir_Efactor=efactor,                          &
+          w_s=ws,w_m=wm)
+      ! TODO: This corresponds to the following  <27-01-18, Qing Li> !
+      ! Figure out which is better
+      ! call wscale (Bflux(k),u_taus,epsilon*depth,efactor,wm,ws)
+
+      ! update potential density and velocity components surface
+      ! reference values with the surface layer averaged values
+      ! determine which layer contains surface layer
+      surfthick = epsilon*depth
+      do kk = nlev,k,-1
+         if (z_w(nlev)-z_w(kk-1) .ge. surfthick) then
+            kref = kk
+            exit
+         end if
+      end do
+      ! update Rref, Uref and Vref
+      if (kref < nlev) then
+         Rref = rho(kref)*(surfthick+z_w(kref))
+         Uref =   u(kref)*(surfthick+z_w(kref))
+         Vref =   v(kref)*(surfthick+z_w(kref))
+         do kk = nlev,kref+1,-1
+            Rref = Rref + rho(kk)*h(kk)
+            Uref = Uref +   u(kk)*h(kk)
+            Vref = Vref +   v(kk)*h(kk)
+         end do
+         Rref = Rref/surfthick
+         Uref = Uref/surfthick
+         Vref = Vref/surfthick
+      end if
+      ! use the values at grid centers
+      Rk = rho(kp1)
+      Uk =   u(kp1)
+      Vk =   v(kp1)
+
+      ! compute the Bulk Richardson number
+      RiBulk(kp1:kp1) = cvmix_kpp_compute_bulk_Richardson(           &
+                zt_cntr = (/-depth/),                                &
+                delta_buoy_cntr = (/-gorho0*(Rref-Rk)/),             &
+                delta_Vsqr_cntr = (/(Uref-Uk)**2+(Vref-Vk)**2/),     &
+                ws_cntr = (/ws/),                                    &
+                Nsqr_iface = (/NN(k), NN(kp1)/))
+   enddo  ! inner grid faces
+
+!-----------------------------------------------------------------------
+!  Compute total buoyancy flux at surface boundary layer depth
+!-----------------------------------------------------------------------
+!  This calculation is based on the boundary layer depth in the previous
+!  time step
+
+!  first find old boundary layer index "ksbl".
+   ksbl=1
+   do k=nlev,2,-1
+      if ((ksbl.eq.1).and.(z_w(k-1).lt.zsbl)) then
+         ksbl = k
+      endif
+   enddo
+
+   bRadSbl = ( bRad(ksbl-1)*(z_w(ksbl)-zsbl) +                          &
+               bRad(ksbl  )*(zsbl-z_w(ksbl-1) ) )/ h(ksbl)
+
+   Bfsfc   = Bo + (bRadSrf - bRadSbl)
+
+!-----------------------------------------------------------------------
+! Find the boundary layer depth
+!-----------------------------------------------------------------------
+
+   call cvmix_put(CVmix_vars, 'BulkRichardson_cntr', RiBulk(nlev:1:-1))
+   CVmix_vars%SurfaceFriction = u_taus
+   CVmix_vars%SurfaceBuoyancyForcing = Bfsfc
+   CVmix_vars%Coriolis = f
+
+   call cvmix_kpp_compute_OBL_depth(CVmix_vars)
+
+   ! CVMix returns a BoundaryLayerDepth > 0
+   zsbl = -CVmix_vars%BoundaryLayerDepth
+
+   ! DEBUG
+   LEVEL2 'zsbl = ', zsbl, ' Bfsfc = ', Bfsfc
+
+!-----------------------------------------------------------------------
+!  Update Langmuir enhancement factor
+!-----------------------------------------------------------------------
+
+   call enhancement_factor(langmuir_method, u_taus, z_w(nlev)-zsbl, efactor)
+
+!-----------------------------------------------------------------------
+!  Compute the mixing coefficients within the surface boundary layer
+!-----------------------------------------------------------------------
+
+   CVmix_vars%LangmuirEnhancementFactor = efactor
+   CVmix_vars%Mdiff_iface = num(nlev:0:-1)
+   CVmix_vars%Tdiff_iface = nuh(nlev:0:-1)
+   CVmix_vars%Sdiff_iface = nus(nlev:0:-1)
+
+   call cvmix_coeffs_kpp(CVmix_vars)
+
+   num = CVmix_vars%Mdiff_iface(nlev:0:-1)
+   nuh = CVmix_vars%Tdiff_iface(nlev:0:-1)
+   nus = CVmix_vars%Sdiff_iface(nlev:0:-1)
+   gamh = CVmix_vars%kpp_Tnonlocal_iface(nlev:0:-1)
+   gams = CVmix_vars%kpp_Snonlocal_iface(nlev:0:-1)
+
+!  no non-local fluxes at top and bottom
+   gamh(0   ) = _ZERO_
+   gams(0   ) = _ZERO_
+   gamh(nlev) = _ZERO_
+   gams(nlev) = _ZERO_
+
+ end subroutine surface_layer_cvmix
+!EOC
 
 
 !-----------------------------------------------------------------------
@@ -1783,7 +1985,7 @@
 ! !IROUTINE: Compute turbulence in the bottom layer \label{sec:kppBottom}
 !
 ! !INTERFACE:
-   subroutine bottom_layer(nlev,h0,h,rho,u,v,NN,u_taus,u_taub, &
+   subroutine bottom_layer(nlev,h,rho,u,v,NN,u_taus,u_taub, &
                             tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f)
 !
 ! !DESCRIPTION:
@@ -1813,9 +2015,6 @@
 
 !  number of grid cells
    integer                                       :: nlev
-
-!  bathymetry (m)
-   REALTYPE                                      :: h0
 
 !  thickness of grid cells (m)
    REALTYPE                                      :: h(0:nlev)
@@ -1876,7 +2075,7 @@
    REALTYPE                     :: swdk
    REALTYPE                     :: wm
    REALTYPE                     :: ws
-   REALTYPE                     :: zgrid,depth
+   REALTYPE                     :: depth
 
    REALTYPE                     :: Gm, Gt, Gs, K_bl, Ribot, Ritop, Rk, Rref
    REALTYPE                     :: Uk, Uref, Ustarb, Vk, Vref
@@ -2346,6 +2545,67 @@
 
    return
    end subroutine clean_kpp
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Routine to get the Langmuir enhancement factor
+!
+! !INTERFACE:
+   subroutine enhancement_factor(langmuir_method, u_taus, hbl, efactor)
+
+! !DESCRIPTION:
+!  This routine returns the enhancement factor according to the input
+!  Langmuir turbulence parameterization options.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)                 :: langmuir_method
+   REALTYPE, intent(in)                :: u_taus, hbl
+!
+! !OUTPUT PARAMETERS:
+   REALTYPE, intent(out)               :: efactor
+!
+! !REVISION HISTORY:
+!  Original author(s): Qing Li
+!
+!EOP
+!-----------------------------------------------------------------------
+! !LOCAL VARIABLES:
+   REALTYPE                            :: wind10m
+!
+!-----------------------------------------------------------------------
+!BOC
+!-----------------------------------------------------------------------
+
+   if (langmuir_method .eq. KPP_LT_EFACTOR_MODEL) then
+      ! 10-meter wind speed
+      wind10m = sqrt(u10**2+v10**2)
+      if (lcvmix) then
+         efactor = cvmix_kpp_efactor_model(wind10m, u_taus, &
+                 hbl, CVmix_params)
+      else
+         efactor = kpp_efactor_model(wind10m, u_taus, hbl)
+      end if
+   else if (langmuir_method .eq. KPP_LT_EFACTOR_READ) then
+      ! TODO: read from file <13-12-17, Qing Li> !
+      efactor = _ONE_
+   else if (langmuir_method .eq. KPP_LT_EFACTOR_SPEC) then
+      efactor = kpp_efactor_spec(wav_freq, wav_spec, wav_xcmp, wav_ycmp, &
+          u10, v10, u_taus, hbl)
+   else if (langmuir_method .eq. KPP_LT_ENTRAINMENT) then
+      ! TODO: efactor for entrainment <13-12-17, Qing Li> !
+      ! no enhancement factor should be applied to ws in the bulk
+      ! Richardson number when Langmuir enhanced entrainment is on
+      efactor = _ONE_
+   else
+      efactor = _ONE_
+   end if
+
+   end subroutine enhancement_factor
 !EOC
 
 !-----------------------------------------------------------------------

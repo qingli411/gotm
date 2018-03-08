@@ -25,7 +25,6 @@
 !
 ! !USES:
    use input
-   use meanflow,   only: gravity
 
    IMPLICIT NONE
 
@@ -974,6 +973,7 @@
 !EOP
 ! !LOCAL VARIABLES:
    integer                             :: i, k
+   REALTYPE, parameter                 :: gravity = 9.81
    REALTYPE                            :: const, tmp, fct, fct2
    REALTYPE                            :: dz, kdz, freqc, dfreqc
    REALTYPE                            :: aplus, aminus, iplus, iminus

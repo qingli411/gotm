@@ -1,54 +1,48 @@
-## What is GOTM?
+# GOTM
 
-GOTM - the **G**eneral **O**cean **T**urbulence **M**odel is an ambitious name for a one-dimensional water column model for marine and limnological applications. It is coupled to a choice of traditional as well as state-of-the-art parameterisations for vertical turbulent mixing. The package consists of the FORTRAN source code, a number of idealised and realistic test cases, and a scientific documentation, all published under the GNU public license.
+A comprehensive description of GOTM including compilation instructions are given at the official [GOTM homepage](http://gotm.net).
 
-A more comprehensive description is given at the official [GOTM homepage](http://www.gotm.net) (when opdated mid June 2016).
+This copy of GOTM code is used to setup simulations to compare different ocean surface boundary layer schemes. It is built on [GOTM](https://github.com/gotm-model/code) version 5.0.0. New capabilities include the following.
 
-## Short guide on how to compile GOTM
+* KPP using [CVMix](https://github.com/CVMix/CVMix-src)
 
-The following prerequisites must be fulfilled before compilation is started
+* Langmuir mixing parameterization and Langmuir turbulence enhanced entrainment in KPP (Li et al., 2016; Li and Fox-Kemper, 2017), both in GOTM version of KPP and via CVMix. _To be tested._
 
-1. The source code for GOTM and [FABM](http://www.fabm.net) must have been cloned from Git repositories. The actual cloning will depend on the platform and Git-utilities used. Further information is provide [here](https://help.github.com/articles/cloning-a-repository/#platform-linux)
-2. A Fortran compiler supporting at least Fortran 2003 must be avaialble
-   * On Linux [gfortran](https://gcc.gnu.org/fortran/) versions including and above 4.7 have been tested as well has the [Intel Fortran compiler](https://software.intel.com/en-us/fortran-compilers).
-   * On Windows the [Intel Fortran compiler](https://software.intel.com/en-us/fortran-compilers) configured with VisualStudio is working.
-3. [NetCDF](http://www.unidata.ucar.edu/software/netcdf)
-   * On Linux/Mac GOTM and NetCDF must be compiled with the same Fortran compiler. The configuration and compilation of the NetCDF library is beyond the purpose of this guide.
-   * On Windows NetCDF is provided in the repository - compatible with the Intel Fortran compiler
-4. [CMake](http://www.cmake.org) must be installed. CMake is used to configure the compilation and generate native build systems - i.e. Make-based systems on Linux/Mac and VisualStudio on Windows. CMake can be run in command-line and GUI-mode. Further information is provided [here](https://cmake.org/documentation/). A detailed description is beyond the purpose of this guide.
+* OSMOSIS scheme _To be included._
 
-Only when the above 4 points are checked it makes sense to proceed.
+* Second moment closure models of Langmuir turbulence (Harcourt 2013, 2015) _To be included._
 
-#### On Linux/Unix/Mac
+* Input of wave spectrum data from wave buoy to calculate the Stokes drift.
 
-Text in *italics* are commands and text in **bold** are variables.
+# Install
 
-In the following it is assumed the GOTM and FABM source code is cloned to **GOTM_BASE** and **FABM_BASE**. Default values are:
-* **GOTM_BASE** = *$HOME/GOTM/code*
-* **FABM_BASE** = *$HOME/FABM/code*
+Refer to the [software requirements](http://gotm.net/portfolio/software/) and [instructions for Linux/Mac](http://gotm.net/software/linux/) for a general guide of installing GOTM.
 
-##### Configuring using the provided script
-CMake advocates *out of source compilation* i.e. the actual compilation is separated from the source code. The first step is to create a *build directory* and change to it:
-* *mkdir -p $HOME/build/gotm/ && cd $HOME/build/gotm*
+## CMake
 
-Executing the script *$GOTM_BASE/scripts/linux/gotm_configure.sh* will generate a Make-based build system in a sub-directory named after the compiler used - default is *gfortran*.
+[CMake](https://cmake.org) is used in this version of GOMT to configure the code. The options and rules are listed in `${GOTM_ROOT}/src/CMakeLists.txt`.
 
-This step must be completed without any errors before advancing to the actual compilation.
+## NetCDF
 
-##### Building using the provided script
-Executing the script *$GOTM_BASE/scripts/linux/gotm_build.sh* will compile GOTM according to the configuration carried out in the previous step.
+[NetCDF](https://www.unidata.ucar.edu/software/netcdf/) is required to compile GOTM by default. CMake uses `nf-config` to determine the correct path for `NetCDF_LIBRARIES` and `NetCDF_INCLUDE_DIRS`. One can check if `nf-config` is working correctly by typing
+```sh
+nf-config --all
+```
+in the terminal. See `${GOTM_ROOT}/src/cmake/Modules/FindNetCDF.cmake` for more rules CMake uses to find the NetCDF library.
 
-A manual build can also be done like:
-* *cd $HOME/build/gotm/<compiler> && make install*
+A note for Mac users: if NetCDF is installed using [Homebrew](https://brew.sh) (at least for NetCDF v4.5.0), `nf-config` is not working correctly and gives an error `nf-config not yet implemented for cmake builds`. [MacPort](https://www.macports.org) version seems fine. A fix is to use your own `nf-config` instead of the Homebrew version. An example (NetCDF v4.5.0 installed in `/usr/local` with Fortran compiler `gfortran`) is given in `${GOTM_ROOT}/scripts/nf-config`.
 
-CMake *installs* the generated executable and libraries in an *install_directory* - default i **$HOME/local**. 
-To test if the compilation has been succesful - try:
-* *$HOME/local/bin/gotm -c*
+## CVMix
 
-For furher use of GOTM it is a big advantage to add **$HOME/local/bin** to the **PATH**.
+To use [CVMix](https://github.com/CVMix/CVMix-src) in GOTM, CVMix needs to be compiled separately. See [here](https://github.com/CVMix/CVMix-src) for more details on how to compile CVMix.
 
-The scripts used above for configuration and compilation have some documentation included and it should be relative easy to adjust to specific need and taste.
+To compile GOTM with CVMix, add the flag `-DGOTM_USE_CVMix=true` for `cmake`, i.e.,
+```sh
+cmake ${srcdir} -DGOTM_USE_CVMix=true
+make install
+```
+where `${srcdir}` is the directory of the GOTM source code.
 
+The file `${GOTM_ROOT}/src/cmake/Modules/FindCVMix.cmake` sets the rules used by CMake to find the CVMix library. By default it assumes the compiled CVMix is located in either `${HOME}/CVMix-src` or `${HOME}/local/CVMix-src`. This file should be modified accordingly if CVMix is located in a different directory. Here is how it works. It tries to determine the root directory of CVMix (`CVMix_PREFIX`) by looking for `src/cvmix_driver.F90` in the above directories. Then it determines `CVMix_LIBRARIES` by looking for `libcvmix` in `${CVMix_PREFIX}/lib` and `CVMix_INCLUDE_DIRS` by looking for `cvmix_kpp.mod` in `${CVMix_PREFIX}/include`.
 
-#### On Windows
-Still to be done
+Also make sure `#define KPP_CVMIX` is set in `${GOTM_ROOT}/include/cppdefs.h`

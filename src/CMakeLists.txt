@@ -97,9 +97,9 @@ endif()
   endif(GOTM_USE_NetCDF)
 #endif()
 
-# Use CVMix if requested
+# Use CVMix if requested, by default not use
 # Qing Li, 20180126
-option(GOTM_USE_CVMix "Include CVMix library for KPP" ON)
+option(GOTM_USE_CVMix "Include CVMix library for KPP" OFF)
 if(GOTM_USE_CVMix)
     find_package(CVMix REQUIRED)
     include_directories("${CVMix_INCLUDE_DIRS}")

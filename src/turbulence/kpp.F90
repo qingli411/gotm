@@ -1921,6 +1921,7 @@
    ! CVMix returns a BoundaryLayerDepth > 0
    zsbl = -CVmix_vars%BoundaryLayerDepth
 
+<<<<<<< HEAD
 !-----------------------------------------------------------------------
 !  Update surface buoyancy flux in the new surface boundary layer
 !-----------------------------------------------------------------------

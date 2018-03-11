@@ -322,11 +322,11 @@
          <o2_units>1</o2_units>
          <o2_prof_file>o2_prof_file.dat</o2_prof_file>
       </o2_profile>
-      <wave_spec>
-         <spec_method>0</spec_method>
+      <stokes_drift>
+         <ustokes_method>0</ustokes_method>
          <nfreq>64</nfreq>
-         <spec_file>spec_file.dat</spec_file>
-      </wave_spec>
+         <ustokes_file>spec_file.dat</ustokes_file>
+      </stokes_drift>
    </obs>
    <seagrass>
       <canopy>

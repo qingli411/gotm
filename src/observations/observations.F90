@@ -68,7 +68,10 @@
 
 !  observed wave frequency, energy spectrum and direction
 !  Qing Li, 20171217
+!  Qing Li, 20180311, wav_xcmp and wav_ycmp are also used to save the partitioned
+!                     surface Stokes drift
    REALTYPE, public, dimension(:), allocatable, target :: wav_freq, wav_spec, wav_xcmp, wav_ycmp
+
 !  Stokes drift
 !  Qing Li, 20171220
    REALTYPE, public, dimension(:), allocatable         :: ustokes, vstokes
@@ -180,11 +183,11 @@
    REALTYPE, public          :: Tz
    REALTYPE, public          :: phiw
 
-!  Wave spectrum - 'wave_spec' namelist
-!  Qing Li, 20171217
-   integer, public           :: spec_method
+!  Stokes drift - 'stokes_drift' namelist
+!  Qing Li, 20180311
+   integer, public           :: ustokes_method
    integer, public           :: nfreq
-   character(LEN=PATH_MAX)   :: spec_file
+   character(LEN=PATH_MAX)   :: ustokes_file
 
 
 !  Observed velocity profile profiles - typically from ADCP
@@ -202,7 +205,7 @@
    REALTYPE, public          :: b_obs_surf,b_obs_NN
    REALTYPE, public          :: b_obs_sbf
 
-   REALTYPE,public, parameter:: pi=3.141592654d0
+   REALTYPE, public, parameter :: pi=3.141592654d0
 
 ! !DEFINED PARAMETERS:
 
@@ -214,6 +217,11 @@
    integer, parameter        :: CONST_PROF=1
    integer, parameter        :: TWO_LAYERS=2
    integer, parameter        :: CONST_NN=3
+   ! For Stokes drift Qing Li, 20180311
+   integer, parameter        :: FROMSPEC=2
+   integer, parameter        :: FROMUSP=3
+
+   REALTYPE, parameter       :: gravity = 9.81
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -302,10 +310,10 @@
    namelist /wave_nml/                                          &
             wave_method,wave_file,Hs,Tz,phiw
 
-!  wave spectrum namelist
-!  Qing Li, 20171217
-   namelist /wave_spec/                                          &
-            spec_method,nfreq,spec_file
+!  Stokes drift namelist
+!  Qing Li, 20180311
+   namelist /stokes_drift/                                          &
+            ustokes_method,nfreq,ustokes_file
 
    namelist /velprofile/ vel_prof_method,vel_prof_file,         &
             vel_relax_tau,vel_relax_ramp
@@ -423,11 +431,11 @@
    Tz=_ZERO_
    phiw=_ZERO_
 
-!  Wave spectrum - 'wave_spec' namelist
-!  Qing Li, 20171217
-   spec_method=0
+!  Stokes drift - 'stokes_drift' namelist
+!  Qing Li, 20180311
+   ustokes_method=0
    nfreq=64
-   spec_file='spec.dat'
+   ustokes_file='spec.dat'
 
 !  Observed velocity profile profiles - typically from ADCP
    vel_prof_method=0
@@ -459,7 +467,7 @@
    read(namlst,nml=bprofile,err=91)
    read(namlst,nml=o2_profile,err=92)
    ! Qing Li, 20171217
-   read(namlst,nml=wave_spec,err=93)
+   read(namlst,nml=stokes_drift,err=93)
    close(namlst)
 
    allocate(sprof(0:nlev),stat=rc)
@@ -780,23 +788,28 @@
          stop 'init_observations()'
    end select
 
-!  Wave spectrum
-!  Qing Li, 20171217
-   select case (spec_method)
+!  Stokes drift
+!  Qing Li, 20180311
+   select case (ustokes_method)
       case (NOTHING)
          wav_spec = _ZERO_
          wav_xcmp = _ZERO_
          wav_ycmp = _ZERO_
       case (CONSTANT)
 !        Empirical spectrum
-      case (FROMFILE)
-         call register_input_1d_spec(spec_file,1,wav_spec,'observed band wave energy spectrum')
-         call register_input_1d_spec(spec_file,2,wav_xcmp,'observed band directional component: x-direction')
-         call register_input_1d_spec(spec_file,3,wav_ycmp,'observed band directional component: y-direction')
+      case (FROMSPEC)
+         call register_input_1d_spec(ustokes_file,1,wav_spec,'observed band wave energy spectrum')
+         call register_input_1d_spec(ustokes_file,2,wav_xcmp,'observed band directional component: x-direction')
+         call register_input_1d_spec(ustokes_file,3,wav_ycmp,'observed band directional component: y-direction')
          LEVEL2 'Reading wave spectrum data from:'
-         LEVEL3 trim(spec_file)
+         LEVEL3 trim(ustokes_file)
+      case (FROMUSP)
+         call register_input_1d_spec(ustokes_file,1,wav_xcmp,'partitioned surface Stokes drift: x-direction')
+         call register_input_1d_spec(ustokes_file,2,wav_ycmp,'partitioned surface Stokes drift: y-direction')
+         LEVEL2 'Reading partitioned surface Stokes drift data from:'
+         LEVEL3 trim(ustokes_file)
       case default
-         LEVEL1 'A non-valid spec_method has been given ',spec_method
+         LEVEL1 'A non-valid ustokes_method has been given ',ustokes_method
          stop 'init_observations()'
    end select
 
@@ -884,7 +897,7 @@
 92 FATAL 'I could not read "o2_profile" namelist'
    stop 'init_observations'
 ! Qing Li, 20171217
-93 FATAL 'I could not read "wave_spec" namelist'
+93 FATAL 'I could not read "stokes_drift" namelist'
    stop 'init_observations'
 
    end subroutine init_observations
@@ -952,7 +965,59 @@
    subroutine stokes_drift(freq,spec,xcmp,ycmp,nlev,z,zi,ustokes,vstokes)
 !
 ! !DESCRIPTION:
-!  Calculate the Stokes drift profile from wave spectrum.
+!  A wrapper for all the subroutines to calculate the Stokes drift profile.
+! TODO: Documentation  <11-03-18, Qing Li> !
+!
+! !USES:
+
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)                 :: nlev
+   REALTYPE, intent(in)                :: freq(:), spec(:), xcmp(:), ycmp(:)
+   REALTYPE, intent(in)                :: z(0:nlev), zi(0:nlev)
+!
+! !OUTPUT PARAMETERS:
+   REALTYPE, intent(out)               :: ustokes(0:nlev), vstokes(0:nlev)
+
+! !REVISION HISTORY:
+!  Original author(s): Qing Li
+!
+!EOP
+! !LOCAL VARIABLES:
+!-----------------------------------------------------------------------
+!BOC
+
+   select case (ustokes_method)
+      case (NOTHING)
+         ustokes = _ZERO_
+         vstokes = _ZERO_
+      case (CONSTANT)
+!        Empirical spectrum
+      case (FROMSPEC)
+         call stokes_drift_spec(freq,spec,xcmp,ycmp,nlev,z,zi,ustokes,vstokes)
+      case (FROMUSP)
+         call stokes_drift_usp(freq,xcmp,ycmp,nlev,z,zi,ustokes,vstokes)
+      case default
+         LEVEL1 'A non-valid ustokes_method has been given ',ustokes_method
+         stop 'stokes_drift()'
+   end select
+
+   end subroutine stokes_drift
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: stokes_drift_spec
+!
+! !INTERFACE:
+   subroutine stokes_drift_spec(freq,spec,xcmp,ycmp,nlev,z,zi,ustokes,vstokes)
+!
+! !DESCRIPTION:
+!  Calculate the Stokes drift profile from wave spectrum. The wave spectrum
+!   here is the spectrum for Stokes drift weighted by frequency bin width,
+!   i.e., spec = f**3 S(f) df
 ! TODO: Documentation  <20-12-17, Qing Li> !
 !
 ! !USES:
@@ -961,8 +1026,8 @@
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: nlev
-   REALTYPE, intent(in)                :: spec(:), xcmp(:), ycmp(:)
-   REALTYPE, intent(in)                :: z(0:nlev), zi(0:nlev), freq(:)
+   REALTYPE, intent(in)                :: freq(:), spec(:), xcmp(:), ycmp(:)
+   REALTYPE, intent(in)                :: z(0:nlev), zi(0:nlev)
 !
 ! !OUTPUT PARAMETERS:
    REALTYPE, intent(out)               :: ustokes(0:nlev), vstokes(0:nlev)
@@ -973,8 +1038,7 @@
 !EOP
 ! !LOCAL VARIABLES:
    integer                             :: i, k
-   REALTYPE, parameter                 :: gravity = 9.81
-   REALTYPE                            :: const, tmp, fct, fct2
+   REALTYPE                            :: const, tmp
    REALTYPE                            :: dz, kdz, freqc, dfreqc
    REALTYPE                            :: aplus, aminus, iplus, iminus
    REALTYPE                            :: factor(nfreq), factor2(nfreq)
@@ -992,21 +1056,6 @@
 ! cutoff frequency
    freqc = 1.5*freq(nfreq)-0.5*freq(nfreq-1)
    dfreqc = freq(nfreq)-freq(nfreq-1)
-!  Stokes drift calculated at the grid center (z), z(0) is not used
-   ! do k=1,nlev
-   !    do i=1,nfreq
-   !       ustokes(k) = ustokes(k)+factor(i)*spec(i)*xcmp(i)*exp(factor2(i)*z(k))
-   !       vstokes(k) = vstokes(k)+factor(i)*spec(i)*ycmp(i)*exp(factor2(i)*z(k))
-   !    end do
-! !     add contribution from a f^-5 tail
-   !    fct2 = const*freqc**2
-   !    fct = 2.*pi*freqc*fct2
-   !    tmp = freqc*fct*spec(nfreq)/dfreqc &
-   !        *(exp(fct2*z(k))-sqrt(pi*fct2*abs(z(k))) &
-   !        *(_ONE_-erf(sqrt(fct2*abs(z(k))))))
-   !    ustokes(k) = ustokes(k)+tmp*xcmp(nfreq)
-   !    vstokes(k) = vstokes(k)+tmp*ycmp(nfreq)
-   ! end do
 !  Stokes drift averaged over the grid cell, z(0) is not used
    do k=1,nlev
       dz = zi(k)-zi(k-1)
@@ -1032,8 +1081,71 @@
       vstokes(k) = vstokes(k)+tmp*ycmp(nfreq)
    end do
 
-   end subroutine stokes_drift
+   end subroutine stokes_drift_spec
 !EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: stokes_drift_usp
+!
+! !INTERFACE:
+   subroutine stokes_drift_usp(freq,ussp,vssp,nlev,z,zi,ustokes,vstokes)
+!
+! !DESCRIPTION:
+!  Calculate the Stokes drift profile from partitioned Stokes drift.
+! TODO: Documentation  <11-03-18, Qing Li> !
+!
+! !USES:
+
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)                 :: nlev
+   REALTYPE, intent(in)                :: freq(:), ussp(:), vssp(:)
+   REALTYPE, intent(in)                :: z(0:nlev), zi(0:nlev)
+!
+! !OUTPUT PARAMETERS:
+   REALTYPE, intent(out)               :: ustokes(0:nlev), vstokes(0:nlev)
+
+! !REVISION HISTORY:
+!  Original author(s): Qing Li
+!
+!EOP
+! !LOCAL VARIABLES:
+   integer                             :: i, k
+   REALTYPE                            :: const, tmp
+   REALTYPE                            :: kdz, dz
+   REALTYPE                            :: factor(nfreq)
+!-----------------------------------------------------------------------
+!BOC
+!  initialization
+   ustokes = _ZERO_
+   vstokes = _ZERO_
+!  some factors
+   const = 8.*pi**2./gravity
+   do i=1,nfreq
+      ! 2k
+      factor(i) = const*freq(i)**2.
+   end do
+!  Stokes drift averaged over the grid cell, z(0) is not used
+   do k=1,nlev
+      dz = zi(k)-zi(k-1)
+      do i=1,nfreq
+         kdz = factor(i)*dz/2.
+         if (kdz .lt. 100.) then
+             tmp = sinh(kdz)/kdz*exp(factor(i)*z(k))
+         else
+             tmp = exp(factor(i)*z(k))
+         end if
+         ustokes(k) = ustokes(k)+tmp*ussp(i)
+         vstokes(k) = vstokes(k)+tmp*vssp(i)
+      end do
+   end do
+
+   end subroutine stokes_drift_usp
+!EOC
+
 !-----------------------------------------------------------------------
 !BOP
 !
@@ -1164,9 +1276,9 @@
    LEVEL2 'wave_nml namelist',                                  &
             wave_method,wave_file,Hs,Tz,phiw
 
-!  Qing Li, 20171217
-   LEVEL2 'wave_spec namelist',                                  &
-            spec_method,nfreq,spec_file
+!  Qing Li, 20180311
+   LEVEL2 'stokes_drift namelist',                                  &
+            ustokes_method,nfreq,ustokes_file
 
    LEVEL2 'observed velocity profiles namelist',                &
             vel_prof_method,vel_prof_file,                      &

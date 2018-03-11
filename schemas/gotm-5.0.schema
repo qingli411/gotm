@@ -1230,19 +1230,26 @@
             </fileinfo>
          </element>
       </element>
-      <element name="wave_spec" label="wind wave spectrum" description="Wind induced wave spectrum can be specified. Used to include the effects of Stokes drift and Langmuir turbulence.">
-         <element name="spec_method" type="int" label="method to prescribe the wave spectrum">
+      <element name="stokes_drift" label="Stokes_drift" description="Stokes drift profile can be specified. Used to include the effects of Langmuir turbulence.">
+         <element name="ustokes_method" type="int" label="method to prescribe the Stokes drift">
             <options>
                <option value="0" label="nothing is done - all variables equal 0" />
                <option value="1" label="constant values" />
-               <option value="2" label="time varying variables read from file" />
+               <option value="2" label="calculated from the frequency weighted wave spectrum" />
+               <option value="3" label="calculated from the partitioned surface Stokes drift" />
             </options>
          </element>
          <element name="nfreq" type="int" label="number of frequency bands">
-            <condition type="eq" variable="./spec_method" value="2" />
+            <condition type="or">
+               <condition type="eq" variable="./ustokes_method" value="2" />
+               <condition type="eq" variable="./ustokes_method" value="3" />
+            </condition>
          </element>
-         <element name="spec_file" type="gotmdatafile" label="filename for file wave spectrum">
-            <condition type="eq" variable="./spec_method" value="2" />
+         <element name="ustokes_file" type="gotmdatafile" label="filename for file Stokes drift">
+            <condition type="or">
+               <condition type="eq" variable="./ustokes_method" value="2" />
+               <condition type="eq" variable="./ustokes_method" value="3" />
+            </condition>
             <fileinfo type="profilesintime">
                <filevariables>
                   <filevariable name="wav_spec" label="band wave energy spectrum" />
@@ -1253,7 +1260,6 @@
          </element>
       </element>
    </element>
-
    <element name="seagrass" label="seagrass model" optional="True">
       <element name="canopy">
          <element name="seagrass_calc" type="bool" label="use seagrass model" />

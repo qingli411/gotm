@@ -1515,7 +1515,7 @@
    Bfsfc   = Bo + (bRadSrf - bRadSbl)
 
    ! DEBUG
-   LEVEL2 'zsbl = ', zsbl, ' Bfsfc = ', Bfsfc
+   ! LEVEL2 'zsbl = ', zsbl, ' Bfsfc = ', Bfsfc
 
 !-----------------------------------------------------------------------
 !  Update Langmuir enhancement factor
@@ -1944,7 +1944,7 @@
    zsbl = -CVmix_vars%BoundaryLayerDepth
 
    ! DEBUG
-   LEVEL2 'zsbl = ', zsbl, ' Bfsfc = ', Bfsfc
+   ! LEVEL2 'zsbl = ', zsbl, ' Bfsfc = ', Bfsfc
 
 !-----------------------------------------------------------------------
 !  Update Langmuir enhancement factor

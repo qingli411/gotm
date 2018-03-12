@@ -1016,8 +1016,8 @@
 !
 ! !DESCRIPTION:
 !  Calculate the Stokes drift profile from wave spectrum. The wave spectrum
-!   here is the spectrum for Stokes drift weighted by frequency bin width,
-!   i.e., spec = f**3 S(f) df
+!   here is the spectrum weighted by the frequency bin width,
+!   i.e., spec = S(f) df
 ! TODO: Documentation  <20-12-17, Qing Li> !
 !
 ! !USES:

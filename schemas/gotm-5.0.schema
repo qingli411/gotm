@@ -1235,7 +1235,7 @@
             <options>
                <option value="0" label="nothing is done - all variables equal 0" />
                <option value="1" label="constant values" />
-               <option value="2" label="calculated from the frequency weighted wave spectrum" />
+               <option value="2" label="calculated from the frequency bin width weighted wave spectrum" />
                <option value="3" label="calculated from the partitioned surface Stokes drift" />
             </options>
          </element>

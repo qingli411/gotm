@@ -1789,7 +1789,7 @@
    REALTYPE                     :: depth
    REALTYPE                     :: Rk, Rref
    REALTYPE                     :: Uk, Uref, Vk, Vref
-   REALTYPE                     :: cff
+   REALTYPE                     :: bRad_cntr
 
    REALTYPE, dimension (0:nlev) :: Bflux
    REALTYPE, dimension (0:nlev) :: RiBulk
@@ -1817,23 +1817,19 @@
 
 !  include effect of short wave radiation
 !  prepare non-local fluxes
-   do k = 0,nlev
-      Bflux(k)  = Bo  + ( bRadSrf - bRad(k) )
-# ifdef NONLOCAL
-      cff       = _ONE_-(0.5+sign(0.5d0,Bflux(k)))
-      gamh(k)   =  -cff*( tFlux + tRadSrf - tRad(k) )
-#  ifdef KPP_SALINITY
-      gams(k)   =  -cff*sFlux
-#  endif
-# endif
+!  Bflux(k) is the total buoyancy flux above the level z_r(k)
+!  Qing Li, 20180321
 
+   do k = 1,nlev
+      bRad_cntr = 0.5*(bRad(k)+bRad(k-1))
+      Bflux(k)  = Bo  + ( bRadSrf - bRad_cntr )
    enddo
 
 !-----------------------------------------------------------------------
 !  Update grid in CVMix
 !-----------------------------------------------------------------------
 
-!  CVMix assumes that z indice increase with depth (surface to bottom)
+!  CVMix assumes that z indices increase with depth (surface to bottom)
 !  Qing Li, 20180126
    call cvmix_put(CVmix_vars, 'zw_iface', z_w(nlev:0:-1))
    call cvmix_put(CVmix_vars, 'zt_cntr',  z_r(nlev:1:-1))
@@ -1865,12 +1861,9 @@
       kp1 = k+1
       depth = z_w(nlev)-z_r(kp1)
       call cvmix_kpp_compute_turbulent_scales(_ONE_,       &
-          depth,Bflux(k),u_taus,                             &
+          depth,Bflux(kp1),u_taus,                             &
           langmuir_Efactor=efactor,                          &
           w_s=ws,w_m=wm)
-      ! TODO: This corresponds to the following  <27-01-18, Qing Li> !
-      ! Figure out which is better
-      ! call wscale (Bflux(k),u_taus,epsilon*depth,efactor,wm,ws)
 
       ! update potential density and velocity components surface
       ! reference values with the surface layer averaged values
@@ -1908,6 +1901,7 @@
                 delta_Vsqr_cntr = (/(Uref-Uk)**2+(Vref-Vk)**2/),     &
                 ws_cntr = (/ws/),                                    &
                 Nsqr_iface = (/NN(k), NN(kp1)/))
+
    enddo  ! inner grid faces
 
 !-----------------------------------------------------------------------
@@ -1943,8 +1937,23 @@
    ! CVMix returns a BoundaryLayerDepth > 0
    zsbl = -CVmix_vars%BoundaryLayerDepth
 
-   ! DEBUG
-   ! LEVEL2 'zsbl = ', zsbl, ' Bfsfc = ', Bfsfc
+!-----------------------------------------------------------------------
+!  Update surface buoyancy flux in the new surface boundary layer
+!-----------------------------------------------------------------------
+
+   ksbl=1
+   do k=nlev,2,-1
+      if ((ksbl.eq.1).and.(z_w(k-1).lt.zsbl)) then
+         ksbl = k
+      endif
+   enddo
+
+   bRadSbl = ( bRad(ksbl-1)*(z_w(ksbl)-zsbl) +                          &
+               bRad(ksbl  )*(zsbl-z_w(ksbl-1) ) )/ h(ksbl)
+
+   Bfsfc   = Bo + (bRadSrf - bRadSbl)
+
+   CVmix_vars%SurfaceBuoyancyForcing = Bfsfc
 
 !-----------------------------------------------------------------------
 !  Update Langmuir enhancement factor
@@ -1952,22 +1961,26 @@
 
    call enhancement_factor(langmuir_method, u_taus, z_w(nlev)-zsbl, efactor)
 
+   CVmix_vars%LangmuirEnhancementFactor = efactor
+
 !-----------------------------------------------------------------------
 !  Compute the mixing coefficients within the surface boundary layer
 !-----------------------------------------------------------------------
 
-   CVmix_vars%LangmuirEnhancementFactor = efactor
-   CVmix_vars%Mdiff_iface = num(nlev:0:-1)
-   CVmix_vars%Tdiff_iface = nuh(nlev:0:-1)
-   CVmix_vars%Sdiff_iface = nus(nlev:0:-1)
+   ! Qing Li, 20180321
+   ! Note that arrays at the cell interface in CVMix have indices (1:nlev)
+   ! from the surface to the bottom, whereas those in GOTM have indices (nlev:0)
+   CVmix_vars%Mdiff_iface(1:nlev+1) = num(nlev:0:-1)
+   CVmix_vars%Tdiff_iface(1:nlev+1) = nuh(nlev:0:-1)
+   CVmix_vars%Sdiff_iface(1:nlev+1) = nus(nlev:0:-1)
 
    call cvmix_coeffs_kpp(CVmix_vars)
 
-   num = CVmix_vars%Mdiff_iface(nlev:0:-1)
-   nuh = CVmix_vars%Tdiff_iface(nlev:0:-1)
-   nus = CVmix_vars%Sdiff_iface(nlev:0:-1)
-   gamh = CVmix_vars%kpp_Tnonlocal_iface(nlev:0:-1)
-   gams = CVmix_vars%kpp_Snonlocal_iface(nlev:0:-1)
+   num(0:nlev) = CVmix_vars%Mdiff_iface(nlev+1:1:-1)
+   nuh(0:nlev) = CVmix_vars%Tdiff_iface(nlev+1:1:-1)
+   nus(0:nlev) = CVmix_vars%Sdiff_iface(nlev+1:1:-1)
+   gamh(0:nlev) = CVmix_vars%kpp_Tnonlocal_iface(nlev+1:1:-1)
+   gams(0:nlev) = CVmix_vars%kpp_Snonlocal_iface(nlev+1:1:-1)
 
 !  no non-local fluxes at top and bottom
    gamh(0   ) = _ZERO_

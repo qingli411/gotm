@@ -381,10 +381,6 @@
 !  use clipping of MLD at Ekman and Monin-Oboukhov scale
    logical                               ::    clip_mld
 
-!  use CVMix
-!  Qing Li, 20180126
-   logical                               ::    lcvmix
-
 !  positions of grid faces and centers
    REALTYPE, dimension(:), allocatable   ::    z_w,z_r
 
@@ -398,6 +394,43 @@
 !  Qing Li, 20171213
    integer                               ::    langmuir_method
    character(len=PATH_MAX)               ::    langmuir_file
+
+!  use CVMix if true
+!  Qing Li, 20180126
+   logical                               ::    lcvmix
+
+!  CVMix parameters
+!  Qing Li, 20180321
+!  G'(1) = 0 (shape function) if true, compute G'(1) as in LMD94 if false
+   logical                               ::    lnoDGat1
+
+!  interpolation type used to interpolate bulk Richardson number
+!  options are
+!  (i)   linear
+!  (ii)  quadratic
+!  (iii) cubic
+   character(len=PATH_MAX)               ::    interp_type
+
+!  interpolation type used to interpolate diff and visc at OBL_depth
+!  options are
+!  (i)   linear
+!  (ii)  quadratic
+!  (iii) cubic
+!  (iv)  LMD94
+   character(len=PATH_MAX)               ::    interp_type2
+
+!  matching technique between the boundary layer and the ocean interior
+!  options are
+!  (i) SimpleShapes => Shape functions for both the gradient and nonlocal
+!                      terms vanish at interface
+!  (ii) MatchGradient => Shape function for nonlocal term vanishes at
+!                        interface, but gradient term matches interior
+!                        values.
+!  (iii) MatchBoth => Shape functions for both the gradient and nonlocal
+!                     term match interior values at interface
+!  (iv) ParabolicNonLocal => Shape function for the nonlocal term is
+!                          (1-sigma)^2, gradient term is sigma*(1-sigma)^2
+   character(len=PATH_MAX)               ::    MatchTechnique
 
 #ifdef KPP_CVMIX
 !  CVMix datatypes
@@ -471,7 +504,9 @@
 
    namelist /kpp/                      kpp_sbl,kpp_bbl,kpp_interior,    &
                                        clip_mld,Ric,lcvmix,             &
-                                       langmuir_method,langmuir_file
+                                       langmuir_method,langmuir_file,   &
+                                       lnoDGat1, MatchTechnique,        &
+                                       interp_type, interp_type2
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -694,31 +729,46 @@
       else
          LEVEL4 'Clipping at Ekman/Oboukhov scale   - not active -   '
       endif
+! CVMix
+! Qing Li, 20180321
+      if (lcvmix) then
+         LEVEL4 'Use CVMix                              - active -   '
+         LEVEL4 'Matching technique: ', trim(MatchTechnique)
+         LEVEL4 'Interpolation type for Ri: ', trim(interp_type)
+         LEVEL4 'Interpolation type for diff and visc: ', trim(interp_type2)
+         if (lnoDGat1) then
+            LEVEL4 "Set shape function G'(1) = 0           - active -   "
+         else
+            LEVEL4 "Set shape function G'(1) = 0    - not active -   "
+         endif
+      else
+         LEVEL4 'Use CVMix                          - not active -   '
 # ifdef KPP_SALINITY
-      LEVEL4 'Compute salinity fluxes                - active -   '
+         LEVEL4 'Compute salinity fluxes                - active -   '
 # else
-      LEVEL4 'Compute salinity fluxes            - not active -   '
+         LEVEL4 'Compute salinity fluxes            - not active -   '
 # endif
 # ifdef NONLOCAL
-      LEVEL4 'Nonlocal fluxes                        - active -   '
+         LEVEL4 'Nonlocal fluxes                        - active -   '
 # else
-      LEVEL4 'Nonlocal fluxes                    - not active -   '
+         LEVEL4 'Nonlocal fluxes                    - not active -   '
 # endif
 # ifdef KPP_TWOPOINT_REF
-      LEVEL4 'Ri_b from 2-point interpolation        - active -   '
+         LEVEL4 'Ri_b from 2-point interpolation        - active -   '
 # else
-      LEVEL4 'Ri_b from 2-point interpolation    - not active -   '
+         LEVEL4 'Ri_b from 2-point interpolation    - not active -   '
 # endif
 # ifdef KPP_IP_FC
-      LEVEL4 'F_c =0 criterion for SL-depth          - active -   '
+         LEVEL4 'F_c =0 criterion for SL-depth          - active -   '
 # else
-      LEVEL4 'Ri_b - Ri_c =0 criterion for SL-depth  - active -   '
+         LEVEL4 'Ri_b - Ri_c =0 criterion for SL-depth  - active -   '
 # endif
 # ifdef KPP_CLIP_GS
-      LEVEL4 'Clipping G''(sigma) for matching        - active -   '
+         LEVEL4 'Clipping G''(sigma) for matching        - active -   '
 # else
-      LEVEL4 'Clipping G''(sigma) for matching    - not active -   '
+         LEVEL4 'Clipping G''(sigma) for matching    - not active -   '
 # endif
+      endif
 
       LEVEL4 'Ri_c  = ', Ric
 
@@ -761,12 +811,13 @@
 !     CVMix: initialize parameter datatype
 !     Qing Li, 20180126
       call cvmix_init_kpp(ri_crit=Ric,                                &
-                          ! interp_type=interp_type,                    &
+                          interp_type=interp_type,                    &
+                          interp_type2=interp_type2,                  &
                           lEkman=clip_mld,                            &
                           lMonOb=clip_mld,                            &
                           llangmuirEF=llangmuir_efactor,              &
-                          MatchTechnique='MatchGradient',             &
-                          ! lnoDGat1=lnoDGat1,                          &
+                          MatchTechnique=MatchTechnique,              &
+                          lnoDGat1=lnoDGat1,                          &
                           surf_layer_ext = epsilon)
       call cvmix_put_kpp("a_m", kpp_am)
       call cvmix_put_kpp("a_s", kpp_as)

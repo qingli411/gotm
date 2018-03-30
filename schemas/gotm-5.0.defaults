@@ -203,9 +203,14 @@
          <kpp_bbl>True</kpp_bbl>
          <kpp_interior>True</kpp_interior>
          <clip_mld>False</clip_mld>
+         <lcvmix>False</lcvmix>
+         <lnoDGat1>True</lnoDGat1>
          <Ric>0.3</Ric>
          <langmuir_method>0</langmuir_method>
          <langmuir_file>langmuir_file.dat</langmuir_file>
+         <interp_type>quadratic</interp_type>
+         <interp_type2>LMD94</interp_type2>
+         <MatchTechnique>SimpleShapes</MatchTechnique>
       </kpp>
    </kpp>
    <obs>
@@ -322,11 +327,11 @@
          <o2_units>1</o2_units>
          <o2_prof_file>o2_prof_file.dat</o2_prof_file>
       </o2_profile>
-      <wave_spec>
-         <spec_method>0</spec_method>
+      <stokes_drift>
+         <ustokes_method>0</ustokes_method>
          <nfreq>64</nfreq>
-         <spec_file>spec_file.dat</spec_file>
-      </wave_spec>
+         <ustokes_file>spec_file.dat</ustokes_file>
+      </stokes_drift>
    </obs>
    <seagrass>
       <canopy>

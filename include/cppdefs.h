@@ -76,7 +76,7 @@
 #define KPP_INTERNAL_WAVE
 #define KPP_CONVEC
 #undef KPP_DDMIX
-#undef KPP_TWOPOINT_REF
+#define KPP_TWOPOINT_REF
 #define KPP_IP_FC
 #undef KPP_CLIP_GS
 #define KPP_SALINITY

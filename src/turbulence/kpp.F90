@@ -381,10 +381,6 @@
 !  use clipping of MLD at Ekman and Monin-Oboukhov scale
    logical                               ::    clip_mld
 
-!  use CVMix
-!  Qing Li, 20180126
-   logical                               ::    lcvmix
-
 !  positions of grid faces and centers
    REALTYPE, dimension(:), allocatable   ::    z_w,z_r
 
@@ -398,6 +394,43 @@
 !  Qing Li, 20171213
    integer                               ::    langmuir_method
    character(len=PATH_MAX)               ::    langmuir_file
+
+!  use CVMix if true
+!  Qing Li, 20180126
+   logical                               ::    lcvmix
+
+!  CVMix parameters
+!  Qing Li, 20180321
+!  G'(1) = 0 (shape function) if true, compute G'(1) as in LMD94 if false
+   logical                               ::    lnoDGat1
+
+!  interpolation type used to interpolate bulk Richardson number
+!  options are
+!  (i)   linear
+!  (ii)  quadratic
+!  (iii) cubic
+   character(len=PATH_MAX)               ::    interp_type
+
+!  interpolation type used to interpolate diff and visc at OBL_depth
+!  options are
+!  (i)   linear
+!  (ii)  quadratic
+!  (iii) cubic
+!  (iv)  LMD94
+   character(len=PATH_MAX)               ::    interp_type2
+
+!  matching technique between the boundary layer and the ocean interior
+!  options are
+!  (i) SimpleShapes => Shape functions for both the gradient and nonlocal
+!                      terms vanish at interface
+!  (ii) MatchGradient => Shape function for nonlocal term vanishes at
+!                        interface, but gradient term matches interior
+!                        values.
+!  (iii) MatchBoth => Shape functions for both the gradient and nonlocal
+!                     term match interior values at interface
+!  (iv) ParabolicNonLocal => Shape function for the nonlocal term is
+!                          (1-sigma)^2, gradient term is sigma*(1-sigma)^2
+   character(len=PATH_MAX)               ::    MatchTechnique
 
 #ifdef KPP_CVMIX
 !  CVMix datatypes
@@ -471,7 +504,9 @@
 
    namelist /kpp/                      kpp_sbl,kpp_bbl,kpp_interior,    &
                                        clip_mld,Ric,lcvmix,             &
-                                       langmuir_method,langmuir_file
+                                       langmuir_method,langmuir_file,   &
+                                       lnoDGat1, MatchTechnique,        &
+                                       interp_type, interp_type2
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -694,31 +729,46 @@
       else
          LEVEL4 'Clipping at Ekman/Oboukhov scale   - not active -   '
       endif
+! CVMix
+! Qing Li, 20180321
+      if (lcvmix) then
+         LEVEL4 'Use CVMix                              - active -   '
+         LEVEL4 'Matching technique: ', trim(MatchTechnique)
+         LEVEL4 'Interpolation type for Ri: ', trim(interp_type)
+         LEVEL4 'Interpolation type for diff and visc: ', trim(interp_type2)
+         if (lnoDGat1) then
+            LEVEL4 "Set shape function G'(1) = 0           - active -   "
+         else
+            LEVEL4 "Set shape function G'(1) = 0    - not active -   "
+         endif
+      else
+         LEVEL4 'Use CVMix                          - not active -   '
 # ifdef KPP_SALINITY
-      LEVEL4 'Compute salinity fluxes                - active -   '
+         LEVEL4 'Compute salinity fluxes                - active -   '
 # else
-      LEVEL4 'Compute salinity fluxes            - not active -   '
+         LEVEL4 'Compute salinity fluxes            - not active -   '
 # endif
 # ifdef NONLOCAL
-      LEVEL4 'Nonlocal fluxes                        - active -   '
+         LEVEL4 'Nonlocal fluxes                        - active -   '
 # else
-      LEVEL4 'Nonlocal fluxes                    - not active -   '
+         LEVEL4 'Nonlocal fluxes                    - not active -   '
 # endif
 # ifdef KPP_TWOPOINT_REF
-      LEVEL4 'Ri_b from 2-point interpolation        - active -   '
+         LEVEL4 'Ri_b from 2-point interpolation        - active -   '
 # else
-      LEVEL4 'Ri_b from 2-point interpolation    - not active -   '
+         LEVEL4 'Ri_b from 2-point interpolation    - not active -   '
 # endif
 # ifdef KPP_IP_FC
-      LEVEL4 'F_c =0 criterion for SL-depth          - active -   '
+         LEVEL4 'F_c =0 criterion for SL-depth          - active -   '
 # else
-      LEVEL4 'Ri_b - Ri_c =0 criterion for SL-depth  - active -   '
+         LEVEL4 'Ri_b - Ri_c =0 criterion for SL-depth  - active -   '
 # endif
 # ifdef KPP_CLIP_GS
-      LEVEL4 'Clipping G''(sigma) for matching        - active -   '
+         LEVEL4 'Clipping G''(sigma) for matching        - active -   '
 # else
-      LEVEL4 'Clipping G''(sigma) for matching    - not active -   '
+         LEVEL4 'Clipping G''(sigma) for matching    - not active -   '
 # endif
+      endif
 
       LEVEL4 'Ri_c  = ', Ric
 
@@ -761,12 +811,13 @@
 !     CVMix: initialize parameter datatype
 !     Qing Li, 20180126
       call cvmix_init_kpp(ri_crit=Ric,                                &
-                          ! interp_type=interp_type,                    &
+                          interp_type=interp_type,                    &
+                          interp_type2=interp_type2,                  &
                           lEkman=clip_mld,                            &
                           lMonOb=clip_mld,                            &
                           llangmuirEF=llangmuir_efactor,              &
-                          MatchTechnique='MatchGradient',             &
-                          ! lnoDGat1=lnoDGat1,                          &
+                          MatchTechnique=MatchTechnique,              &
+                          lnoDGat1=lnoDGat1,                          &
                           surf_layer_ext = epsilon)
       call cvmix_put_kpp("a_m", kpp_am)
       call cvmix_put_kpp("a_s", kpp_as)
@@ -1789,7 +1840,7 @@
    REALTYPE                     :: depth
    REALTYPE                     :: Rk, Rref
    REALTYPE                     :: Uk, Uref, Vk, Vref
-   REALTYPE                     :: cff
+   REALTYPE                     :: bRad_cntr
 
    REALTYPE, dimension (0:nlev) :: Bflux
    REALTYPE, dimension (0:nlev) :: RiBulk
@@ -1817,23 +1868,19 @@
 
 !  include effect of short wave radiation
 !  prepare non-local fluxes
-   do k = 0,nlev
-      Bflux(k)  = Bo  + ( bRadSrf - bRad(k) )
-# ifdef NONLOCAL
-      cff       = _ONE_-(0.5+sign(0.5d0,Bflux(k)))
-      gamh(k)   =  -cff*( tFlux + tRadSrf - tRad(k) )
-#  ifdef KPP_SALINITY
-      gams(k)   =  -cff*sFlux
-#  endif
-# endif
+!  Bflux(k) is the total buoyancy flux above the level z_r(k)
+!  Qing Li, 20180321
 
+   do k = 1,nlev
+      bRad_cntr = 0.5*(bRad(k)+bRad(k-1))
+      Bflux(k)  = Bo  + ( bRadSrf - bRad_cntr )
    enddo
 
 !-----------------------------------------------------------------------
 !  Update grid in CVMix
 !-----------------------------------------------------------------------
 
-!  CVMix assumes that z indice increase with depth (surface to bottom)
+!  CVMix assumes that z indices increase with depth (surface to bottom)
 !  Qing Li, 20180126
    call cvmix_put(CVmix_vars, 'zw_iface', z_w(nlev:0:-1))
    call cvmix_put(CVmix_vars, 'zt_cntr',  z_r(nlev:1:-1))
@@ -1865,12 +1912,9 @@
       kp1 = k+1
       depth = z_w(nlev)-z_r(kp1)
       call cvmix_kpp_compute_turbulent_scales(_ONE_,       &
-          depth,Bflux(k),u_taus,                             &
+          depth,Bflux(kp1),u_taus,                             &
           langmuir_Efactor=efactor,                          &
           w_s=ws,w_m=wm)
-      ! TODO: This corresponds to the following  <27-01-18, Qing Li> !
-      ! Figure out which is better
-      ! call wscale (Bflux(k),u_taus,epsilon*depth,efactor,wm,ws)
 
       ! update potential density and velocity components surface
       ! reference values with the surface layer averaged values
@@ -1908,6 +1952,7 @@
                 delta_Vsqr_cntr = (/(Uref-Uk)**2+(Vref-Vk)**2/),     &
                 ws_cntr = (/ws/),                                    &
                 Nsqr_iface = (/NN(k), NN(kp1)/))
+
    enddo  ! inner grid faces
 
 !-----------------------------------------------------------------------
@@ -1943,8 +1988,23 @@
    ! CVMix returns a BoundaryLayerDepth > 0
    zsbl = -CVmix_vars%BoundaryLayerDepth
 
-   ! DEBUG
-   ! LEVEL2 'zsbl = ', zsbl, ' Bfsfc = ', Bfsfc
+!-----------------------------------------------------------------------
+!  Update surface buoyancy flux in the new surface boundary layer
+!-----------------------------------------------------------------------
+
+   ksbl=1
+   do k=nlev,2,-1
+      if ((ksbl.eq.1).and.(z_w(k-1).lt.zsbl)) then
+         ksbl = k
+      endif
+   enddo
+
+   bRadSbl = ( bRad(ksbl-1)*(z_w(ksbl)-zsbl) +                          &
+               bRad(ksbl  )*(zsbl-z_w(ksbl-1) ) )/ h(ksbl)
+
+   Bfsfc   = Bo + (bRadSrf - bRadSbl)
+
+   CVmix_vars%SurfaceBuoyancyForcing = Bfsfc
 
 !-----------------------------------------------------------------------
 !  Update Langmuir enhancement factor
@@ -1952,22 +2012,26 @@
 
    call enhancement_factor(langmuir_method, u_taus, z_w(nlev)-zsbl, efactor)
 
+   CVmix_vars%LangmuirEnhancementFactor = efactor
+
 !-----------------------------------------------------------------------
 !  Compute the mixing coefficients within the surface boundary layer
 !-----------------------------------------------------------------------
 
-   CVmix_vars%LangmuirEnhancementFactor = efactor
-   CVmix_vars%Mdiff_iface = num(nlev:0:-1)
-   CVmix_vars%Tdiff_iface = nuh(nlev:0:-1)
-   CVmix_vars%Sdiff_iface = nus(nlev:0:-1)
+   ! Qing Li, 20180321
+   ! Note that arrays at the cell interface in CVMix have indices (1:nlev)
+   ! from the surface to the bottom, whereas those in GOTM have indices (nlev:0)
+   CVmix_vars%Mdiff_iface(1:nlev+1) = num(nlev:0:-1)
+   CVmix_vars%Tdiff_iface(1:nlev+1) = nuh(nlev:0:-1)
+   CVmix_vars%Sdiff_iface(1:nlev+1) = nus(nlev:0:-1)
 
    call cvmix_coeffs_kpp(CVmix_vars)
 
-   num = CVmix_vars%Mdiff_iface(nlev:0:-1)
-   nuh = CVmix_vars%Tdiff_iface(nlev:0:-1)
-   nus = CVmix_vars%Sdiff_iface(nlev:0:-1)
-   gamh = CVmix_vars%kpp_Tnonlocal_iface(nlev:0:-1)
-   gams = CVmix_vars%kpp_Snonlocal_iface(nlev:0:-1)
+   num(0:nlev) = CVmix_vars%Mdiff_iface(nlev+1:1:-1)
+   nuh(0:nlev) = CVmix_vars%Tdiff_iface(nlev+1:1:-1)
+   nus(0:nlev) = CVmix_vars%Sdiff_iface(nlev+1:1:-1)
+   gamh(0:nlev) = CVmix_vars%kpp_Tnonlocal_iface(nlev+1:1:-1)
+   gams(0:nlev) = CVmix_vars%kpp_Snonlocal_iface(nlev+1:1:-1)
 
 !  no non-local fluxes at top and bottom
    gamh(0   ) = _ZERO_

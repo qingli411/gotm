@@ -12,7 +12,7 @@ This copy of GOTM code is used to setup simulations to compare different ocean s
 
 * Second moment closure models of Langmuir turbulence (Harcourt 2013, 2015) _To be included._
 
-* Input of wave spectrum data from wave buoy to calculate the Stokes drift.
+* Stokes drift calculated from input wave spectrum from wave buoy, or partitioned surface Stokes drift from wave simulations.
 
 # Install
 

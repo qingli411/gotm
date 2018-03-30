@@ -734,6 +734,8 @@
          <element name="kpp_interior" type="bool" label=".true. for active interior mixing" />
          <element name="clip_mld" type="bool" label=".true. for clipping of MLD at MO or Ekman scale" />
          <element name="Ric" type="float" label="critical value of bulk Richardson number" />
+         <element name="lcvmix" type="bool" label=".true. for using CVMix" />
+         <element name="lnoDGat1" type="bool" label=".true. for setting G'(0) = 0" />
          <element name="langmuir_method" type="int" label="method how Langmuir turbulence is included">
             <options>
                <option value="0" label="none"/>
@@ -753,6 +755,29 @@
                   <filevariable name="la" label="Langmuir number" unit="1" />
                </filevariables>
             </fileinfo>
+         </element>
+         <element name="interp_type" type="string" label="interpolation method used to interpolate bulk Richardson number">
+            <options>
+               <option value="linear" label="Linear interpolation"/>
+               <option value="quadratic" label="Quadratic interpolation (default if not set)" />
+               <option value="cubic" label="Cubic spline interpolation" />
+            </options>
+         </element>
+         <element name="interp_type2" type="string" label="interpolation method used to interpolate diff and visc at OBL depth">
+            <options>
+               <option value="linear" label="Linear interpolation"/>
+               <option value="quadratic" label="Quadratic interpolation" />
+               <option value="cubic" label="Cubic spline interpolation" />
+               <option value="cubic" label="Following LMD94 (default if not set)" />
+            </options>
+         </element>
+         <element name="MatchTechnique" type="string" label="interpolation method used to interpolate diff and visc at OBL depth">
+            <options>
+               <option value="SimpleShapes" label="Shape functions for both the gradient and nonlocal terms vanish at interface (default if not set)"/>
+               <option value="MatchGradient" label="Shape function for nonlocal term vanishes at interface, but gradient term matches interior values" />
+               <option value="MatchBoth" label="Shape functions for both the gradient and nonlocal term match interior values at interface" />
+               <option value="ParabolicNonLocal" label="Shape function for the nonlocal term is (1-sigma)^2, gradient term is sigma*(1-sigma)^2" />
+            </options>
          </element>
       </element>
    </element>
@@ -1230,19 +1255,26 @@
             </fileinfo>
          </element>
       </element>
-      <element name="wave_spec" label="wind wave spectrum" description="Wind induced wave spectrum can be specified. Used to include the effects of Stokes drift and Langmuir turbulence.">
-         <element name="spec_method" type="int" label="method to prescribe the wave spectrum">
+      <element name="stokes_drift" label="Stokes_drift" description="Stokes drift profile can be specified. Used to include the effects of Langmuir turbulence.">
+         <element name="ustokes_method" type="int" label="method to prescribe the Stokes drift">
             <options>
                <option value="0" label="nothing is done - all variables equal 0" />
                <option value="1" label="constant values" />
-               <option value="2" label="time varying variables read from file" />
+               <option value="2" label="calculated from the frequency bin width weighted wave spectrum" />
+               <option value="3" label="calculated from the partitioned surface Stokes drift" />
             </options>
          </element>
          <element name="nfreq" type="int" label="number of frequency bands">
-            <condition type="eq" variable="./spec_method" value="2" />
+            <condition type="or">
+               <condition type="eq" variable="./ustokes_method" value="2" />
+               <condition type="eq" variable="./ustokes_method" value="3" />
+            </condition>
          </element>
-         <element name="spec_file" type="gotmdatafile" label="filename for file wave spectrum">
-            <condition type="eq" variable="./spec_method" value="2" />
+         <element name="ustokes_file" type="gotmdatafile" label="filename for file Stokes drift">
+            <condition type="or">
+               <condition type="eq" variable="./ustokes_method" value="2" />
+               <condition type="eq" variable="./ustokes_method" value="3" />
+            </condition>
             <fileinfo type="profilesintime">
                <filevariables>
                   <filevariable name="wav_spec" label="band wave energy spectrum" />
@@ -1253,7 +1285,6 @@
          </element>
       </element>
    </element>
-
    <element name="seagrass" label="seagrass model" optional="True">
       <element name="canopy">
          <element name="seagrass_calc" type="bool" label="use seagrass model" />

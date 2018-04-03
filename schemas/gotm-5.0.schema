@@ -440,6 +440,7 @@
                <option value="1" label="analytical eddy visc. and diff. profiles, not coded yet" />
                <option value="2" label="turbulence Model calculating TKE and length scale" />
                <option value="3" label="second-order model" />
+               <option value="98" label="OSMOSIS model" />
                <option value="99" label="KPP model" />
             </options>
          </element>
@@ -779,6 +780,15 @@
                <option value="ParabolicNonLocal" label="Shape function for the nonlocal term is (1-sigma)^2, gradient term is sigma*(1-sigma)^2" />
             </options>
          </element>
+      </element>
+   </element>
+   <element name="osm" label="OSMOSIS turbulence model">
+      <condition type="eq" variable="/gotmturb/turbulence/turb_method" value="98" />
+      <element name="osm" label="OSMOSIS turbulence model">
+         <element name="osm_sbl" type="bool" label=".true. for active surface boundary layer module" />
+         <element name="osm_bbl" type="bool" label=".true. for active bottom boundary layer module" />
+         <element name="osm_interior" type="bool" label=".true. for active interior mixing" />
+         <element name="h_i" type="float" label="Initial surface boundary layer depth" unit="m" />
       </element>
    </element>
    <element name="obs" label="observations">

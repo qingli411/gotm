@@ -38,24 +38,29 @@ MODULE zdfosm
    use meanflow,         only: buoy                  ! buoyancy
    use meanflow,         only: ff => cori            ! Coriolis parameter
    use meanflow,         only: NN,NNT,NNS,SS         ! stratification and shear.
-   use turbulence,       only: num,nuh,nus ! eddy viscosity and diffusivities
+   use meanflow,         only: cp                    ! specific heat of sea water
+   use turbulence,       only: num,nuh,nus           ! eddy viscosity and diffusivities
    use turbulence,       only: gamu,gamv,gamh,gams   ! non-gradient terms in flux-gradient
+! use variables in module turbulence
+! Qing Li, 20180403
+  use turbulence,   only: tke,tkeo,eps,L,kb,epsb,P,B,Pb,gamb,cmue1,cmue2
+  use turbulence,   only: gam,an,as,at,r,xRf,uu,vv,ww
                                                      ! relationships
-   use turbulence,       only: gamh_f,gams_f
    use turbulence,       only: Rig
    use turbulence,       only: kappa
    use observations,     only: rn_abs => a
    use observations,     only: rn_si0 => g1
    use observations,     only: rn_si1 => g2          ! double exponential radiation profile.
                                                      ! surface fluxes
-   use airsea,           only: cp
    use airsea,           only: tx,ty                 ! kinematic stress components (m2s-2)
    use airsea,           only: us_x,us_y             ! components of Stokes drift (ms-1)
    use airsea,           only: delta                 ! Stokes Penetration Depth (m)
    use airsea,           only: I_0                   ! Shortwave radiations
    use airsea,           only: heat                  ! heat flux
                                                      ! (Wm-2)
-   use airsea,           only: p_e                   ! precip-evap (ms-1)
+   ! use airsea,           only: p_e                   ! precip-evap (ms-1)
+   ! Qing Li, 20180403
+   use airsea,           only: precip, evap
 
    IMPLICIT NONE
 
@@ -63,7 +68,7 @@ MODULE zdfosm
 
 ! !PUBLIC MEMBER FUNCTIONS:
 !
-   public init_osm, do_osm
+   public init_osm, do_osm, clean_osm
 
 ! !PUBLIC DATA MEMBERS:                            ! these are retained for original KPP routines.
 !
@@ -142,7 +147,6 @@ MODULE zdfosm
    REALTYPE, DIMENSION(:), allocatable :: zdudz_pyc ! u-shear across the pycnocline
    REALTYPE, DIMENSION(:), allocatable :: zdvdz_pyc ! v-shear across the pycnocline
    REALTYPE, DIMENSIOn(:), allocatable :: zavtb, zavmb ! minimum diffusivity and viscosity
-   REALTYPE, DIMENSION(:), allocatable :: zghamt_f,zghams_f
    ! parameters for NEMO code
 
    INTEGER, parameter :: wp = KIND( _ONE_ )  ! single precision - defined in cppdefs.h
@@ -332,7 +336,6 @@ MODULE zdfosm
       call zdfosm_interior(nlev)
    else
       num = 0._wp
-      num = 0._wp
       nuh = 0._wp
       nus = 0._wp
    endif
@@ -388,11 +391,11 @@ MODULE zdfosm
          zghams(k)=0._wp
          zgamu(k)=0._wp
          zgamv(k)=0._wp
-         zghamt_f(k)=0._wp
-         zghams_f(k)=0._wp
       enddo
 
-      emp = -p_e
+      ! emp = -p_e
+      ! Qing Li, 20180403
+      emp = -(precip+evap)
       rnf=0.0
       qns = heat
       qsr = I_0
@@ -415,8 +418,6 @@ MODULE zdfosm
          gamv(kk) = zgamv(k)
          dtdz_pyc(kk) = zdtdz_pyc(k)
          dsdz_pyc(kk) = zdbdz_pyc(k)
-         gamh_f(kk) = zghamt_f(k)
-         gams_f(kk) = zghams_f(k)
          kk=kk-1
       enddo
       nuh(0)=0._wp
@@ -491,13 +492,13 @@ MODULE zdfosm
 !-----------------------------------------------------------------------
 !BOC
 
-   LEVEL1 'init_kpp...'
+   LEVEL1 'init_osm...'
 
    ! read the variables from the namelist file
 write(*,*) fn
    open(namlst,file=fn,status='old',action='read',err=80)
 
-   LEVEL2 'reading kpp namelist...'
+   LEVEL2 'reading osm namelist...'
 
    read(namlst,nml=osm,err=81)
    close (namlst)
@@ -534,21 +535,103 @@ write(*,*) fn
    if (rc /= 0) stop 'init_turbulence: Error allocating (gamh)'
    gamh = 0._wp
 
-   allocate(gamh_f(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_turbulence: Error allocating (gamh)'
-   gamh_f = 0._wp
-
    allocate(gams(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (gams)'
    gams = 0._wp
 
-   allocate(gams_f(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_turbulence: Error allocating (gams_f)'
-   gams_f = 0._wp
-
    allocate(Rig(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (Rig)'
    Rig = _ZERO_
+
+!  allocate memory defined in module turbulence
+!  Qing Li, 20171120
+
+   LEVEL2 'allocation memory..'
+   allocate(tke(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (tke)'
+   tke = _ZERO_
+
+   allocate(tkeo(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (tkeo)'
+   tkeo = _ZERO_
+
+   allocate(eps(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (eps)'
+   eps = _ZERO_
+
+   allocate(L(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (L)'
+   L = _ZERO_
+
+   LEVEL2 'allocation memory..'
+   allocate(kb(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (kb)'
+   kb = _ZERO_
+
+   LEVEL2 'allocation memory..'
+   allocate(epsb(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (epsb)'
+   epsb = _ZERO_
+
+   allocate(P(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (P)'
+   P = _ZERO_
+
+   allocate(B(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (B)'
+   B = _ZERO_
+
+   allocate(Pb(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (Pb)'
+   Pb = _ZERO_
+
+   allocate(gamb(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (gamb)'
+   gamb = _ZERO_
+
+   allocate(cmue1(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (cmue1)'
+   cmue1 = _ZERO_
+
+   allocate(cmue2(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (cmue2)'
+   cmue2 = _ZERO_
+
+   allocate(gam(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (gam)'
+   gam = _ZERO_
+
+   allocate(an(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (an)'
+   an = _ZERO_
+
+   allocate(as(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (as)'
+   as = _ZERO_
+
+   allocate(at(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (at)'
+   at = _ZERO_
+
+   allocate(r(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (r)'
+   r = _ZERO_
+
+   allocate(xRf(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (xRf)'
+   xRf = _ZERO_
+
+   allocate(uu(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (uu)'
+   uu = _ZERO_
+
+   allocate(vv(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (vv)'
+   vv = _ZERO_
+
+   allocate(ww(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (ww)'
+   ww = _ZERO_
 
    allocate(dtdz_pyc(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (dtdz_pyc)'
@@ -636,17 +719,9 @@ write(*,*) fn
    if (rc /= 0) stop 'init_turbulence: Error allocating (zghamt)'
    zghamt = 0._wp
 
-   allocate(zghamt_f(1:nlev),stat=rc)
-   if (rc /= 0) stop 'init_turbulence: Error allocating (zghamt_f)'
-   zghamt_f = 0._wp
-
    allocate(zghams(1:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (zghams)'
    zghams = 0._wp
-
-   allocate(zghams_f(1:nlev),stat=rc)
-   if (rc /= 0) stop 'init_turbulence: Error allocating (zghams_f)'
-   zghams_f = 0._wp
 
    allocate(zdtdz_pyc(1:nlev),stat=rc)
    if (rc /= 0 ) stop 'init_turbulence: Error allocating (zdtdz_pyc)'
@@ -983,8 +1058,6 @@ write(*,*) fn
       zghams(:) = 0._wp
       zgamu(:) = 0._wp
       zgamv(:) = 0._wp
-      zghamt_f(:) = 0._wp
-      zghams_f(:) = 0._wp
      !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
      ! Calculate boundary layer scales
      !<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -1974,12 +2047,10 @@ CONTAINS
    if (allocated(gamu)) deallocate(gamu)
    if (allocated(gamv)) deallocate(gamv)
    if (allocated(zavt)) deallocate(zavt)
-   if (allocated(zgamu)) deallocate(gamu)
-   if (allocated(zgamv)) deallocate(gamv)
-   if (allocated(zghamt)) deallocate(gamh)
-   if (allocated(zghams)) deallocate(gams)
-   if (allocated(zghamt_f)) deallocate(gamh_f)
-   if (allocated(zghams_f)) deallocate(gams_f)
+   if (allocated(zgamu)) deallocate(zgamu)
+   if (allocated(zgamv)) deallocate(zgamv)
+   if (allocated(zghamt)) deallocate(zghamt)
+   if (allocated(zghams)) deallocate(zghams)
    if (allocated(z_w)) deallocate(z_w)
    if (allocated(z_r)) deallocate(z_r)
    if (allocated(h_r)) deallocate(h_r)
@@ -2102,9 +2173,10 @@ CONTAINS
       shear2 = SS(i)
       cff    = shear2*shear2/(shear2*shear2+16.0E-10)
       nu_sx  = cff*nu_sx
-# else KPP_SHEAR
+# else
       nu_sx=0._wp
-# endif KPP_SHEAR
+! KPP_SHEAR
+# endif
 
 #ifdef KPP_INTERNAL_WAVE
 !
@@ -2121,7 +2193,8 @@ CONTAINS
 #else
       iwm  =  0._wp
       iws  =  0._wp
-#endif KPP_INTERNAL_WAVE
+! KPP_INTERNAL_WAVE
+#endif
 
 
 # ifdef KPP_CONVEC
@@ -2131,9 +2204,10 @@ CONTAINS
       cff    =  min(1._wp,(bvfcon-cff)/bvfcon)
       nu_sxc =  1._wp-cff*cff
       nu_sxc =  nu_sxc*nu_sxc*nu_sxc
-# else KPP_CONVEC
+# else
       nu_sxc =  0._wp
-# endif KPP_CONVEC
+! KPP_CONVEC
+# endif
 !
 !     Sum contributions due to internal wave breaking, shear instability
 !     and convective diffusivity due to shear instability.
@@ -2154,7 +2228,7 @@ CONTAINS
       drhoT = NNT(i)
       drhoS = NNS(i)
       Rrho= - drhoT/drhoS
-LEVEL2 'double diffusion'
+      LEVEL2 'double diffusion'
 !
 !
 !     Salt fingering case.
@@ -2197,7 +2271,8 @@ LEVEL2 'double diffusion'
       nuh(i)=nuh(i)  + nu_ddt
       nus(i)=nuh(i)  + nu_dds
 
-# endif KPP_DDMIX
+! KPP_DDMIX
+# endif
 
    enddo ! loop over interior points
 

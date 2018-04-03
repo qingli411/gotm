@@ -69,17 +69,17 @@
 #endif
 
 ! non-local fluxes
-#undef NONLOCAL
+#define NONLOCAL
 
 ! KPP turbulence model
 #define KPP_SHEAR
 #define KPP_INTERNAL_WAVE
-#define KPP_CONVEC
+#undef KPP_CONVEC
 #undef KPP_DDMIX
 #define KPP_TWOPOINT_REF
 #define KPP_IP_FC
 #undef KPP_CLIP_GS
-#define KPP_SALINITY
+#undef KPP_SALINITY
 ! average reference density and velocity in the surface layer
 ! Qing Li, 20171213
 #define KPP_AVGSLAYER_REF

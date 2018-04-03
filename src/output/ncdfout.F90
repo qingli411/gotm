@@ -326,7 +326,8 @@
    iret = nf90_def_var(ncid,'gams',NCDF_FLOAT_PRECISION,dim4d,gams_id)
    call check_err(iret)
 
-   if (turb_method.ne.99) then
+   ! Qing Li, 20180403
+   if (turb_method.ne.99 .and. turb_method.ne.98) then
       iret = nf90_def_var(ncid,'tke',NCDF_FLOAT_PRECISION,dim4d,tke_id)
       call check_err(iret)
       iret = nf90_def_var(ncid,'kb',NCDF_FLOAT_PRECISION,dim4d,kb_id)
@@ -485,7 +486,8 @@
    iret = set_attributes(ncid,gamh_id,units='K m/s',long_name='non-local heat flux')
    iret = set_attributes(ncid,gams_id,units='g/kg m/s',long_name='non-local salinity flux')
 
-   if (turb_method.ne.99) then
+   ! Qing Li, 20180403
+   if (turb_method.ne.99 .and. turb_method.ne.98) then
       iret = set_attributes(ncid,tke_id,units='m2/s2',long_name='turbulent kinetic energy')
       iret = set_attributes(ncid,kb_id,units='m2/s4',long_name='(half) buoyancy variance')
       iret = set_attributes(ncid,l_id,units='m',long_name='turbulent macro length scale')
@@ -725,7 +727,8 @@
    iret = store_data(ncid,gamh_id,XYZT_SHAPE,nlev,array=gamh)
    iret = store_data(ncid,gams_id,XYZT_SHAPE,nlev,array=gams)
 
-   if (turb_method.ne.99) then
+   ! Qing Li, 20180403
+   if (turb_method.ne.99 .and. turb_method.ne.98) then
       iret = store_data(ncid,tke_id,XYZT_SHAPE,nlev,array=tke)
       iret = store_data(ncid,kb_id,XYZT_SHAPE,nlev,array=kb)
       iret = store_data(ncid,eps_id,XYZT_SHAPE,nlev,array=eps)

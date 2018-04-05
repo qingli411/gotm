@@ -2033,6 +2033,18 @@
    gamh(0:nlev) = CVmix_vars%kpp_Tnonlocal_iface(nlev+1:1:-1)
    gams(0:nlev) = CVmix_vars%kpp_Snonlocal_iface(nlev+1:1:-1)
 
+   ! Qing Li, 20180405
+   ! Note that kpp_transport_iface in CVMix is the value of K_x*gamma_x/flux_x,
+   ! in other words, the user must multiply this value by either the freshwater
+   ! flux or the penetrative shortwave heat flux to get the nonlocal fluxes
+
+   ! include the effect of penetrating solar radiation
+   tRadSrf   =   tRad(nlev)
+   do k = 0,nlev
+      gamh(k)   =  gamh(k)*(tFlux+tRadSrf-tRad(k))
+      gams(k)   =  gams(k)*sFlux
+   enddo
+
 !  no non-local fluxes at top and bottom
    gamh(0   ) = _ZERO_
    gams(0   ) = _ZERO_

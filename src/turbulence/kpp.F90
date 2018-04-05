@@ -188,10 +188,9 @@
   use turbulence,   only: gamu,gamv,gamh,gams
   use turbulence,   only: Rig
   use turbulence,   only: kappa
-! use variables in module turbulence
-! Qing Li, 20171120
-  use turbulence,   only: tke,tkeo,eps,L,kb,epsb,P,B,Pb,gamb,cmue1,cmue2
-  use turbulence,   only: gam,an,as,at,r,xRf,uu,vv,ww
+! initialize tke in module turbulence
+! Qing Li, 20180404
+  use turbulence,   only: tke
 ! use variables in module airsea
 ! Qing Li, 20171214
   use airsea,       only: u10, v10
@@ -575,95 +574,13 @@
    if (rc /= 0) stop 'init_turbulence: Error allocating (h_r)'
    h_r = _ZERO_
 
-!  allocate memory defined in module turbulence
+!  allocate memory for tke in module turbulence
 !  Qing Li, 20171120
 
    LEVEL2 'allocation memory..'
    allocate(tke(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (tke)'
    tke = _ZERO_
-
-   allocate(tkeo(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_turbulence: Error allocating (tkeo)'
-   tkeo = _ZERO_
-
-   allocate(eps(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_turbulence: Error allocating (eps)'
-   eps = _ZERO_
-
-   allocate(L(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_turbulence: Error allocating (L)'
-   L = _ZERO_
-
-   LEVEL2 'allocation memory..'
-   allocate(kb(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_turbulence: Error allocating (kb)'
-   kb = _ZERO_
-
-   LEVEL2 'allocation memory..'
-   allocate(epsb(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_turbulence: Error allocating (epsb)'
-   epsb = _ZERO_
-
-   allocate(P(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_turbulence: Error allocating (P)'
-   P = _ZERO_
-
-   allocate(B(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_turbulence: Error allocating (B)'
-   B = _ZERO_
-
-   allocate(Pb(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_turbulence: Error allocating (Pb)'
-   Pb = _ZERO_
-
-   allocate(gamb(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_turbulence: Error allocating (gamb)'
-   gamb = _ZERO_
-
-   allocate(cmue1(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_turbulence: Error allocating (cmue1)'
-   cmue1 = _ZERO_
-
-   allocate(cmue2(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_turbulence: Error allocating (cmue2)'
-   cmue2 = _ZERO_
-
-   allocate(gam(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_turbulence: Error allocating (gam)'
-   gam = _ZERO_
-
-   allocate(an(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_turbulence: Error allocating (an)'
-   an = _ZERO_
-
-   allocate(as(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_turbulence: Error allocating (as)'
-   as = _ZERO_
-
-   allocate(at(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_turbulence: Error allocating (at)'
-   at = _ZERO_
-
-   allocate(r(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_turbulence: Error allocating (r)'
-   r = _ZERO_
-
-   allocate(xRf(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_turbulence: Error allocating (xRf)'
-   xRf = _ZERO_
-
-   allocate(uu(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_turbulence: Error allocating (uu)'
-   uu = _ZERO_
-
-   allocate(vv(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_turbulence: Error allocating (vv)'
-   vv = _ZERO_
-
-   allocate(ww(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_turbulence: Error allocating (ww)'
-   ww = _ZERO_
 
 # ifdef EXTRA_OUTPUT
 
@@ -2593,6 +2510,7 @@
    if (allocated(gamh)) deallocate(gamh)
    if (allocated(gams)) deallocate(gams)
    if (allocated(Rig)) deallocate(Rig)
+   if (allocated(tke)) deallocate(tke)
    if (allocated(z_w)) deallocate(z_w)
    if (allocated(z_r)) deallocate(z_r)
    if (allocated(h_r)) deallocate(h_r)

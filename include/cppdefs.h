@@ -69,7 +69,7 @@
 #endif
 
 ! non-local fluxes
-#undef NONLOCAL
+#define NONLOCAL
 
 ! KPP turbulence model
 #define KPP_SHEAR

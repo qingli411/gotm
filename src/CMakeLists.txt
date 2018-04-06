@@ -164,36 +164,8 @@ add_library(turbulence
             turbulence/tkealgebraic.F90
             turbulence/tkeeq.F90
             turbulence/turbulence.F90
-            turbulence/algebraiclength.F90
-            turbulence/alpha_mnb.F90
-            turbulence/cmue_a.F90
-            turbulence/cmue_b.F90
-            turbulence/cmue_c.F90
-            turbulence/cmue_d.F90
-            turbulence/cmue_ma.F90
-            turbulence/cmue_rf.F90
-            turbulence/cmue_sg.F90
-            turbulence/compute_cpsi3.F90
-            turbulence/compute_rist.F90
-            turbulence/dissipationeq.F90
-            turbulence/epsbalgebraic.F90
-            turbulence/fk_craig.F90
-            turbulence/genericeq.F90
-            turbulence/gotm_lib_version.F90
-            turbulence/internal_wave.F90
-            turbulence/ispralength.F90
-            turbulence/kbalgebraic.F90
-            turbulence/kbeq.F90
-            turbulence/kpp.F90
-            turbulence/lengthscaleeq.F90
-            turbulence/potentialml.F90
-            turbulence/production.F90
-            turbulence/q2over2eq.F90
-            turbulence/r_ratio.F90
-            turbulence/tkealgebraic.F90
-            turbulence/tkeeq.F90
-            turbulence/turbulence.F90
             turbulence/variances.F90
+            turbulence/zdfosm.F90
            )
 target_link_libraries(turbulence util)
 set(GOTM_LIBS ${GOTM_LIBS} turbulence)

@@ -213,6 +213,14 @@
          <MatchTechnique>SimpleShapes</MatchTechnique>
       </kpp>
    </kpp>
+   <osm>
+      <osm>
+         <osm_sbl>True</osm_sbl>
+         <osm_bbl>True</osm_bbl>
+         <osm_interior>True</osm_interior>
+         <h_i>50</h_i>
+      </osm>
+   </osm>
    <obs>
       <sprofile>
          <s_prof_method>0</s_prof_method>
@@ -330,7 +338,9 @@
       <stokes_drift>
          <ustokes_method>0</ustokes_method>
          <nfreq>64</nfreq>
-         <ustokes_file>spec_file.dat</ustokes_file>
+         <spec_file>spec_file.dat</spec_file>
+         <usp_file>usp_file.dat</usp_file>
+         <usdelta_file>usdelta_file.dat</usdelta_file>
       </stokes_drift>
    </obs>
    <seagrass>

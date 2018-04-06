@@ -60,6 +60,8 @@
    use turbulence,  only: clean_turbulence
 
    use kpp,         only: init_kpp,do_kpp,clean_kpp
+   ! Qing Li, 20180402
+   use zdfosm,         only: init_osm,do_osm,clean_osm
 
    use mtridiagonal,only: init_tridiagonal,clean_tridiagonal
    use eqstate,     only: init_eqstate
@@ -233,7 +235,7 @@
    call do_input_spec(julianday,secondsofday,nfreq,wav_freq)
 !  Calculate Stokes drift
 !  Qing Li, 20171220
-   call stokes_drift(wav_freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,zi,ustokes,vstokes)
+   call stokes_drift(wav_freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,zi,us_x,us_y,delta,ustokes,vstokes)
    ! DEBUG QL
    ! do k=0,nlev
    !    LEVEL2 'z = ', z(k), ' zi = ', zi(k), ' us = ', ustokes(k), ' vs = ', vstokes(k)
@@ -249,6 +251,12 @@
    t = tprof
    u = uprof
    v = vprof
+
+!  initialize OSMOSIS model
+!  Qing Li, 20180402
+   if (turb_method.eq.98) then
+      call init_osm(namlst,'osm.nml',nlev,depth,h)
+   endif
 
 !  initialize KPP model
    if (turb_method.eq.99) then
@@ -405,7 +413,7 @@
       call do_input_spec(julianday,secondsofday,nfreq,wav_freq)
 !     Update Stokes drift
 !     Qing Li, 20171220
-      call stokes_drift(wav_freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,zi,ustokes,vstokes)
+      call stokes_drift(wav_freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,zi,us_x,us_y,delta,ustokes,vstokes)
 
 !     external forcing
       if( calc_fluxes ) then
@@ -466,6 +474,12 @@
 !        do convective adjustment
          call convectiveadjustment(nlev,num,nuh,const_num,const_nuh,    &
                                    buoy_method,gravity,rho_0)
+      case (98)
+!        update OSMOSIS model
+!        Qing Li, 20180402
+         call convert_fluxes(nlev,gravity,cp,rho_0,heat,precip+evap,    &
+                             rad,T,S,tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
+         call do_osm(nlev,depth,h,dt)
       case (99)
 !        update KPP model
          call convert_fluxes(nlev,gravity,cp,rho_0,heat,precip+evap,    &
@@ -526,6 +540,9 @@
    call clean_air_sea()
 
    call clean_meanflow()
+
+   ! Qing Li, 20180402
+   if (turb_method.eq.98) call clean_osm()
 
    if (turb_method.eq.99) call clean_kpp()
 

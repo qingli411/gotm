@@ -99,6 +99,9 @@
 !  id for ustokes and vstokes
 !  Qing Li, 20180110
    integer, private          :: ustokes_id, vstokes_id
+!  id for surface Stokes drift and penetration depth
+!  Qing Li, 20180405
+   integer, private          :: u0stokes_id, v0stokes_id, delta_id
 # ifdef EXTRA_OUTPUT
    integer, private          :: mean1_id,mean2_id,mean3_id,mean4_id,mean5_id
    integer, private          :: turb1_id,turb2_id,turb3_id,turb4_id,turb5_id
@@ -263,6 +266,15 @@
    iret = nf90_def_var(ncid,'u_taub',NCDF_FLOAT_PRECISION,dim3d,u_taub_id)
    call check_err(iret)
 
+   ! surface Stokes drift and penetration depth
+   ! Qing Li, 20180405
+   iret = nf90_def_var(ncid,'u0_stokes',NCDF_FLOAT_PRECISION,dim3d,u0stokes_id)
+   call check_err(iret)
+   iret = nf90_def_var(ncid,'v0_stokes',NCDF_FLOAT_PRECISION,dim3d,v0stokes_id)
+   call check_err(iret)
+   iret = nf90_def_var(ncid,'delta',NCDF_FLOAT_PRECISION,dim3d,delta_id)
+   call check_err(iret)
+
    if (turb_method.eq.99) then
       iret = nf90_def_var(ncid,'zsbl',NCDF_FLOAT_PRECISION,dim3d,zsbl_id)
       call check_err(iret)
@@ -326,7 +338,8 @@
    iret = nf90_def_var(ncid,'gams',NCDF_FLOAT_PRECISION,dim4d,gams_id)
    call check_err(iret)
 
-   if (turb_method.ne.99) then
+   ! Qing Li, 20180403
+   if (turb_method.ne.99 .and. turb_method.ne.98) then
       iret = nf90_def_var(ncid,'tke',NCDF_FLOAT_PRECISION,dim4d,tke_id)
       call check_err(iret)
       iret = nf90_def_var(ncid,'kb',NCDF_FLOAT_PRECISION,dim4d,kb_id)
@@ -448,6 +461,11 @@
    iret = set_attributes(ncid,evap_id,units='m/s',long_name='evaporation')
    iret = set_attributes(ncid,u_taus_id,units='m/s',long_name='surface friction velocity')
    iret = set_attributes(ncid,u_taub_id,units='m/s',long_name='bottom friction velocity')
+   ! surface Stokes drift and penetration depth
+   ! Qing Li, 20180405
+   iret = set_attributes(ncid,u0stokes_id,units='m/s',long_name='surface Stokes drift x-component')
+   iret = set_attributes(ncid,v0stokes_id,units='m/s',long_name='surface Stokes drift y-component')
+   iret = set_attributes(ncid,delta_id,units='m',long_name='Stokes penetration depth')
 
    if (turb_method.eq.99) then
       iret = set_attributes(ncid,zsbl_id,units='m',long_name='SBL position (KPP)')
@@ -485,7 +503,8 @@
    iret = set_attributes(ncid,gamh_id,units='K m/s',long_name='non-local heat flux')
    iret = set_attributes(ncid,gams_id,units='g/kg m/s',long_name='non-local salinity flux')
 
-   if (turb_method.ne.99) then
+   ! Qing Li, 20180403
+   if (turb_method.ne.99 .and. turb_method.ne.98) then
       iret = set_attributes(ncid,tke_id,units='m2/s2',long_name='turbulent kinetic energy')
       iret = set_attributes(ncid,kb_id,units='m2/s4',long_name='(half) buoyancy variance')
       iret = set_attributes(ncid,l_id,units='m',long_name='turbulent macro length scale')
@@ -662,6 +681,11 @@
    iret = store_data(ncid,evap_id,XYT_SHAPE,1,scalar=evap)
    iret = store_data(ncid,u_taub_id,XYT_SHAPE,1,scalar=u_taub)
    iret = store_data(ncid,u_taus_id,XYT_SHAPE,1,scalar=u_taus)
+   ! surface Stokes drift and penetration depth
+   ! Qing Li, 20180405
+   iret = store_data(ncid,u0stokes_id,XYT_SHAPE,1,scalar=us_x)
+   iret = store_data(ncid,v0stokes_id,XYT_SHAPE,1,scalar=us_y)
+   iret = store_data(ncid,delta_id,XYT_SHAPE,1,scalar=delta)
 
    if (turb_method.eq.99) then
       iret = store_data(ncid,zsbl_id,XYT_SHAPE,1,scalar=zsbl)
@@ -725,7 +749,8 @@
    iret = store_data(ncid,gamh_id,XYZT_SHAPE,nlev,array=gamh)
    iret = store_data(ncid,gams_id,XYZT_SHAPE,nlev,array=gams)
 
-   if (turb_method.ne.99) then
+   ! Qing Li, 20180403
+   if (turb_method.ne.99 .and. turb_method.ne.98) then
       iret = store_data(ncid,tke_id,XYZT_SHAPE,nlev,array=tke)
       iret = store_data(ncid,kb_id,XYZT_SHAPE,nlev,array=kb)
       iret = store_data(ncid,eps_id,XYZT_SHAPE,nlev,array=eps)

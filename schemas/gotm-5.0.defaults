@@ -338,7 +338,9 @@
       <stokes_drift>
          <ustokes_method>0</ustokes_method>
          <nfreq>64</nfreq>
-         <ustokes_file>spec_file.dat</ustokes_file>
+         <spec_file>spec_file.dat</spec_file>
+         <usp_file>usp_file.dat</usp_file>
+         <usdelta_file>usdelta_file.dat</usdelta_file>
       </stokes_drift>
    </obs>
    <seagrass>

@@ -1272,6 +1272,7 @@
                <option value="1" label="constant values" />
                <option value="2" label="calculated from the frequency bin width weighted wave spectrum" />
                <option value="3" label="calculated from the partitioned surface Stokes drift" />
+               <option value="4" label="calculated from the surface Stokes drift and penetration depth assumingexponential profile" />
             </options>
          </element>
          <element name="nfreq" type="int" label="number of frequency bands">
@@ -1280,16 +1281,40 @@
                <condition type="eq" variable="./ustokes_method" value="3" />
             </condition>
          </element>
-         <element name="ustokes_file" type="gotmdatafile" label="filename for file Stokes drift">
+         <element name="spec_file" type="gotmdatafile" label="filename for wave spectrum file">
             <condition type="or">
                <condition type="eq" variable="./ustokes_method" value="2" />
+            </condition>
+            <fileinfo type="profilesintime">
+               <filevariables>
+                  <filevariable name="wav_freq" label="band central wave frequency" unit="1/s" />
+                  <filevariable name="wav_spec" label="band wave energy spectrum" unit="m^2" />
+                  <filevariable name="wav_xcmp" label="band directional component: x-direction" unit="unitless" />
+                  <filevariable name="wav_ycmp" label="band directional component: y-direction" unit="unitless" />
+               </filevariables>
+            </fileinfo>
+         </element>
+         <element name="usp_file" type="gotmdatafile" label="filename for partitioned surface Stokes drift file">
+            <condition type="or">
                <condition type="eq" variable="./ustokes_method" value="3" />
             </condition>
             <fileinfo type="profilesintime">
                <filevariables>
-                  <filevariable name="wav_spec" label="band wave energy spectrum" />
-                  <filevariable name="wav_xcmp" label="band directional component: x-direction" />
-                  <filevariable name="wav_ycmp" label="band directional component: y-direction" />
+                  <filevariable name="wav_freq" label="wave frequency for each partition" unit="1/s" />
+                  <filevariable name="wav_xcmp" label="partitioned surface Stokes drift: x-direction" unit="m/s" />
+                  <filevariable name="wav_ycmp" label="partitioned surface Stokes drift: y-direction" unit="m/s" />
+               </filevariables>
+            </fileinfo>
+         </element>
+         <element name="usdelta_file" type="gotmdatafile" label="filename for surface Stokes drift and penetration depth file">
+            <condition type="or">
+               <condition type="eq" variable="./ustokes_method" value="4" />
+            </condition>
+            <fileinfo type="pointsintime">
+               <filevariables>
+                  <filevariable name="us_x" label="surface Stokes drift: x-direction" unit="m/s" />
+                  <filevariable name="us_y" label="surface Stokes drift: y-direction" unit="m/s" />
+                  <filevariable name="delta" label="Stokes drift penetration depth" unit="m" />
                </filevariables>
             </fileinfo>
          </element>

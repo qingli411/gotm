@@ -50,10 +50,12 @@ MODULE zdfosm
    use observations,     only: rn_abs => a
    use observations,     only: rn_si0 => g1
    use observations,     only: rn_si1 => g2          ! double exponential radiation profile.
+! surface Stokes drift and penetration depth are now defined in observation.F90
+! Qing Li, 20180405
+   use observations,     only: us_x,us_y             ! components of Stokes drift (ms-1)
+   use observations,     only: delta                 ! Stokes Penetration Depth (m)
                                                      ! surface fluxes
    use airsea,           only: tx,ty                 ! kinematic stress components (m2s-2)
-   use airsea,           only: us_x,us_y             ! components of Stokes drift (ms-1)
-   use airsea,           only: delta                 ! Stokes Penetration Depth (m)
    use airsea,           only: I_0                   ! Shortwave radiations
    use airsea,           only: heat                  ! heat flux
                                                      ! (Wm-2)

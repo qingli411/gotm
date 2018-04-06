@@ -200,6 +200,11 @@
    ! Qing Li, 20180110
    call fm%register('u_stokes', 'm/s', 'Stokes drift x-component', dimensions=(/id_dim_z/), data1d=ustokes(1:nlev), category='velocities')
    call fm%register('v_stokes', 'm/s', 'Stokes drift y-component', dimensions=(/id_dim_z/), data1d=vstokes(1:nlev), category='velocities')
+   ! surface Stokes drift and penetration depth
+   ! Qing Li, 20180405
+   call fm%register('u0_stokes', 'm/s', 'surface Stokes drift x-component', standard_name='', data0d=us_x, category='surface')
+   call fm%register('v0_stokes', 'm/s', 'surface Stokes drift y-component', standard_name='', data0d=us_y, category='surface')
+   call fm%register('delta', 'm', 'Stokes drift penetration depth', standard_name='', data0d=delta, category='surface')
 
    return
    end subroutine register_observation_variables

@@ -99,6 +99,9 @@
 !  id for ustokes and vstokes
 !  Qing Li, 20180110
    integer, private          :: ustokes_id, vstokes_id
+!  id for surface Stokes drift and penetration depth
+!  Qing Li, 20180405
+   integer, private          :: u0stokes_id, v0stokes_id, delta_id
 # ifdef EXTRA_OUTPUT
    integer, private          :: mean1_id,mean2_id,mean3_id,mean4_id,mean5_id
    integer, private          :: turb1_id,turb2_id,turb3_id,turb4_id,turb5_id
@@ -261,6 +264,15 @@
    iret = nf90_def_var(ncid,'u_taus',NCDF_FLOAT_PRECISION,dim3d,u_taus_id)
    call check_err(iret)
    iret = nf90_def_var(ncid,'u_taub',NCDF_FLOAT_PRECISION,dim3d,u_taub_id)
+   call check_err(iret)
+
+   ! surface Stokes drift and penetration depth
+   ! Qing Li, 20180405
+   iret = nf90_def_var(ncid,'u0_stokes',NCDF_FLOAT_PRECISION,dim3d,u0stokes_id)
+   call check_err(iret)
+   iret = nf90_def_var(ncid,'v0_stokes',NCDF_FLOAT_PRECISION,dim3d,v0stokes_id)
+   call check_err(iret)
+   iret = nf90_def_var(ncid,'delta',NCDF_FLOAT_PRECISION,dim3d,delta_id)
    call check_err(iret)
 
    if (turb_method.eq.99) then
@@ -449,6 +461,11 @@
    iret = set_attributes(ncid,evap_id,units='m/s',long_name='evaporation')
    iret = set_attributes(ncid,u_taus_id,units='m/s',long_name='surface friction velocity')
    iret = set_attributes(ncid,u_taub_id,units='m/s',long_name='bottom friction velocity')
+   ! surface Stokes drift and penetration depth
+   ! Qing Li, 20180405
+   iret = set_attributes(ncid,u0stokes_id,units='m/s',long_name='surface Stokes drift x-component')
+   iret = set_attributes(ncid,v0stokes_id,units='m/s',long_name='surface Stokes drift y-component')
+   iret = set_attributes(ncid,delta_id,units='m',long_name='Stokes penetration depth')
 
    if (turb_method.eq.99) then
       iret = set_attributes(ncid,zsbl_id,units='m',long_name='SBL position (KPP)')
@@ -664,6 +681,11 @@
    iret = store_data(ncid,evap_id,XYT_SHAPE,1,scalar=evap)
    iret = store_data(ncid,u_taub_id,XYT_SHAPE,1,scalar=u_taub)
    iret = store_data(ncid,u_taus_id,XYT_SHAPE,1,scalar=u_taus)
+   ! surface Stokes drift and penetration depth
+   ! Qing Li, 20180405
+   iret = store_data(ncid,u0stokes_id,XYT_SHAPE,1,scalar=us_x)
+   iret = store_data(ncid,v0stokes_id,XYT_SHAPE,1,scalar=us_y)
+   iret = store_data(ncid,delta_id,XYT_SHAPE,1,scalar=delta)
 
    if (turb_method.eq.99) then
       iret = store_data(ncid,zsbl_id,XYT_SHAPE,1,scalar=zsbl)

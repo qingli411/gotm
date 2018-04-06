@@ -75,6 +75,11 @@
 !  surface stress components (Pa)
    REALTYPE, public, target            :: tx,ty
 
+! TEST OSMOSIS ! Qing Li, 20180403
+!  Stokes drift
+   REALTYPE, public, target            :: us_x, us_y, delta
+! TEST OSMOSIS ! Qing Li, 20180403
+
 !  precipitation and  evaporation
 !  (m/s)
    REALTYPE, public, target            :: precip
@@ -491,6 +496,11 @@
          case (FROMFILE)
             call register_input_0d(momentumflux_file,1,tx,'surface momentum flux: x-direction')
             call register_input_0d(momentumflux_file,2,ty,'surface momentum flux: y-direction')
+            ! TEST OSMOSIS ! Qing Li, 20180403
+            call register_input_0d(momentumflux_file,3,us_x,'surface Stokes drift: x-direction')
+            call register_input_0d(momentumflux_file,4,us_y,'surface Stokes drift: y-direction')
+            call register_input_0d(momentumflux_file,5,delta,'Stokes penetration depth')
+            ! TEST OSMOSIS ! Qing Li, 20180403
             LEVEL2 'Reading momentum fluxes from:'
             LEVEL3 trim(momentumflux_file)
          case default

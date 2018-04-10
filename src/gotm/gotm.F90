@@ -230,19 +230,22 @@
 
 !  Call do_input to make sure observed profiles are up-to-date.
    call do_input(julianday,secondsofday,nlev,z)
-!  Read wave spectrum
+!  read wave spectrum
 !  Qing Li, 20171219
    call do_input_spec(julianday,secondsofday,nfreq,wav_freq)
-!  Calculate Stokes drift
+
+   !  Update the grid based on true initial zeta (possibly read from file by do_input).
+   call updategrid(nlev,dt,zeta)
+
+!  calculate Stokes drift
 !  Qing Li, 20171220
+!  should be after update grid
+!  Qing Li, 20180410
    call stokes_drift(wav_freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,zi,us_x,us_y,delta,ustokes,vstokes)
    ! DEBUG QL
    ! do k=0,nlev
    !    LEVEL2 'z = ', z(k), ' zi = ', zi(k), ' us = ', ustokes(k), ' vs = ', vstokes(k)
    ! end do
-
-   !  Update the grid based on true initial zeta (possibly read from file by do_input).
-   call updategrid(nlev,dt,zeta)
 
    call init_turbulence(namlst,'gotmturb.nml',nlev)
 
@@ -408,12 +411,9 @@
       call do_input(julianday,secondsofday,nlev,z)
       call get_all_obs(julianday,secondsofday,nlev,z)
 
-!     Update wave spectrum
+!     update wave spectrum
 !     Qing Li, 20171219
       call do_input_spec(julianday,secondsofday,nfreq,wav_freq)
-!     Update Stokes drift
-!     Qing Li, 20171220
-      call stokes_drift(wav_freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,zi,us_x,us_y,delta,ustokes,vstokes)
 
 !     external forcing
       if( calc_fluxes ) then
@@ -430,6 +430,13 @@
 
 !     meanflow integration starts
       call updategrid(nlev,dt,zeta)
+
+!     update Stokes drift
+!     Qing Li, 20171220
+!     should be after updategrid
+!     Qing Li, 20180410
+      call stokes_drift(wav_freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,zi,us_x,us_y,delta,ustokes,vstokes)
+
       call wequation(nlev,dt)
       call coriolis(nlev,dt)
 

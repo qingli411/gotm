@@ -737,23 +737,31 @@
          <element name="Ric" type="float" label="critical value of bulk Richardson number" />
          <element name="lcvmix" type="bool" label=".true. for using CVMix" />
          <element name="lnoDGat1" type="bool" label=".true. for setting G'(0) = 0" />
-         <element name="langmuir_method" type="int" label="method how Langmuir turbulence is included">
+         <element name="langmuir_method" type="int" label="method to include Langmuir turbulence">
+            <condition type="eq" variable="./lcvmix" value="True" />
             <options>
                <option value="0" label="none"/>
-               <option value="1" label="Langmuir mixing, enhancement factor approximated by a simple enhancement facator model based on empirical wave spectrum" />
-               <option value="2" label="Langmuir mixing, enhancement factor given from file langmuir_file" />
-               <option value="3" label="Langmuir mixing + Langmuir enhanced entrainment" />
+               <option value="1" label="Langmuir mixing from an enhancement factor (Li et al., 2016)" />
+               <option value="2" label="Langmuir mixing + Langmuir enhanced entrainment (Li and Fox-Kemper, 2017)" />
             </options>
          </element>
-         <element name="langmuir_file" type="gotmdatafile" label="custom input data for Langmuir turbulence parameterization" description="file with enhancement factor">
-            <condition type="or">
-               <condition type="eq" variable="./langmuir_method" value="2" />
-               <condition type="eq" variable="./langmuir_method" value="3" />
+         <element name="efactor_method" type="int" label="method to compute enhancement factor">
+            <condition type="eq" variable="./langmuir_method" value="1" />
+            <options>
+               <option value="1" label="approximated by a simple enhancement facator model based on empirical wave spectrum (Li et al., 2017)" />
+               <option value="2" label="read from file efactor_file" />
+               <option value="3" label="compute from input wave spectrum" />
+               <option value="4" label="compute from Stokes drift" />
+            </options>
+         </element>
+         <element name="efactor_file" type="gotmdatafile" label="input enhancement factor data for Langmuir mixing parameterization" description="file with enhancement factor">
+            <condition type="and">
+                <condition type="eq" variable="./langmuir_method" value="1" />
+                <condition type="eq" variable="./efactor_method" value="2" />
             </condition>
             <fileinfo type="pointsintime">
                <filevariables>
                   <filevariable name="ef" label="enhancement factor" unit="1" />
-                  <filevariable name="la" label="Langmuir number" unit="1" />
                </filevariables>
             </fileinfo>
          </element>

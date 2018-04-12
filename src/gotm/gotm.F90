@@ -60,6 +60,8 @@
    use turbulence,  only: clean_turbulence
 
    use kpp,         only: init_kpp,do_kpp,clean_kpp
+   ! Qing Li, 20180402
+   use zdfosm,         only: init_osm,do_osm,clean_osm
 
    use mtridiagonal,only: init_tridiagonal,clean_tridiagonal
    use eqstate,     only: init_eqstate
@@ -228,19 +230,22 @@
 
 !  Call do_input to make sure observed profiles are up-to-date.
    call do_input(julianday,secondsofday,nlev,z)
-!  Read wave spectrum
+!  read wave spectrum
 !  Qing Li, 20171219
    call do_input_spec(julianday,secondsofday,nfreq,wav_freq)
-!  Calculate Stokes drift
+
+   !  Update the grid based on true initial zeta (possibly read from file by do_input).
+   call updategrid(nlev,dt,zeta)
+
+!  calculate Stokes drift
 !  Qing Li, 20171220
-   call stokes_drift(wav_freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,zi,ustokes,vstokes)
+!  should be after update grid
+!  Qing Li, 20180410
+   call stokes_drift(wav_freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,zi,us_x,us_y,delta,ustokes,vstokes)
    ! DEBUG QL
    ! do k=0,nlev
    !    LEVEL2 'z = ', z(k), ' zi = ', zi(k), ' us = ', ustokes(k), ' vs = ', vstokes(k)
    ! end do
-
-   !  Update the grid based on true initial zeta (possibly read from file by do_input).
-   call updategrid(nlev,dt,zeta)
 
    call init_turbulence(namlst,'gotmturb.nml',nlev)
 
@@ -249,6 +254,12 @@
    t = tprof
    u = uprof
    v = vprof
+
+!  initialize OSMOSIS model
+!  Qing Li, 20180402
+   if (turb_method.eq.98) then
+      call init_osm(namlst,'osm.nml',nlev,depth,h)
+   endif
 
 !  initialize KPP model
    if (turb_method.eq.99) then
@@ -400,12 +411,9 @@
       call do_input(julianday,secondsofday,nlev,z)
       call get_all_obs(julianday,secondsofday,nlev,z)
 
-!     Update wave spectrum
+!     update wave spectrum
 !     Qing Li, 20171219
       call do_input_spec(julianday,secondsofday,nfreq,wav_freq)
-!     Update Stokes drift
-!     Qing Li, 20171220
-      call stokes_drift(wav_freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,zi,ustokes,vstokes)
 
 !     external forcing
       if( calc_fluxes ) then
@@ -422,6 +430,13 @@
 
 !     meanflow integration starts
       call updategrid(nlev,dt,zeta)
+
+!     update Stokes drift
+!     Qing Li, 20171220
+!     should be after updategrid
+!     Qing Li, 20180410
+      call stokes_drift(wav_freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,zi,us_x,us_y,delta,ustokes,vstokes)
+
       call wequation(nlev,dt)
       call coriolis(nlev,dt)
 
@@ -466,6 +481,12 @@
 !        do convective adjustment
          call convectiveadjustment(nlev,num,nuh,const_num,const_nuh,    &
                                    buoy_method,gravity,rho_0)
+      case (98)
+!        update OSMOSIS model
+!        Qing Li, 20180402
+         call convert_fluxes(nlev,gravity,cp,rho_0,heat,precip+evap,    &
+                             rad,T,S,tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
+         call do_osm(nlev,depth,h,dt)
       case (99)
 !        update KPP model
          call convert_fluxes(nlev,gravity,cp,rho_0,heat,precip+evap,    &
@@ -526,6 +547,9 @@
    call clean_air_sea()
 
    call clean_meanflow()
+
+   ! Qing Li, 20180402
+   if (turb_method.eq.98) call clean_osm()
 
    if (turb_method.eq.99) call clean_kpp()
 

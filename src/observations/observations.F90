@@ -72,13 +72,17 @@
 !                     surface Stokes drift
    REALTYPE, public, dimension(:), allocatable, target :: wav_freq, wav_spec, wav_xcmp, wav_ycmp
 
+!  ralaxation times for salinity and temperature
+   REALTYPE, public, dimension(:), allocatable, target :: SRelaxTau
+   REALTYPE, public, dimension(:), allocatable         :: TRelaxTau
+
 !  Stokes drift
 !  Qing Li, 20171220
    REALTYPE, public, dimension(:), allocatable         :: ustokes, vstokes
 
-!  ralaxation times for salinity and temperature
-   REALTYPE, public, dimension(:), allocatable, target :: SRelaxTau
-   REALTYPE, public, dimension(:), allocatable         :: TRelaxTau
+!  Surface Stokes drift and penetration depth
+!  Qing Li, 20180405
+   REALTYPE, public, target                            :: us_x, us_y, delta
 
 !  sea surface elevation, sea surface gradients and height of velocity obs.
    REALTYPE, public, target                            :: zeta,dpdx,dpdy,h_press
@@ -187,7 +191,9 @@
 !  Qing Li, 20180311
    integer, public           :: ustokes_method
    integer, public           :: nfreq
-   character(LEN=PATH_MAX)   :: ustokes_file
+   character(LEN=PATH_MAX)   :: spec_file
+   character(LEN=PATH_MAX)   :: usp_file
+   character(LEN=PATH_MAX)   :: usdelta_file
 
 
 !  Observed velocity profile profiles - typically from ADCP
@@ -220,6 +226,7 @@
    ! For Stokes drift Qing Li, 20180311
    integer, parameter        :: FROMSPEC=2
    integer, parameter        :: FROMUSP=3
+   integer, parameter        :: FROMUSDELTA=4
 
    REALTYPE, parameter       :: gravity = 9.81
 !
@@ -313,7 +320,7 @@
 !  Stokes drift namelist
 !  Qing Li, 20180311
    namelist /stokes_drift/                                          &
-            ustokes_method,nfreq,ustokes_file
+            ustokes_method,nfreq,spec_file,usp_file,usdelta_file
 
    namelist /velprofile/ vel_prof_method,vel_prof_file,         &
             vel_relax_tau,vel_relax_ramp
@@ -435,7 +442,9 @@
 !  Qing Li, 20180311
    ustokes_method=0
    nfreq=64
-   ustokes_file='spec.dat'
+   spec_file='spec.dat'
+   usp_file='usp.dat'
+   usdelta_file='usdelta.dat'
 
 !  Observed velocity profile profiles - typically from ADCP
    vel_prof_method=0
@@ -798,16 +807,22 @@
       case (CONSTANT)
 !        Empirical spectrum
       case (FROMSPEC)
-         call register_input_1d_spec(ustokes_file,1,wav_spec,'observed band wave energy spectrum')
-         call register_input_1d_spec(ustokes_file,2,wav_xcmp,'observed band directional component: x-direction')
-         call register_input_1d_spec(ustokes_file,3,wav_ycmp,'observed band directional component: y-direction')
+         call register_input_1d_spec(spec_file,1,wav_spec,'observed band wave energy spectrum')
+         call register_input_1d_spec(spec_file,2,wav_xcmp,'observed band directional component: x-direction')
+         call register_input_1d_spec(spec_file,3,wav_ycmp,'observed band directional component: y-direction')
          LEVEL2 'Reading wave spectrum data from:'
-         LEVEL3 trim(ustokes_file)
+         LEVEL3 trim(spec_file)
       case (FROMUSP)
-         call register_input_1d_spec(ustokes_file,1,wav_xcmp,'partitioned surface Stokes drift: x-direction')
-         call register_input_1d_spec(ustokes_file,2,wav_ycmp,'partitioned surface Stokes drift: y-direction')
+         call register_input_1d_spec(usp_file,1,wav_xcmp,'partitioned surface Stokes drift: x-direction')
+         call register_input_1d_spec(usp_file,2,wav_ycmp,'partitioned surface Stokes drift: y-direction')
          LEVEL2 'Reading partitioned surface Stokes drift data from:'
-         LEVEL3 trim(ustokes_file)
+         LEVEL3 trim(usp_file)
+      case (FROMUSDELTA)
+         call register_input_0d(usdelta_file,1,us_x,'surface Stokes drift: x-direction')
+         call register_input_0d(usdelta_file,2,us_y,'surface Stokes drift: y-direction')
+         call register_input_0d(usdelta_file,3,delta,'Stokes drift penetration depth')
+         LEVEL2 'Reading surface Stokes drift and penetration depth data from:'
+         LEVEL3 trim(usdelta_file)
       case default
          LEVEL1 'A non-valid ustokes_method has been given ',ustokes_method
          stop 'init_observations()'
@@ -962,7 +977,8 @@
 ! !IROUTINE: stokes_drift
 !
 ! !INTERFACE:
-   subroutine stokes_drift(freq,spec,xcmp,ycmp,nlev,z,zi,ustokes,vstokes)
+   subroutine stokes_drift(freq,spec,xcmp,ycmp,nlev,z,zi, &
+                           us_x,us_y,delta,ustokes,vstokes)
 !
 ! !DESCRIPTION:
 !  A wrapper for all the subroutines to calculate the Stokes drift profile.
@@ -976,6 +992,7 @@
    integer, intent(in)                 :: nlev
    REALTYPE, intent(in)                :: freq(:), spec(:), xcmp(:), ycmp(:)
    REALTYPE, intent(in)                :: z(0:nlev), zi(0:nlev)
+   REALTYPE, intent(inout)             :: us_x, us_y, delta
 !
 ! !OUTPUT PARAMETERS:
    REALTYPE, intent(out)               :: ustokes(0:nlev), vstokes(0:nlev)
@@ -992,12 +1009,17 @@
       case (NOTHING)
          ustokes = _ZERO_
          vstokes = _ZERO_
+         us_x = _ZERO_
+         us_y = _ZERO_
+         delta = _ZERO_
       case (CONSTANT)
 !        Empirical spectrum
       case (FROMSPEC)
-         call stokes_drift_spec(freq,spec,xcmp,ycmp,nlev,z,zi,ustokes,vstokes)
+         call stokes_drift_spec(freq,spec,xcmp,ycmp,nlev,z,zi,us_x,us_y,delta,ustokes,vstokes)
       case (FROMUSP)
-         call stokes_drift_usp(freq,xcmp,ycmp,nlev,z,zi,ustokes,vstokes)
+         call stokes_drift_usp(freq,xcmp,ycmp,nlev,z,zi,us_x,us_y,delta,ustokes,vstokes)
+      case (FROMUSDELTA)
+         call stokes_drift_usdelta(nlev,z,zi,us_x,us_y,delta,ustokes,vstokes)
       case default
          LEVEL1 'A non-valid ustokes_method has been given ',ustokes_method
          stop 'stokes_drift()'
@@ -1012,7 +1034,8 @@
 ! !IROUTINE: stokes_drift_spec
 !
 ! !INTERFACE:
-   subroutine stokes_drift_spec(freq,spec,xcmp,ycmp,nlev,z,zi,ustokes,vstokes)
+   subroutine stokes_drift_spec(freq,spec,xcmp,ycmp,nlev,z,zi,&
+                                us_x,us_y,delta,ustokes,vstokes)
 !
 ! !DESCRIPTION:
 !  Calculate the Stokes drift profile from wave spectrum. The wave spectrum
@@ -1030,6 +1053,7 @@
    REALTYPE, intent(in)                :: z(0:nlev), zi(0:nlev)
 !
 ! !OUTPUT PARAMETERS:
+   REALTYPE, intent(out)               :: us_x, us_y, delta
    REALTYPE, intent(out)               :: ustokes(0:nlev), vstokes(0:nlev)
 
 ! !REVISION HISTORY:
@@ -1038,7 +1062,7 @@
 !EOP
 ! !LOCAL VARIABLES:
    integer                             :: i, k
-   REALTYPE                            :: const, tmp
+   REALTYPE                            :: const, tmp, ustran
    REALTYPE                            :: dz, kdz, freqc, dfreqc
    REALTYPE                            :: aplus, aminus, iplus, iminus
    REALTYPE                            :: factor(nfreq), factor2(nfreq)
@@ -1047,6 +1071,9 @@
 !  initialization
    ustokes = _ZERO_
    vstokes = _ZERO_
+   us_x = _ZERO_
+   us_y = _ZERO_
+   delta = _ZERO_
 !  some factors
    const = 8.*pi**2./gravity
    do i=1,nfreq
@@ -1080,6 +1107,20 @@
       ustokes(k) = ustokes(k)+tmp*xcmp(nfreq)
       vstokes(k) = vstokes(k)+tmp*ycmp(nfreq)
    end do
+!  Surface Stokes drift and penetration depth
+   ustran = _ZERO_
+   do i=1,nfreq
+      us_x = us_x+factor(i)*spec(i)*xcmp(i)
+      us_y = us_y+factor(i)*spec(i)*ycmp(i)
+      ! Stokes transport
+      ustran = ustran+2.*pi*freq(i)*spec(i)
+   end do
+!  add contribution from a f^-5 tail
+   tmp = 2.*pi*const*freqc**4*spec(nfreq)/dfreqc
+   us_x = us_x+tmp*xcmp(nfreq)
+   us_y = us_y+tmp*ycmp(nfreq)
+   ustran = ustran+4./3.*pi*freqc**2.*spec(nfreq)/dfreqc
+   delta = ustran/max(SMALL, sqrt(us_x**2.+us_y**2.))
 
    end subroutine stokes_drift_spec
 !EOC
@@ -1090,7 +1131,8 @@
 ! !IROUTINE: stokes_drift_usp
 !
 ! !INTERFACE:
-   subroutine stokes_drift_usp(freq,ussp,vssp,nlev,z,zi,ustokes,vstokes)
+   subroutine stokes_drift_usp(freq,ussp,vssp,nlev,z,zi,&
+                               us_x,us_y,delta,ustokes,vstokes)
 !
 ! !DESCRIPTION:
 !  Calculate the Stokes drift profile from partitioned Stokes drift.
@@ -1106,6 +1148,7 @@
    REALTYPE, intent(in)                :: z(0:nlev), zi(0:nlev)
 !
 ! !OUTPUT PARAMETERS:
+   REALTYPE, intent(out)               :: us_x, us_y, delta
    REALTYPE, intent(out)               :: ustokes(0:nlev), vstokes(0:nlev)
 
 ! !REVISION HISTORY:
@@ -1114,7 +1157,7 @@
 !EOP
 ! !LOCAL VARIABLES:
    integer                             :: i, k
-   REALTYPE                            :: const, tmp
+   REALTYPE                            :: const, tmp, ustran, vstran
    REALTYPE                            :: kdz, dz
    REALTYPE                            :: factor(nfreq)
 !-----------------------------------------------------------------------
@@ -1122,6 +1165,11 @@
 !  initialization
    ustokes = _ZERO_
    vstokes = _ZERO_
+   us_x = _ZERO_
+   us_y = _ZERO_
+   delta = _ZERO_
+   ustran = _ZERO_
+   vstran = _ZERO_
 !  some factors
    const = 8.*pi**2./gravity
    do i=1,nfreq
@@ -1142,8 +1190,70 @@
          vstokes(k) = vstokes(k)+tmp*vssp(i)
       end do
    end do
+!  Surface Stokes drift and penetration depth
+   do i=1,nfreq
+      us_x = us_x+ussp(i)
+      us_y = us_y+vssp(i)
+      ustran = ustran+ussp(i)/factor(i)
+      vstran = vstran+vssp(i)/factor(i)
+   end do
+   delta = sqrt(ustran**2.+vstran**2.)/max(SMALL, sqrt(us_x**2.+us_y**2.))
 
    end subroutine stokes_drift_usp
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: stokes_drift_usdelta
+!
+! !INTERFACE:
+   subroutine stokes_drift_usdelta(nlev,z,zi,us_x,us_y,delta,ustokes,vstokes)
+!
+! !DESCRIPTION:
+!  Calculate the Stokes drift profile from surface Stokes drift and the
+!  Stokes penetration depth, assuming exponential profile.
+! TODO: Documentation  <05-04-18, Qing Li> !
+!
+! !USES:
+
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)                 :: nlev
+   REALTYPE, intent(in)                :: z(0:nlev), zi(0:nlev)
+   REALTYPE, intent(in)                :: us_x, us_y, delta
+!
+! !OUTPUT PARAMETERS:
+   REALTYPE, intent(out)               :: ustokes(0:nlev), vstokes(0:nlev)
+
+! !REVISION HISTORY:
+!  Original author(s): Qing Li
+!
+!EOP
+! !LOCAL VARIABLES:
+   integer                             :: i, k
+   REALTYPE                            :: tmp
+   REALTYPE                            :: kdz, dz
+!-----------------------------------------------------------------------
+!BOC
+!  initialization
+   ustokes = _ZERO_
+   vstokes = _ZERO_
+!  Stokes drift averaged over the grid cell, z(0) is not used
+   do k=1,nlev
+      dz = zi(k)-zi(k-1)
+      kdz = 0.5*dz/delta
+      if (kdz .lt. 100.) then
+          tmp = sinh(kdz)/kdz*exp(z(k)/delta)
+      else
+          tmp = exp(z(k)/delta)
+      end if
+      ustokes(k) = tmp*us_x
+      vstokes(k) = tmp*us_y
+   end do
+
+   end subroutine stokes_drift_usdelta
 !EOC
 
 !-----------------------------------------------------------------------
@@ -1278,7 +1388,7 @@
 
 !  Qing Li, 20180311
    LEVEL2 'stokes_drift namelist',                                  &
-            ustokes_method,nfreq,ustokes_file
+            ustokes_method,nfreq,spec_file,usp_file,usdelta_file
 
    LEVEL2 'observed velocity profiles namelist',                &
             vel_prof_method,vel_prof_file,                      &

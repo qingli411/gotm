@@ -207,12 +207,21 @@
          <lnoDGat1>True</lnoDGat1>
          <Ric>0.3</Ric>
          <langmuir_method>0</langmuir_method>
-         <langmuir_file>langmuir_file.dat</langmuir_file>
+         <efactor_method>1</efactor_method>
+         <efactor_file>efactor_file.dat</efactor_file>
          <interp_type>quadratic</interp_type>
          <interp_type2>LMD94</interp_type2>
          <MatchTechnique>SimpleShapes</MatchTechnique>
       </kpp>
    </kpp>
+   <osm>
+      <osm>
+         <osm_sbl>True</osm_sbl>
+         <osm_bbl>True</osm_bbl>
+         <osm_interior>True</osm_interior>
+         <h_i>50</h_i>
+      </osm>
+   </osm>
    <obs>
       <sprofile>
          <s_prof_method>0</s_prof_method>
@@ -330,7 +339,9 @@
       <stokes_drift>
          <ustokes_method>0</ustokes_method>
          <nfreq>64</nfreq>
-         <ustokes_file>spec_file.dat</ustokes_file>
+         <spec_file>spec_file.dat</spec_file>
+         <usp_file>usp_file.dat</usp_file>
+         <usdelta_file>usdelta_file.dat</usdelta_file>
       </stokes_drift>
    </obs>
    <seagrass>

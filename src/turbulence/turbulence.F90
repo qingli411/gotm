@@ -472,7 +472,7 @@
 
    read(namlst,nml=turbulence,err=81)
 
-   if (turb_method.eq.99) then
+   if (turb_method.eq.99 .or. turb_method.eq.98) then
       close (namlst)
       LEVEL2 'done.'
       LEVEL1 'done.'
@@ -2115,9 +2115,12 @@
    case (algebraic)
 !  solve a model for algebraically described diffusity
 
+!  98 for OSMOSIS scheme
+!  Qing Li, 20180403
+
       STDERR '----------------------------------------------------------'
       STDERR 'Model for turb_method=1 not coded yet.'
-      STDERR 'Choose  turb_method=0,2,3,99'
+      STDERR 'Choose  turb_method=0,2,3,98,99'
       STDERR 'Program execution stopped ...'
       stop 'turbulence.F90'
       STDERR '----------------------------------------------------------'
@@ -3457,7 +3460,9 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   if (turb_method.eq.99) return
+!
+! Qing Li, 20180403
+   if (turb_method.eq.99 .or. turb_method.eq.98) return
 
    LEVEL1 'State of turbulence module:'
    LEVEL2 'tke,eps,L',tke,eps,L

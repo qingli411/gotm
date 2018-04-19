@@ -80,6 +80,10 @@
 !  Qing Li, 20171220
    REALTYPE, public, dimension(:), allocatable         :: ustokes, vstokes
 
+!  vertical shear of Stokes drift at grid interface
+!  Qing Li, 20180418
+   REALTYPE, public, dimension(:), allocatable         :: dusdz, dvsdz
+
 !  Surface Stokes drift and penetration depth
 !  Qing Li, 20180405
    REALTYPE, public, target                            :: us_x, us_y, delta
@@ -592,6 +596,14 @@
    if (rc /= 0) STOP 'init_observations: Error allocating (vstokes)'
    vstokes = _ZERO_
 
+   allocate(dusdz(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (dusdz)'
+   dusdz = _ZERO_
+
+   allocate(dvsdz(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (dvsdz)'
+   dvsdz = _ZERO_
+
 !  The salinity profile
    select case (s_prof_method)
       case (NOTHING)
@@ -978,7 +990,8 @@
 !
 ! !INTERFACE:
    subroutine stokes_drift(freq,spec,xcmp,ycmp,nlev,z,zi, &
-                           us_x,us_y,delta,ustokes,vstokes)
+                           us_x,us_y,delta,ustokes,vstokes, &
+                           dusdz,dvsdz)
 !
 ! !DESCRIPTION:
 !  A wrapper for all the subroutines to calculate the Stokes drift profile.
@@ -995,13 +1008,17 @@
    REALTYPE, intent(inout)             :: us_x, us_y, delta
 !
 ! !OUTPUT PARAMETERS:
+   ! grid cell averaged Stokes drift
    REALTYPE, intent(out)               :: ustokes(0:nlev), vstokes(0:nlev)
+   ! vertical shear of Stokes drift at cell interface
+   REALTYPE, intent(out)               :: dusdz(0:nlev), dvsdz(0:nlev)
 
 ! !REVISION HISTORY:
 !  Original author(s): Qing Li
 !
 !EOP
 ! !LOCAL VARIABLES:
+   integer                   :: i
 !-----------------------------------------------------------------------
 !BOC
 
@@ -1012,8 +1029,12 @@
          us_x = _ZERO_
          us_y = _ZERO_
          delta = _ZERO_
+         dusdz = _ZERO_
+         dvsdz = _ZERO_
       case (CONSTANT)
 !        Empirical spectrum
+         LEVEL1 'The following ustokes_method has yet been supported: ', ustokes_method
+         stop 'stokes_drift()'
       case (FROMSPEC)
          call stokes_drift_spec(freq,spec,xcmp,ycmp,nlev,z,zi,us_x,us_y,delta,ustokes,vstokes)
       case (FROMUSP)
@@ -1021,9 +1042,20 @@
       case (FROMUSDELTA)
          call stokes_drift_usdelta(nlev,z,zi,us_x,us_y,delta,ustokes,vstokes)
       case default
-         LEVEL1 'A non-valid ustokes_method has been given ',ustokes_method
+         LEVEL1 'A non-valid ustokes_method has been given ', ustokes_method
          stop 'stokes_drift()'
    end select
+
+   if (ustokes_method .ne. NOTHING) then
+      do i=1,nlev-1
+         dusdz(i) = (ustokes(i+1)-ustokes(i))/(z(i+1)-z(i))
+         dvsdz(i) = (vstokes(i+1)-vstokes(i))/(z(i+1)-z(i))
+      end do
+      dusdz(0   ) = dusdz(1     )
+      dusdz(nlev) = dusdz(nlev-1)
+      dvsdz(0   ) = dvsdz(1     )
+      dvsdz(nlev) = dvsdz(nlev-1)
+   end if
 
    end subroutine stokes_drift
 !EOC

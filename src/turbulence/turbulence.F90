@@ -57,6 +57,10 @@
 !  of tke and buoyancy variance
    REALTYPE, public, dimension(:), allocatable   :: P,B,Pb
 
+!  Stokes production
+!  Qing Li, 20180418
+   REALTYPE, public, dimension(:), allocatable   :: PS
+
 !  turbulent diffusivities
 !  of momentum, temperature, salinity
    REALTYPE, public, dimension(:), allocatable         :: num
@@ -530,6 +534,12 @@
    allocate(Pb(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (Pb)'
    Pb = _ZERO_
+
+   ! Stokes production
+   ! Qing Li, 20180418
+   allocate(PS(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (PS)'
+   PS = _ZERO_
 
    allocate(num(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (num)'
@@ -3407,6 +3417,7 @@
    if (allocated(P)) deallocate(P)
    if (allocated(B)) deallocate(B)
    if (allocated(Pb)) deallocate(Pb)
+   if (allocated(PS)) deallocate(PS)
    if (allocated(num)) deallocate(num)
    if (allocated(nuh)) deallocate(nuh)
    if (allocated(nus)) deallocate(nus)
@@ -3468,7 +3479,7 @@
    LEVEL2 'tke,eps,L',tke,eps,L
    LEVEL2 'tkeo',tkeo
    LEVEL2 'kb,epsb',kb,epsb
-   LEVEL2 'P,B,Pb',P,B,Pb
+   LEVEL2 'P,B,Pb,PS',P,B,Pb,PS
    LEVEL2 'num,nuh,nus',num,nuh,nus
    LEVEL2 'gamu,gamv',gamu,gamv
    LEVEL2 'gamb,gamh,gams',gamb,gamh,gams

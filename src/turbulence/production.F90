@@ -52,6 +52,7 @@
 !
 ! !USES:
    use turbulence, only: P,B,Pb
+   use turbulence, only: PS
    use turbulence, only: num,nuh
    use turbulence, only: alpha,iw_model
    IMPLICIT NONE
@@ -73,6 +74,7 @@
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard
+!     Qing Li, 20180418, update Stokes production
 !
 !EOP
 !-----------------------------------------------------------------------

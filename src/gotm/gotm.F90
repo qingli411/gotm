@@ -241,7 +241,7 @@
 !  Qing Li, 20171220
 !  should be after update grid
 !  Qing Li, 20180410
-   call stokes_drift(wav_freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,zi,us_x,us_y,delta,ustokes,vstokes)
+   call stokes_drift(wav_freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,zi,us_x,us_y,delta,ustokes,vstokes,dusdz,dvsdz)
    ! DEBUG QL
    ! do k=0,nlev
    !    LEVEL2 'z = ', z(k), ' zi = ', zi(k), ' us = ', ustokes(k), ' vs = ', vstokes(k)
@@ -435,7 +435,7 @@
 !     Qing Li, 20171220
 !     should be after updategrid
 !     Qing Li, 20180410
-      call stokes_drift(wav_freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,zi,us_x,us_y,delta,ustokes,vstokes)
+      call stokes_drift(wav_freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,zi,us_x,us_y,delta,ustokes,vstokes,dusdz,dvsdz)
 
       call wequation(nlev,dt)
       call coriolis(nlev,dt)

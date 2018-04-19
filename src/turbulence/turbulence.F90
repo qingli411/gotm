@@ -83,6 +83,11 @@
 !  alpha_M, alpha_N, and alpha_B
    REALTYPE, public, dimension(:), allocatable   :: as,an,at
 
+!  alpha_V, alpha_W
+!  dimensionless Stokes-Eulerian cross-shear and Stokes shear^2
+!  Qing Li, 20180419
+   REALTYPE, public, dimension(:), allocatable   :: av,aw
+
 !  time scale ratio r
    REALTYPE, public, dimension(:), allocatable   :: r
 
@@ -243,6 +248,9 @@
    integer, parameter                            :: quasiEq=1
    integer, parameter                            :: weakEqKbEq=2
    integer, parameter                            :: weakEqKb=3
+   ! SMC of Langmuir turbulence (Harcourt, 2015)
+   ! Qing Li, 20180419
+   integer, parameter                            :: quasiEqH15=4
 
 !  method to solve equation for k_b
    integer, parameter                            :: kb_algebraic=1
@@ -596,6 +604,16 @@
    allocate(at(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (at)'
    at = _ZERO_
+
+   ! allocating av, aw
+   ! Qing Li, 20180419
+   allocate(av(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (av)'
+   av = _ZERO_
+
+   allocate(aw(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (aw)'
+   aw = _ZERO_
 
    allocate(r(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (r)'
@@ -1766,6 +1784,7 @@
       endif
 
    case default
+      ! TODO: add options with Stokes <19-04-18, Qing Li> !
    end select
 
    return
@@ -1998,6 +2017,7 @@
          LEVEL2 '--------------------------------------------------------'
          LEVEL2 ' '
       case default
+         ! TODO: add options with Stokes <19-04-18, Qing Li> !
    end select
 
    return
@@ -2011,7 +2031,7 @@
 !
 ! !INTERFACE:
    subroutine do_turbulence(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,      &
-                            NN,SS,xP)
+                            NN,SS,CSSTK,SSSTK,xP)
 !
 ! !DESCRIPTION: This routine is the central point of the
 ! turbulence scheme. It determines the order, in which
@@ -2071,10 +2091,11 @@
    IMPLICIT NONE
 
    interface
-      subroutine production(nlev,NN,SS,xP)
+      subroutine production(nlev,NN,SS,CSSTK,xP)
         integer,  intent(in)                :: nlev
         REALTYPE, intent(in)                :: NN(0:nlev)
         REALTYPE, intent(in)                :: SS(0:nlev)
+        REALTYPE, intent(in)                :: CSSTK(0:nlev)
         REALTYPE, intent(in), optional      :: xP(0:nlev)
       end subroutine production
    end interface
@@ -2109,6 +2130,14 @@
 !  shear-frequency squared (1/s^2)
    REALTYPE, intent(in)                :: SS(0:nlev)
 
+!  CSSTK, SSSTK
+!  Qing Li, 20180419
+!  Stokes-Eulerian cross-shear (1/s^2)
+   REALTYPE, intent(in)                :: CSSTK(0:nlev)
+
+!  Stokes shear squared (1/s^2)
+   REALTYPE, intent(in)                :: SSSTK(0:nlev)
+
 !  TKE production due to seagrass
 !  friction (m^2/s^3)
    REALTYPE, intent(in), optional      :: xP(0:nlev)
@@ -2141,10 +2170,10 @@
 
       if ( PRESENT(xP) ) then
 !        with seagrass turbulence
-         call production(nlev,NN,SS,xP)
+         call production(nlev,NN,SS,CSSTK,xP)
       else
 !        without
-         call production(nlev,NN,SS)
+         call production(nlev,NN,SS,CSSTK)
       end if
 
       call alpha_mnb(nlev,NN,SS)
@@ -2162,10 +2191,10 @@
 
       if ( PRESENT(xP) ) then
 !        with seagrass turbulence
-         call production(nlev,NN,SS,xP)
+         call production(nlev,NN,SS,CSSTK,xP)
       else
 !        without
-         call production(nlev,NN,SS)
+         call production(nlev,NN,SS,CSSTK)
       end if
 
       select case(scnd_method)
@@ -2194,17 +2223,31 @@
 
       case (weakEqKb)
 
-      STDERR 'This second-order model is not yet tested.'
-      STDERR 'Choose scnd_method=1,2 in gotmturb.nml.'
-      STDERR 'Program execution stopped ...'
-      stop 'turbulence.F90'
+         STDERR 'This second-order model is not yet tested.'
+         STDERR 'Choose scnd_method=1,2 in gotmturb.nml.'
+         STDERR 'Program execution stopped ...'
+         stop 'turbulence.F90'
+
+      case (quasiEqH15)
+         ! quasi-equilibrium model
+         ! SMC model of Langmuir turbulence (Harcourt, 2015)
+         ! Qing Li, 20180419
+
+         call alpha_mnbvw(nlev,NN,SS,CSSTK,SSSTK)
+         call cmue_d_h15(nlev)
+         call do_tke(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
+         call do_kb(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
+         call do_lengthscale(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,NN,SS)
+         call do_epsb(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
+         call alpha_mnbvw(nlev,NN,SS,CSSTK,SSSTK)
+         call kolpran(nlev)
 
       case default
 
-      STDERR 'Not a valid method for second-order model'
-      STDERR 'Choose scnd_method=1,2,3 in gotmturb.nml.'
-      STDERR 'Program execution stopped ...'
-      stop 'turbulence.F90'
+         STDERR 'Not a valid method for second-order model'
+         STDERR 'Choose scnd_method=1,2,3 in gotmturb.nml.'
+         STDERR 'Program execution stopped ...'
+         stop 'turbulence.F90'
 
       end select
 
@@ -2252,6 +2295,7 @@
    REALTYPE, intent(in)                :: dt,u_taus,u_taub,z0s,z0b
    REALTYPE, intent(in)                :: h(0:nlev)
    REALTYPE, intent(in)                :: NN(0:nlev),SS(0:nlev)
+   ! TODO: optional input of CSSTK and SSSTK <19-04-18, Qing Li> !
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard,
@@ -2303,6 +2347,7 @@
    REALTYPE, intent(in)                :: dt,u_taus,u_taub,z0s,z0b
    REALTYPE, intent(in)                :: h(0:nlev)
    REALTYPE, intent(in)                :: NN(0:nlev),SS(0:nlev)
+   ! TODO: optional input of CSSTK and SSSTK? <19-04-18, Qing Li> !
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
@@ -2364,6 +2409,7 @@
    REALTYPE, intent(in)                :: dt,depth,u_taus,u_taub,z0s,z0b
    REALTYPE, intent(in)                :: h(0:nlev)
    REALTYPE, intent(in)                :: NN(0:nlev),SS(0:nlev)
+   ! TODO: optional input of CSSTK and SSSTK <19-04-18, Qing Li> !
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard,
@@ -2415,6 +2461,7 @@
    REALTYPE, intent(in)                :: dt,u_taus,u_taub,z0s,z0b
    REALTYPE, intent(in)                :: h(0:nlev)
    REALTYPE, intent(in)                :: NN(0:nlev),SS(0:nlev)
+   ! TODO: optional input of CSSTK and SSSTK? <19-04-18, Qing Li> !
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
@@ -3417,6 +3464,8 @@
    if (allocated(P)) deallocate(P)
    if (allocated(B)) deallocate(B)
    if (allocated(Pb)) deallocate(Pb)
+   ! PS
+   ! Qing Li, 20180418
    if (allocated(PS)) deallocate(PS)
    if (allocated(num)) deallocate(num)
    if (allocated(nuh)) deallocate(nuh)
@@ -3432,6 +3481,10 @@
    if (allocated(an)) deallocate(an)
    if (allocated(as)) deallocate(as)
    if (allocated(at)) deallocate(at)
+   ! av, aw
+   ! Qing Li, 20180419
+   if (allocated(av)) deallocate(av)
+   if (allocated(aw)) deallocate(aw)
    if (allocated(r)) deallocate(r)
    if (allocated(Rig)) deallocate(Rig)
    if (allocated(xRf)) deallocate(xRf)
@@ -3479,6 +3532,8 @@
    LEVEL2 'tke,eps,L',tke,eps,L
    LEVEL2 'tkeo',tkeo
    LEVEL2 'kb,epsb',kb,epsb
+   ! PS
+   ! Qing Li, 20180418
    LEVEL2 'P,B,Pb,PS',P,B,Pb,PS
    LEVEL2 'num,nuh,nus',num,nuh,nus
    LEVEL2 'gamu,gamv',gamu,gamv
@@ -3486,6 +3541,9 @@
    LEVEL2 'cmue1,cmue2',cmue1,cmue2
    LEVEL2 'gam',gam
    LEVEL2 'as,an,at',as,an,at
+   ! av, aw
+   ! Qing Li, 20180419
+   LEVEL2 'av,aw',av,aw
    LEVEL2 'r',r
    LEVEL2 'Rig',Rig
    LEVEL2 'xRf',xRf

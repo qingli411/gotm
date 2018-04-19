@@ -499,10 +499,10 @@
 !        update one-point models
 # ifdef SEAGRASS
          call do_turbulence(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,      &
-                            NN,SS,xP)
+                            NN,SS,CSSTK,SSSTK,xP)
 # else
          call do_turbulence(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,      &
-                            NN,SS)
+                            NN,SS,CSSTK,SSSTK)
 # endif
       end select
 

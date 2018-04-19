@@ -633,6 +633,7 @@
                <option value="1" label="EASM with quasi-equilibrium" />
                <option value="2" label="EASM with weak equilibrium, buoy.-variance algebraic" />
                <option value="3" label="EASM with weak equilibrium, buoy.-variance from PDE" />
+               <option value="4" label="EASM with quasi-equilibrium, include Langmuir turbulence (Harcourt, 2015)" />
             </options>
          </element>
          <element name="kb_method" type="int" label="type of equation for buoyancy variance">

@@ -632,7 +632,7 @@
 
    allocate(SPF(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (SPF)'
-   SPF = _ZERO_
+   SPF = _ONE_
 
    allocate(r(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (r)'
@@ -2053,8 +2053,7 @@
                             NN,SS,CSSTK,SSSTK,xP)
 !
 ! !DESCRIPTION: This routine is the central point of the
-! turbulence scheme. It determines the order, in which
-! turbulence variables are updated, and calls
+! turbulence scheme. It determines the order, in which! turbulence variables are updated, and calls
 ! other member functions updating
 ! the TKE, the length-scale, the dissipation rate, the ASM etc.
 ! Note, that the list of arguments in {\tt do\_turbulence()} corresponds
@@ -2252,6 +2251,7 @@
          ! SMC model of Langmuir turbulence (Harcourt, 2015)
          ! Qing Li, 20180419
 
+         call surface_proximity_function(nlev,depth,h)
          call alpha_mvwnb(nlev,NN,SS,CSSTK,SSSTK)
          call cmue_d_h15(nlev)
          call do_tke(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
@@ -2314,7 +2314,6 @@
    REALTYPE, intent(in)                :: dt,u_taus,u_taub,z0s,z0b
    REALTYPE, intent(in)                :: h(0:nlev)
    REALTYPE, intent(in)                :: NN(0:nlev),SS(0:nlev)
-   ! TODO: optional input of CSSTK and SSSTK <19-04-18, Qing Li> !
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard,
@@ -2431,7 +2430,6 @@
    REALTYPE, intent(in)                :: dt,depth,u_taus,u_taub,z0s,z0b
    REALTYPE, intent(in)                :: h(0:nlev)
    REALTYPE, intent(in)                :: NN(0:nlev),SS(0:nlev)
-   ! TODO: optional input of CSSTK and SSSTK <19-04-18, Qing Li> !
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard,
@@ -2767,6 +2765,79 @@
 
        return
      end subroutine compute_cm0
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Compute the surface proximity function
+!
+! !INTERFACE:
+   subroutine surface_proximity_function(nlev,depth,h)
+!
+! !DESCRIPTION:
+! Compute the surface proximity function (SPF) used the second moment
+! closure model of Langmuir turbulence \citep{Harcourt2015}. SPF is defined
+! as $\mathrm{SPF} = 1-f_z^S$, where
+! \begin{equation}
+! f_z^S=1+\tanh\left(C_l^S z/l^S\right),
+! \end{equation}
+! with $C_l^S=0.25$. The length scale $l^S$ is an average of the dissipation
+! length scale weighted by positive CL vortex production,
+! \begin{equation}
+! l^S=\langle l \rangle_{P^S>0}\equiv\frac{\int l P^S_+ dz}{\int P^S_+ dz}
+! \end{equation}
+! where $P^S_+=\max(0,P^S)$.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer,  intent(in)                 :: nlev
+   REALTYPE, intent(in)                 :: depth
+   REALTYPE, intent(in)                 :: h(0:nlev)
+!
+! !REVISION HISTORY:
+!  Original author(s): Qing Li
+!
+!EOP
+!
+! !LOCAL VARIABLES:
+     integer                  :: i
+     REALTYPE                 :: lS, znrm, dz
+     REALTYPE                 :: fzS(0:nlev), zz(0:nlev)
+     REALTYPE, parameter      :: ClS = 0.25
+!
+!-----------------------------------------------------------------------
+!BOC
+
+   ! find the length scale
+   lS = _ZERO_
+   znrm = _ZERO_
+   do i=1,nlev-1
+      dz = 0.5*(h(i)+h(i+1))
+      znrm = znrm + max(_ZERO_,PS(i))*dz
+      lS = lS + L(i)*max(_ZERO_,PS(i))*dz
+   end do
+   znrm = znrm + 0.5*max(_ZERO_,PS(nlev))*h(nlev)
+   lS = lS + 0.5*L(nlev)*max(_ZERO_,PS(nlev))*h(nlev)
+   lS = lS/max(SMALL,znrm)
+
+   ! get depth at cell interface
+   zz(0) = -depth
+   do i=1,nlev
+      zz(i) = zz(i-1) + h(i)
+   end do
+
+   fzS = _ZERO_
+   do i=0,nlev
+      ! compute fzS
+      fzS(i) = _ONE_ + tanh(ClS*zz(i)/lS)
+      ! surface proximity function
+      SPF(i) = _ONE_ - fzS(i)
+   end do
+
+   end subroutine surface_proximity_function
 !EOC
 
 

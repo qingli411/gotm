@@ -88,6 +88,10 @@
 !  Qing Li, 20180419
    REALTYPE, public, dimension(:), allocatable   :: av,aw
 
+!  surface proximity function
+!  Qing Li, 20180419
+   REALTYPE, public, dimension(:), allocatable   :: SPF
+
 !  time scale ratio r
    REALTYPE, public, dimension(:), allocatable   :: r
 
@@ -177,6 +181,7 @@
    REALTYPE, public                              :: e1
    REALTYPE, public                              :: e2
    REALTYPE, public                              :: e3
+   REALTYPE, public                              :: e6
    REALTYPE, public                              :: sq
    REALTYPE, public                              :: sl
    integer,  public                              :: my_length
@@ -218,6 +223,9 @@
    integer, parameter, public                    :: tke_local_eq=1
    integer, parameter, public                    :: tke_keps=2
    integer, parameter, public                    :: tke_MY=3
+   ! MY style with Stokes production (Kantha & Clayson, 2004)
+   ! Qing Li, 20180419
+   integer, parameter, public                    :: tke_KC04=4
 
 !  stability functions
    integer, parameter, public                    :: Constant=1
@@ -236,6 +244,9 @@
    integer, parameter, public                    :: diss_eq=8
    integer, parameter, public                    :: length_eq=9
    integer, parameter, public                    :: generic_eq=10
+   ! MY style with Stokes production (Kantha & Clayson, 2004)
+   ! Qing Li, 20180419
+   integer, parameter, public                    :: length_eq_KC04=11
 
 !  boundary conditions
    integer, parameter, public                    :: Dirichlet=0
@@ -344,7 +355,10 @@
    namelist /keps/          ce1,ce2,ce3minus,ce3plus,sig_k,    &
                             sig_e,sig_peps
 
-   namelist /my/            e1,e2,e3,sq,sl,my_length,new_constr
+   ! add e6
+   ! Qing Li, 20180419
+   namelist /my/            e1,e2,e3,e6,sq,sl,                 &
+                            my_length,new_constr
 
    namelist /scnd/          scnd_method,kb_method,epsb_method, &
                             scnd_coeff,                        &
@@ -444,6 +458,7 @@
    e1=1.8
    e2=1.33
    e3=1.8
+   e6=4.0
    sq=0.2
    sl=0.2
    my_length=1
@@ -605,7 +620,7 @@
    if (rc /= 0) stop 'init_turbulence: Error allocating (at)'
    at = _ZERO_
 
-   ! allocating av, aw
+   ! allocating av, aw, SPF
    ! Qing Li, 20180419
    allocate(av(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (av)'
@@ -614,6 +629,10 @@
    allocate(aw(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (aw)'
    aw = _ZERO_
+
+   allocate(SPF(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (SPF)'
+   SPF = _ZERO_
 
    allocate(r(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (r)'
@@ -2233,13 +2252,13 @@
          ! SMC model of Langmuir turbulence (Harcourt, 2015)
          ! Qing Li, 20180419
 
-         call alpha_mnbvw(nlev,NN,SS,CSSTK,SSSTK)
+         call alpha_mvwnb(nlev,NN,SS,CSSTK,SSSTK)
          call cmue_d_h15(nlev)
          call do_tke(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
          call do_kb(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
          call do_lengthscale(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,NN,SS)
          call do_epsb(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
-         call alpha_mnbvw(nlev,NN,SS,CSSTK,SSSTK)
+         call alpha_mvwnb(nlev,NN,SS,CSSTK,SSSTK)
          call kolpran(nlev)
 
       case default
@@ -2314,6 +2333,9 @@
       case(tke_MY)
          ! use differential equation for q^2/2 (Mellor-Yamada style)
          call q2over2eq(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
+      case(tke_KC04)
+         ! use differential equation for q^2/2 (Kantha & Clayson, 2004 style)
+         call q2over2eq_kc04(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
       case default
    end select
 
@@ -2428,6 +2450,10 @@
          call lengthscaleeq(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,NN,SS)
       case(BougeaultAndre)
          call potentialml(nlev,z0b,z0s,h,depth,NN)
+      ! MY style with Stokes production (Kantha & Clayson, 2004)
+      ! Qing Li, 20180419
+      case(length_eq_KC04)
+         call lengthscaleeq_kc04(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,NN,SS)
       case default
          call algebraiclength(len_scale_method,nlev,z0b,z0s,depth,h,NN)
    end select
@@ -3481,10 +3507,11 @@
    if (allocated(an)) deallocate(an)
    if (allocated(as)) deallocate(as)
    if (allocated(at)) deallocate(at)
-   ! av, aw
+   ! av, aw, SPF
    ! Qing Li, 20180419
    if (allocated(av)) deallocate(av)
    if (allocated(aw)) deallocate(aw)
+   if (allocated(SPF)) deallocate(SPF)
    if (allocated(r)) deallocate(r)
    if (allocated(Rig)) deallocate(Rig)
    if (allocated(xRf)) deallocate(xRf)
@@ -3541,9 +3568,10 @@
    LEVEL2 'cmue1,cmue2',cmue1,cmue2
    LEVEL2 'gam',gam
    LEVEL2 'as,an,at',as,an,at
-   ! av, aw
+   ! av, aw, SPF
    ! Qing Li, 20180419
    LEVEL2 'av,aw',av,aw
+   LEVEL2 'SPF',SPF
    LEVEL2 'r',r
    LEVEL2 'Rig',Rig
    LEVEL2 'xRf',xRf
@@ -3582,7 +3610,7 @@
    LEVEL2 'keps namelist',  ce1,ce2,ce3minus,ce3plus,sig_k,    &
                             sig_e,sig_peps
 
-   LEVEL2 'my namelist',    e1,e2,e3,sq,sl,my_length,new_constr
+   LEVEL2 'my namelist',    e1,e2,e3,e6,sq,sl,my_length,new_constr
 
    LEVEL2 'scnd namelist',  scnd_method,kb_method,epsb_method, &
                             scnd_coeff,                        &

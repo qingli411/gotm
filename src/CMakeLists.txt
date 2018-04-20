@@ -137,7 +137,7 @@ set(GOTM_LIBS ${GOTM_LIBS} util)
 add_library(turbulence
             turbulence/algebraiclength.F90
             turbulence/alpha_mnb.F90
-            turbulence/alpha_mnbvw.F90
+            turbulence/alpha_mvwnb.F90
             turbulence/cmue_a.F90
             turbulence/cmue_b.F90
             turbulence/cmue_c.F90
@@ -159,9 +159,11 @@ add_library(turbulence
             turbulence/kbeq.F90
             turbulence/kpp.F90
             turbulence/lengthscaleeq.F90
+            turbulence/lengthscaleeq_kc04.F90
             turbulence/potentialml.F90
             turbulence/production.F90
             turbulence/q2over2eq.F90
+            turbulence/q2over2eq_kc04.F90
             turbulence/r_ratio.F90
             turbulence/tkealgebraic.F90
             turbulence/tkeeq.F90

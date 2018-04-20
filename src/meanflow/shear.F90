@@ -111,6 +111,8 @@
 ! !USES:
    use meanflow,   only: h,u,v,uo,vo
    use meanflow,   only: SS,SSU,SSV
+   use meanflow,     only: CSSTK,SSSTK
+   use observations, only: dusdz,dvsdz
 
    IMPLICIT NONE
 !
@@ -124,6 +126,8 @@
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
+!     Qing Li, 20180419, update the Stokes-Eulerian cross-shear and Stokes shear squared
+! TODO: semi-implicit for Stokes-Euerlian cross shear? <19-04-18, Qing Li> !
 !
 !EOP
 !
@@ -158,6 +162,13 @@
 
       SS(i) = SSU(i) + SSV(i)
 
+      ! Stokes-Eulerian cross-shear
+      CSSTK(i) = dusdz(i)*2.*(u(i+1)-u(i))/(h(i+1)+h(i))               &
+                +dvsdz(i)*2.*(v(i+1)-v(i))/(h(i+1)+h(i))
+
+      ! Stokes shear squared
+      SSSTK(i) = dusdz(i)**2.+dvsdz(i)**2.
+
    end do
 
    SSU(0   ) = SSU(1    )
@@ -168,6 +179,12 @@
 
    SS (0   ) = SS (1    )
    SS (nlev) = SS (nlev-1)
+
+   CSSTK (0   ) = CSSTK (1     )
+   CSSTK (nlev) = CSSTK (nlev-1)
+
+   SSSTK (0   ) = SSSTK (1     )
+   SSSTK (nlev) = SSSTK (nlev-1)
 
    return
    end subroutine shear

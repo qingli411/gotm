@@ -45,10 +45,10 @@
 !
 ! !USES:
    use turbulence,   only: P,B
-   use turbulence,   only: PS
+   use turbulence,   only: PS, cmue2
    use turbulence,   only: tke,tkeo,k_min,eps,L
    use turbulence,   only: q2over2_bc, k_ubc, k_lbc, ubc_type, lbc_type
-   use turbulence,   only: sq
+   ! use turbulence,   only: sq
    use util,         only: Dirichlet,Neumann
 
    IMPLICIT NONE
@@ -80,6 +80,8 @@
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
 !     Qing Li, 20180419, same as q2over2eq, but with Stokes production
+!                        and stability function S_q from
+!                        Eq (37) of Harcourt, 2015
 !
 !EOP
 !------------------------------------------------------------------------
@@ -91,6 +93,7 @@
    REALTYPE                  :: cnpar=_ONE_
    REALTYPE                  :: avh(0:nlev)
    REALTYPE                  :: Lsour(0:nlev),Qsour(0:nlev)
+   REALTYPE                  :: sq
    integer                   :: i
 !
 !------------------------------------------------------------------------
@@ -100,6 +103,9 @@
    tkeo=tke
 
    do i=1,nlev-1
+
+      ! Eq (37) of Harcourt, 2015
+      sq = sqrt(0.04+(0.41*cmue2(i)/sqrt(2.0))**2.)
 
 !     compute diffusivity
       avh(i) = sq*sqrt( 2.*tke(i) )*L(i)

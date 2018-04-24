@@ -79,12 +79,12 @@
 !
 ! !USES:
    use turbulence, only: P,B
-   use turbulence, only: PS
+   use turbulence, only: PS, cmue2
    use turbulence, only: tke,tkeo,k_min,eps,eps_min,L
    use turbulence, only: kappa,b1,e1,e2,e3,e6
    use turbulence, only: MY_length,cm0,cde,galp,length_lim
    use turbulence, only: q2l_bc, psi_ubc, psi_lbc, ubc_type, lbc_type
-   use turbulence, only: sl
+   ! use turbulence, only: sl
    use util,       only: Dirichlet,Neumann
 
    IMPLICIT NONE
@@ -120,6 +120,8 @@
 !                     (re-write after first version of
 !                      H. Burchard and K. Bolding
 !     Qing Li, 20180419, same as lengthscaleeq, but with Stokes production
+!                        and stability function S_l from
+!                        Eq (37) of Harcourt, 2015
 !EOP
 !------------------------------------------------------------------------
 !
@@ -136,6 +138,7 @@
    REALTYPE                  :: Lsour(0:nlev),Qsour(0:nlev)
 
    REALTYPE                  :: l_min
+   REALTYPE                  :: sl
 
    integer                   :: i
 !
@@ -167,6 +170,9 @@
 
 ! prepare the production terms
    do i=1,nlev-1
+
+      ! Eq (37) of Harcourt, 2015
+      sl = sqrt(0.04+(0.41*cmue2(i)/sqrt(2.0))**2.)
 
 !     compute diffusivity
       avh(i)      =  sl*sqrt(2.*tke(i))*L(i)

@@ -620,8 +620,12 @@
          <element name="e6" type="float" label="coef. e6 in MY q**2 l equation for the Stokes production (Kantha and Clayson 2004)">
             <condition type="eq" variable="/gotmturb/turbulence/len_scale_method" value="11" />
          </element>
-         <element name="sq" type="float" label="turbulent diffusivities of q**2 (= 2k)" />
-         <element name="sl" type="float" label="turbulent diffusivities of q**2 l" />
+         <element name="sq" type="float" label="turbulent diffusivities of q**2 (= 2k)">
+            <condition type="ne" variable="/gotmturb/turbulence/len_scale_method" value="11" />
+         </element>
+         <element name="sl" type="float" label="turbulent diffusivities of q**2 l">
+            <condition type="ne" variable="/gotmturb/turbulence/len_scale_method" value="11" />
+         </element>
          <element name="my_length" type="int" label="prescribed barotropic lengthscale in q**2 l equation of MY">
             <options>
                <option value="1" label="parabolic" />

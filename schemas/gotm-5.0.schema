@@ -453,6 +453,7 @@
                <option value="1" label="algebraic equation" />
                <option value="2" label="dynamic equation (k-epsilon style)" />
                <option value="3" label="dynamic equation (Mellor-Yamada style)" />
+               <option value="4" label="dynamic equation with Stokes production (Kantha and Clayson, 2004)" />
             </options>
          </element>
          <element name="len_scale_method" type="int" label="type of model for dissipative length scale">
@@ -471,6 +472,7 @@
                <option value="8" label="dynamic dissipation rate equation" />
                <option value="9" label="dynamic Mellor-Yamada q^2l-equation" />
                <option value="10" label="generic length scale (GLS)" />
+               <option value="11" label="dynamic Mellor-Yamada q^2l-equation with Stokes production (Kantha and Clayson, 2004)" />
             </options>
          </element>
          <element name="stab_method" type="int" label="type of stability function">
@@ -615,8 +617,15 @@
          <element name="e1" type="float" label="coef. e1 in MY q**2 l equation" />
          <element name="e2" type="float" label="coef. e2 in MY q**2 l equation" />
          <element name="e3" type="float" label="coef. e3 in MY q**2 l equation" />
-         <element name="sq" type="float" label="turbulent diffusivities of q**2 (= 2k)" />
-         <element name="sl" type="float" label="turbulent diffusivities of q**2 l" />
+         <element name="e6" type="float" label="coef. e6 in MY q**2 l equation for the Stokes production (Kantha and Clayson 2004)">
+            <condition type="eq" variable="/gotmturb/turbulence/len_scale_method" value="11" />
+         </element>
+         <element name="sq" type="float" label="turbulent diffusivities of q**2 (= 2k)">
+            <condition type="ne" variable="/gotmturb/turbulence/len_scale_method" value="11" />
+         </element>
+         <element name="sl" type="float" label="turbulent diffusivities of q**2 l">
+            <condition type="ne" variable="/gotmturb/turbulence/len_scale_method" value="11" />
+         </element>
          <element name="my_length" type="int" label="prescribed barotropic lengthscale in q**2 l equation of MY">
             <options>
                <option value="1" label="parabolic" />
@@ -633,6 +642,7 @@
                <option value="1" label="EASM with quasi-equilibrium" />
                <option value="2" label="EASM with weak equilibrium, buoy.-variance algebraic" />
                <option value="3" label="EASM with weak equilibrium, buoy.-variance from PDE" />
+               <option value="4" label="EASM with quasi-equilibrium, include Langmuir turbulence (Harcourt, 2015)" />
             </options>
          </element>
          <element name="kb_method" type="int" label="type of equation for buoyancy variance">

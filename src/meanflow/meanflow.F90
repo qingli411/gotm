@@ -46,6 +46,11 @@
 !  (total, from u only, from v only)
    REALTYPE, public, dimension(:), allocatable  :: SS,SSU,SSV
 
+!  CSSTK, SSSTK
+!  Qing Li, 20180419
+!  Stokes-Eulerian cross-shear and Stokes shear squared
+   REALTYPE, public, dimension(:), allocatable  :: CSSTK,SSSTK
+
 !  buoyancy, short-wave radiation,
 !  extra production of tke by see-grass etc
    REALTYPE, public, dimension(:), allocatable  :: buoy,rad,xP
@@ -316,6 +321,16 @@
    if (rc /= 0) STOP 'init_meanflow: Error allocating (SSV)'
    SSV = _ZERO_
 
+   ! CSSTK, SSSTK
+   ! Qing Li, 20180419
+   allocate(CSSTK(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (CSSTK)'
+   CSSTK = _ZERO_
+
+   allocate(SSSTK(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (SSSTK)'
+   SSSTK = _ZERO_
+
    allocate(xP(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (xP)'
    xP = _ZERO_
@@ -419,6 +434,10 @@
    if (allocated(SS)) deallocate(SS)
    if (allocated(SSU)) deallocate(SSU)
    if (allocated(SSV)) deallocate(SSV)
+   ! CSSTK, SSSTK
+   ! Qing Li, 20180419
+   if (allocated(CSSTK)) deallocate(CSSTK)
+   if (allocated(SSSTK)) deallocate(SSSTK)
    if (allocated(xP)) deallocate(xP)
    if (allocated(buoy)) deallocate(buoy)
    if (allocated(rad)) deallocate(rad)
@@ -479,6 +498,10 @@
    if (allocated(SS))  LEVEL2 'SS',SS
    if (allocated(SSU)) LEVEL2 'SSU',SSU
    if (allocated(SSV)) LEVEL2 'SSV',SSV
+   ! CSSTK, SSSTK
+   ! Qing Li, 20180419
+   if (allocated(CSSTK)) LEVEL2 'CSSTK',CSSTK
+   if (allocated(SSSTK)) LEVEL2 'SSSTK',SSSTK
    if (allocated(buoy)) LEVEL2 'buoy',buoy
    if (allocated(rad)) LEVEL2 'rad',rad
    if (allocated(xp))  LEVEL2 'xP',xP

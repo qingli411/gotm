@@ -5,7 +5,7 @@
 ! !ROUTINE: Update turbulence production\label{sec:production}
 !
 ! !INTERFACE:
-   subroutine production(nlev,NN,SS,xP)
+   subroutine production(nlev,NN,SS,CSSTK,xP)
 !
 ! !DESCRIPTION:
 !  This subroutine calculates the production terms of turbulent kinetic
@@ -52,6 +52,7 @@
 !
 ! !USES:
    use turbulence, only: P,B,Pb
+   use turbulence, only: PS
    use turbulence, only: num,nuh
    use turbulence, only: alpha,iw_model
    IMPLICIT NONE
@@ -67,12 +68,16 @@
 !  shear-frequency squared (1/s^2)
    REALTYPE, intent(in)                :: SS(0:nlev)
 
+!  Stokes-Eulerian cross-shear (1/s^2)
+   REALTYPE, intent(in)                :: CSSTK(0:nlev)
+
 !  TKE production due to seagrass
 !  friction (m^2/s^3)
    REALTYPE, intent(in), optional      :: xP(0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard
+!     Qing Li, 20180418, update Stokes production, PS
 !
 !EOP
 !-----------------------------------------------------------------------
@@ -91,12 +96,14 @@
          P(i)    =  num(i)*( SS(i)+alpha_eff*NN(i) ) + xP(i)
          B(i)    = -nuh(i)*NN(i)
          Pb(i)   = -  B(i)*NN(i)
+         PS(i)   =  num(i)*CSSTK(i)
       enddo
    else
       do i=0,nlev
          P(i)    =  num(i)*( SS(i)+alpha_eff*NN(i) )
          B(i)    = -nuh(i)*NN(i)
          Pb(i)   = -  B(i)*NN(i)
+         PS(i)   =  num(i)*CSSTK(i)
       enddo
    endif
 

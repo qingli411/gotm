@@ -746,6 +746,7 @@
    LEVEL2 '--------------------------------------------------------'
 
    if (lcvmix) then
+#ifdef KPP_CVMIX
 !     CVMix: initialize parameter datatype
 !     Qing Li, 20180126
       call cvmix_init_kpp(ri_crit=Ric,                                &
@@ -770,6 +771,7 @@
       call cvmix_put(CVmix_vars, 'Tdiff', nuh)
       call cvmix_put(CVmix_vars, 'Sdiff', nus)
       call cvmix_put(CVmix_params, 'Gravity', kpp_g)
+#endif
    else
 !     pre-compute coefficient for turbulent shear velocity
       Vtc=Cv*sqrt(-betaT)/(sqrt(kpp_cs*epsilon)*Ric*kappa*kappa)
@@ -952,8 +954,10 @@
 
    if (kpp_sbl) then
       if (lcvmix) then
+#ifdef KPP_CVMIX
          call surface_layer_cvmix(nlev,h,rho,u,v,NN,u_taus,u_taub,   &
                          tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f)
+#endif
       else
          call surface_layer(nlev,h,rho,u,v,NN,u_taus,u_taub,         &
                          tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f)
@@ -1688,7 +1692,7 @@
  end subroutine surface_layer
 !EOC
 
-
+#ifdef KPP_CVMIX
 !-----------------------------------------------------------------------
 !BOP
 !
@@ -1983,6 +1987,8 @@
 
  end subroutine surface_layer_cvmix
 !EOC
+! KPP_CVMIX
+#endif
 
 
 !-----------------------------------------------------------------------
@@ -2584,11 +2590,17 @@
       ! get enhancement factor
       select case(efactor_method)
       case(KPP_LT_EFACTOR_MODEL)
+#ifdef KPP_CVMIX
          ! 10-meter wind speed
          wind10m = sqrt(u10**2+v10**2)
          efactor = cvmix_kpp_efactor_model(wind10m, u_taus, hbl, CVmix_params)
          ussl_model = cvmix_kpp_ustokes_SL_model(wind10m, hbl, CVmix_params)
          lasl = sqrt(u_taus/ussl_model)
+#else
+         efactor = _ONE_
+         efactor_entr = _ONE_
+         lasl = _ONE_/SMALL
+#endif
       case(KPP_LT_EFACTOR_READ)
          ! TODO: read from file <13-12-17, Qing Li> !
          efactor = _ONE_

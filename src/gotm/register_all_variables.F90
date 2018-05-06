@@ -341,6 +341,8 @@
 !
 ! !USES:
    use turbulence
+   use epbl_gotm, only: epbl_osbl
+   use kpp, only: zsbl
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -360,9 +362,18 @@
    call fm%register('gams', 'g/kg m/s', 'non-local salinity flux', standard_name='??', dimensions=(/id_dim_zi/), data1d=gams(0:nlev),category='turbulence')
    call fm%register('Rig', '', 'gradient Richardson number', standard_name='??', dimensions=(/id_dim_zi/), data1d=Rig(0:nlev),category='turbulence')
    call fm%register('tke', 'm2/s2', 'turbulent kinetic energy', standard_name='??', dimensions=(/id_dim_zi/), data1d=tke(0:nlev),category='turbulence')
-   ! only define these variables if not using KPP or OSMOSIS
+   ! Diagnostics for ePBL
+   if (turb_method.eq.100) then
+      call fm%register('ePBL_OSBL','m','ePBL boundary layer depth',standard_name='??',data0d=epbl_osbl,category='turbulece')
+   endif
+   ! Diagnostics for KPP
+   if (turb_method.eq.99) then
+      call fm%register('KPP_OSBL','m','KPP boundary layer depth',standard_name='??',data0d=zsbl,category='turbulece')
+   endif
+
+   ! only define these variables if not using KPP or OSMOSIS or ePBL
    ! Qing Li, 20180405
-   if (turb_method.ne.99 .and. turb_method.ne.98) then
+   if (turb_method.ne.99 .and. turb_method.ne.98 .and. turb_method.ne.100) then
       call fm%register('tkeo', 'm2/s2', 'turbulent kinetic energy - old time step', standard_name='??', dimensions=(/id_dim_zi/), data1d=tkeo(0:nlev),category='turbulence',output_level=output_level_debug)
       call fm%register('eps', 'm2/s3', 'energy dissipation rate', standard_name='??', dimensions=(/id_dim_zi/), data1d=eps(0:nlev),category='turbulence')
       call fm%register('L', 'm', 'turbulence length scale', standard_name='??', dimensions=(/id_dim_zi/), data1d=L(0:nlev),category='turbulence')

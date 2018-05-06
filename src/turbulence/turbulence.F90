@@ -499,7 +499,7 @@
 
    read(namlst,nml=turbulence,err=81)
 
-   if (turb_method.eq.99 .or. turb_method.eq.98) then
+   if (turb_method.eq.99 .or. turb_method.eq.98 .or. turb_method.eq.100) then
       close (namlst)
       LEVEL2 'done.'
       LEVEL1 'done.'

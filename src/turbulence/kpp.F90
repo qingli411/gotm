@@ -218,7 +218,7 @@
 
 ! !PUBLIC MEMBER FUNCTIONS:
 !
-   public init_kpp, do_kpp, clean_kpp
+   public init_kpp, do_kpp, clean_kpp, enhancement_factor
 
 ! !PUBLIC DATA MEMBERS:
 !
@@ -340,14 +340,14 @@
 
 !  method of Langmuir turbulence parameterization
 !  Qing Li, 20180410
-   integer, parameter ::  KPP_LT_NOLANGMUIR = 0
-   integer, parameter ::  KPP_LT_EFACTOR = 1
-   integer, parameter ::  KPP_LT_ENTRAINMENT = 2
+   integer, parameter, public ::  KPP_LT_NOLANGMUIR = 0
+   integer, parameter, public ::  KPP_LT_EFACTOR = 1
+   integer, parameter, public ::  KPP_LT_ENTRAINMENT = 2
 !  method of enhancement factor
-   integer, parameter ::  KPP_LT_EFACTOR_MODEL = 1
-   integer, parameter ::  KPP_LT_EFACTOR_READ = 2
-   integer, parameter ::  KPP_LT_EFACTOR_SPEC = 3
-   integer, parameter ::  KPP_LT_EFACTOR_USTOKES = 4
+   integer, parameter, public ::  KPP_LT_EFACTOR_MODEL = 1
+   integer, parameter, public ::  KPP_LT_EFACTOR_READ = 2
+   integer, parameter, public ::  KPP_LT_EFACTOR_SPEC = 3
+   integer, parameter, public ::  KPP_LT_EFACTOR_USTOKES = 4
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
@@ -394,9 +394,9 @@
 
 !  method to parameterize the effects of Langmuir turbulence
 !  Qing Li, 20180410
-   integer                               ::    langmuir_method
-   integer                               ::    efactor_method
-   character(len=PATH_MAX)               ::    efactor_file
+   integer, public                       ::    langmuir_method
+   integer, public                       ::    efactor_method
+   character(len=PATH_MAX), public       ::    efactor_file
 
 !  use CVMix if true
 !  Qing Li, 20180126
@@ -2550,8 +2550,7 @@
 !
 ! !INTERFACE:
    subroutine enhancement_factor(nlev, u_taus, hbl, &
-                                 efactor, efactor_entr, lasl)
-
+                                 efactor_out, efactor_entr_out, lasl_out)
 ! !DESCRIPTION:
 !  This routine returns the enhancement factor according to the
 !  Langmuir turbulence parameterization options.
@@ -2564,8 +2563,8 @@
    REALTYPE, intent(in)                :: u_taus, hbl
 !
 ! !OUTPUT PARAMETERS:
-   REALTYPE, intent(out)               :: efactor, efactor_entr
-   REALTYPE, intent(out)               :: lasl
+   REALTYPE, intent(out),optional      :: efactor_out, efactor_entr_out
+   REALTYPE, intent(out),optional      :: lasl_out
 !
 ! !REVISION HISTORY:
 !  Original author(s): Qing Li
@@ -2574,6 +2573,7 @@
 !-----------------------------------------------------------------------
 ! !LOCAL VARIABLES:
    REALTYPE                            :: wind10m, ussl_model
+   REALTYPE                            :: EFACTOR, EFACTOR_ENTR, LASL
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -2614,6 +2614,10 @@
       lasl = _ONE_/SMALL
    end if
 
+   if (present(efactor_out)) efactor_out = efactor
+   if (present(efactor_entr_out)) efactor_entr_out = efactor_entr
+   if (present(lasl_out)) lasl_out = lasl
+      
    end subroutine enhancement_factor
 !EOC
 

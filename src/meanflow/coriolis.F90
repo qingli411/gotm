@@ -14,6 +14,8 @@
 !
 ! !USES:
    USE meanflow, only: u,v,cori
+   USE meanflow, only: stokes_coriolis
+   USE observations, only: ustokes,vstokes
 !
    IMPLICIT NONE
 !
@@ -23,6 +25,9 @@
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
+!
+!  Add Stokes-Coriolis term
+!  Qing Li, 20180509
 !
 !EOP
 !
@@ -37,11 +42,19 @@
    cosomega=cos(omega)
    sinomega=sin(omega)
 
-   do i=1,nlev
-      ua=u(i)
-      u(i)= u(i) *cosomega+v(i)*sinomega
-      v(i)=-ua   *sinomega+v(i)*cosomega
-   end do
+   if (stokes_coriolis) then
+      do i=1,nlev
+         ua=u(i)
+         u(i)= u(i)*cosomega + (v(i)+vstokes(i))*sinomega
+         v(i)=-(ua  +ustokes(i))*sinomega + v(i)*cosomega
+      end do
+   else
+      do i=1,nlev
+         ua=u(i)
+         u(i)= u(i) *cosomega+v(i)*sinomega
+         v(i)=-ua   *sinomega+v(i)*cosomega
+      end do
+   end if
 
    return
    end subroutine coriolis

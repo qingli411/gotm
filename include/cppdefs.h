@@ -71,6 +71,10 @@
 ! non-local fluxes
 #define NONLOCAL
 
+! down Stokes gradient fluxes
+! Qing Li, 20180509
+#define STOKESFLUX
+
 ! KPP turbulence model
 #define KPP_SHEAR
 #define KPP_INTERNAL_WAVE

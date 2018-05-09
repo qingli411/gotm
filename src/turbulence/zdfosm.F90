@@ -45,6 +45,7 @@ MODULE zdfosm
 ! Qing Li, 20180404
    use turbulence,       only: tke
 
+   ! use turbulence,       only: gamh_f,gams_f
    use turbulence,       only: Rig
    use turbulence,       only: kappa
    use observations,     only: rn_abs => a
@@ -148,6 +149,7 @@ MODULE zdfosm
    REALTYPE, DIMENSION(:), allocatable :: zdudz_pyc ! u-shear across the pycnocline
    REALTYPE, DIMENSION(:), allocatable :: zdvdz_pyc ! v-shear across the pycnocline
    REALTYPE, DIMENSIOn(:), allocatable :: zavtb, zavmb ! minimum diffusivity and viscosity
+   ! REALTYPE, DIMENSION(:), allocatable :: zghamt_f,zghams_f
    ! parameters for NEMO code
 
    INTEGER, parameter :: wp = KIND( _ONE_ )  ! single precision - defined in cppdefs.h
@@ -392,6 +394,8 @@ MODULE zdfosm
          zghams(k)=0._wp
          zgamu(k)=0._wp
          zgamv(k)=0._wp
+         ! zghamt_f(k)=0._wp
+         ! zghams_f(k)=0._wp
       enddo
 
       ! emp = -p_e
@@ -419,6 +423,8 @@ MODULE zdfosm
          gamv(kk) = zgamv(k)
          dtdz_pyc(kk) = zdtdz_pyc(k)
          dsdz_pyc(kk) = zdbdz_pyc(k)
+         ! gamh_f(kk) = zghamt_f(k)
+         ! gams_f(kk) = zghams_f(k)
          kk=kk-1
       enddo
       nuh(0)=0._wp
@@ -536,9 +542,17 @@ write(*,*) fn
    if (rc /= 0) stop 'init_turbulence: Error allocating (gamh)'
    gamh = 0._wp
 
+   ! allocate(gamh_f(0:nlev),stat=rc)
+   ! if (rc /= 0) stop 'init_turbulence: Error allocating (gamh)'
+   ! gamh_f = 0._wp
+
    allocate(gams(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (gams)'
    gams = 0._wp
+
+   ! allocate(gams_f(0:nlev),stat=rc)
+   ! if (rc /= 0) stop 'init_turbulence: Error allocating (gams_f)'
+   ! gams_f = 0._wp
 
    allocate(Rig(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (Rig)'
@@ -638,9 +652,17 @@ write(*,*) fn
    if (rc /= 0) stop 'init_turbulence: Error allocating (zghamt)'
    zghamt = 0._wp
 
+   ! allocate(zghamt_f(1:nlev),stat=rc)
+   ! if (rc /= 0) stop 'init_turbulence: Error allocating (zghamt_f)'
+   ! zghamt_f = 0._wp
+
    allocate(zghams(1:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (zghams)'
    zghams = 0._wp
+
+   ! allocate(zghams_f(1:nlev),stat=rc)
+   ! if (rc /= 0) stop 'init_turbulence: Error allocating (zghams_f)'
+   ! zghams_f = 0._wp
 
    allocate(zdtdz_pyc(1:nlev),stat=rc)
    if (rc /= 0 ) stop 'init_turbulence: Error allocating (zdtdz_pyc)'
@@ -889,6 +911,9 @@ write(*,*) fn
 
       INTEGER, parameter :: jp_tem=1, jp_sal=2, ibld_ext=0
       REAL, parameter :: pthird=1.0/3.0, p2third=2.0/3.0, zflageos=0.0
+      ! set maximum boundary layer depth
+      ! Qing Li, 20180409
+      REAL(wp), parameter :: hbl_max=200.0
      !!--------------------------------------------------------------------
 
       ztemp=0.
@@ -977,6 +1002,8 @@ write(*,*) fn
       zghams(:) = 0._wp
       zgamu(:) = 0._wp
       zgamv(:) = 0._wp
+      ! zghamt_f(:) = 0._wp
+      ! zghams_f(:) = 0._wp
      !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
      ! Calculate boundary layer scales
      !<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -1058,7 +1085,7 @@ write(*,*) fn
 
 
       hbl = MAX(hbl, fs_depw(4))
-      IF (hbl > 480.0) hbl=480.0
+      IF (hbl > hbl_max) hbl=hbl_max
       ibld=4
       DO jk = 5, jpkm1
          IF ( hbl >= fs_depw(jk) ) THEN
@@ -1086,8 +1113,8 @@ write(*,*) fn
 !
 ! Not part of scheme, but used on OSMOSIS tests to limit OSBL depth in the winter.
 !
-      IF (zhbl_t > 480.) THEN
-         zhbl_t=480.
+      IF (zhbl_t > hbl_max) THEN
+         zhbl_t=hbl_max
          zdhdt=(zhbl_t-hbl)/rn_rdt
       ENDIF
 
@@ -1972,6 +1999,8 @@ CONTAINS
    if (allocated(zgamv)) deallocate(zgamv)
    if (allocated(zghamt)) deallocate(zghamt)
    if (allocated(zghams)) deallocate(zghams)
+   ! if (allocated(zghamt_f)) deallocate(zghamt_f)
+   ! if (allocated(zghams_f)) deallocate(zghams_f)
    if (allocated(z_w)) deallocate(z_w)
    if (allocated(z_r)) deallocate(z_r)
    if (allocated(h_r)) deallocate(h_r)

@@ -192,6 +192,7 @@
          <element name="MaxItz0b" type="int" label="max # of iterations for z0b as function of u_taub"
 				minInclusive="1" maxInclusive="1000" />
          <element name="no_shear" type="bool" label=".true.: shear production term P is set to zero" />
+         <element name="stokes_coriolis" type="bool" label=".true.: add Stokes-Coriolis term in the Coriolis rotation" />
       </element>
    </element>
    <element name="airsea">

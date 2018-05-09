@@ -63,6 +63,7 @@
          <avmols>1.1e-009</avmols>
          <MaxItz0b>1</MaxItz0b>
          <no_shear>False</no_shear>
+         <stokes_coriolis>False</stokes_coriolis>
       </meanflow>
    </gotmmean>
    <airsea>

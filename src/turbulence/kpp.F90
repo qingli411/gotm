@@ -1921,7 +1921,6 @@
    ! CVMix returns a BoundaryLayerDepth > 0
    zsbl = -CVmix_vars%BoundaryLayerDepth
 
-<<<<<<< HEAD
 !-----------------------------------------------------------------------
 !  Update surface buoyancy flux in the new surface boundary layer
 !-----------------------------------------------------------------------
@@ -2570,8 +2569,8 @@
    REALTYPE, intent(in)                :: u_taus, hbl
 !
 ! !OUTPUT PARAMETERS:
-   REALTYPE, intent(out),optional      :: efactor_out, efactor_entr_out
-   REALTYPE, intent(out),optional      :: lasl_out
+   REALTYPE, intent(out), optional      :: efactor_out, efactor_entr_out
+   REALTYPE, intent(out), optional      :: lasl_out
 !
 ! !REVISION HISTORY:
 !  Original author(s): Qing Li
@@ -2580,7 +2579,7 @@
 !-----------------------------------------------------------------------
 ! !LOCAL VARIABLES:
    REALTYPE                            :: wind10m, ussl_model
-   REALTYPE                            :: EFACTOR, EFACTOR_ENTR, LASL
+   REALTYPE                            :: efactor, efactor_entr, lasl
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -2630,7 +2629,7 @@
    if (present(efactor_out)) efactor_out = efactor
    if (present(efactor_entr_out)) efactor_entr_out = efactor_entr
    if (present(lasl_out)) lasl_out = lasl
-      
+
    end subroutine enhancement_factor
 !EOC
 

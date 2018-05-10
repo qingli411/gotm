@@ -61,7 +61,7 @@
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
-!  Converted to nefarious uses by Ramsey Harcourt
+!  Converted by Ramsey Harcourt
 !
 !EOP
 !-----------------------------------------------------------------------
@@ -150,8 +150,8 @@
         cmue2(i) =  sqrt(2.D0)*Sh
 
         tmp1 = sqrt(2.D0*tke(i))*L(i)*Ss
-        gamu(i) = gamu(i) - tmp1*dusdz(i)
-        gamv(i) = gamv(i) - tmp1*dvsdz(i)
+        gamu(i) = - tmp1*dusdz(i)
+        gamv(i) = - tmp1*dvsdz(i)
 
      end do
 

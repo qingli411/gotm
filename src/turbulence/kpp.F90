@@ -347,6 +347,7 @@
    integer, parameter, public ::  KPP_LT_EFACTOR = 1
    integer, parameter, public ::  KPP_LT_ENTRAINMENT = 2
    integer, parameter, public ::  KPP_LT_RWHGK16 = 3
+
 !  method of enhancement factor
    integer, parameter, public ::  KPP_LT_EFACTOR_MODEL = 1
    integer, parameter, public ::  KPP_LT_EFACTOR_READ = 2
@@ -2596,8 +2597,8 @@
    REALTYPE, intent(in)                :: u_taus, hbl
 !
 ! !OUTPUT PARAMETERS:
-   REALTYPE, intent(out),optional      :: efactor_out, efactor_entr_out
-   REALTYPE, intent(out),optional      :: lasl_out
+   REALTYPE, intent(out), optional     :: efactor_out, efactor_entr_out
+   REALTYPE, intent(out), optional     :: lasl_out
 !
 ! !REVISION HISTORY:
 !  Original author(s): Qing Li
@@ -2606,7 +2607,7 @@
 !-----------------------------------------------------------------------
 ! !LOCAL VARIABLES:
    REALTYPE                            :: wind10m, ussl_model
-   REALTYPE                            :: EFACTOR, EFACTOR_ENTR, LASL
+   REALTYPE                            :: efactor, efactor_entr, lasl
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -2664,7 +2665,8 @@
    if (present(efactor_out)) efactor_out = efactor
    if (present(efactor_entr_out)) efactor_entr_out = efactor_entr
    if (present(lasl_out)) lasl_out = lasl
-      
+
+
    end subroutine enhancement_factor
 !EOC
 
@@ -2878,7 +2880,7 @@
      REALTYPE, intent(out) :: Enhancement_Factor
 
      REALTYPE :: LA_inv
-     
+
      !      enhancement factor
      LA_inv = _ONE_/Langmuir_Number
 
@@ -2887,7 +2889,7 @@
      elseif (Langmuir_Method == KPP_LT_EFACTOR .or. &
           Langmuir_Method == KPP_LT_ENTRAINMENT) then
         ! Inverse Langmuir number multipled by
-        !  
+        !
         LA_inv = LA_inv * abs ( cos( MA_Wind_LangCell - &
              MA_Wind_Waves)) / abs( cos( MA_Wind_LangCell))
         enhancement_factor = min(5.0, &
@@ -2909,4 +2911,3 @@
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
 !-----------------------------------------------------------------------
-

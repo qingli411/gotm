@@ -58,7 +58,7 @@ module cvmix_energetic_pbl
 
 implicit none ; private
 
-type :: cvmix_energetic_PBL_CS 
+type :: cvmix_energetic_PBL_CS
 !BGR Adding initial values for control structure
   real    :: mstar=&           !The ratio of the friction velocity cubed to the
              1.2               ! TKE available to drive entrainment, nondimensional.
@@ -78,7 +78,7 @@ type :: cvmix_energetic_PBL_CS
   real    :: MKE_to_TKE_effic=&!The efficiency with which mean kinetic energy
              0.0               ! released by mechanically forced entrainment of
                                ! the mixed layer is converted to TKE, nondim.
-  !BGR should this (ustar_min) live here? 
+  !BGR should this (ustar_min) live here?
   real    :: ustar_min=&       !A minimum value of ustar to avoid numerical
              1.e-8             ! problems, in m s-1.  If the value is small enough,
                                ! this should not affect the solution.
@@ -110,7 +110,7 @@ type :: cvmix_energetic_PBL_CS
   real    :: min_mix_len=&     ! The minimum mixing length scale that will be
              0.0               ! used by ePBL, in m.  The default (0) does not
                                ! set a minimum.
-  real    :: N2_Dissipation_Scale_Neg=&! 
+  real    :: N2_Dissipation_Scale_Neg=&!
              0.0                       !
   real    :: N2_Dissipation_Scale_Pos=&!
              0.0               !A nondimensional scaling factor controlling the
@@ -141,7 +141,7 @@ type :: cvmix_energetic_PBL_CS
           -2.0                 ! MLD_over_STAB
   real :: C_EK =&              !MSTAR Coefficient in rotation limit for mstar_mode=2
           0.17                 !
-  real :: MSTAR_COEF=&         !MSTAR coefficient in rotation/stabilizing balance for 
+  real :: MSTAR_COEF=&         !MSTAR coefficient in rotation/stabilizing balance for
           0.3                  ! mstar_mode=2
   real :: LaC_MLDoEK=&         !Coefficients for Langmuir number modification based on
           -0.87                !
@@ -160,7 +160,7 @@ type :: cvmix_energetic_PBL_CS
   real :: CNV_MST_FAC=&        ! Factor to reduce mstar when statically unstable.
           0.0                  !
   integer :: LT_Enhance_Form=& ! Option for Langmuir enhancement form
-             0                 !  
+             0                 !
   integer :: MSTAR_MODE=&      ! An integer to determine which formula is used to
              2                 !  set mstar
 
@@ -170,7 +170,7 @@ type :: cvmix_energetic_PBL_CS
   real :: MSTAR_A,MSTAR_A2 ! MSTAR_A and MSTAR_B are coefficients in asymptote toward limits.
   real :: MSTAR_B,MSTAR_B2 !  These are computed to match the function value and slope at both
                            !  ends of the linear fit within the well constrained region.
-  
+
 
 
   integer :: CONST_MSTAR=0
@@ -190,7 +190,7 @@ type :: cvmix_energetic_PBL_CS
 
 ! These are terms in the mixed layer TKE budget, all in J m-2 = kg s-2.
 
-  ! Change to compute these as variables, then set as arrays values in wrapper 
+  ! Change to compute these as variables, then set as arrays values in wrapper
 !  real, allocatable, dimension(:,:) :: &
   real :: &
     diag_TKE_wind, &   ! The wind source of TKE.
@@ -469,7 +469,7 @@ subroutine cvmix_epbl_column(NZ, Kd, &
   h_sum = H_neglect ; do k=1,nz ; h_sum = h_sum + h(k) ; enddo
   I_hs = 0.0 ; if (h_sum > 0.0) I_hs = 1.0 / h_sum
 
-  
+
   h_bot = 0.0 ; hb_hs(nz+1) = 0.0
   do k=nz,1,-1
      h_bot = h_bot + h(k)
@@ -484,7 +484,6 @@ subroutine cvmix_epbl_column(NZ, Kd, &
      dS_to_dPE(k) = (dMass * (pres(K) + 0.5*dPres)) * dSV_dS(k)
      dT_to_dColHt(k) = dMass * dSV_dT(k)
      dS_to_dColHt(k) = dMass * dSV_dS(k)
-     
      pres(K+1) = pres(K) + dPres
   enddo
 
@@ -493,7 +492,7 @@ subroutine cvmix_epbl_column(NZ, Kd, &
   ! Note the outer i-loop and inner k-loop loop order!!!
   !    do i=is,ie ; if (G%mask2dT(i,j) > 0.5) then
   !      do k=1,nz ; T0(k) = T(i,k) ; S0(k) = S(i,k) ; enddo
-  
+
   ! Store the initial mechanical TKE and convectively released PE to
   ! enable multiple iterations.
   mech_TKE_top = mech_TKE ; conv_PErel_top = conv_PErel
@@ -504,7 +503,7 @@ subroutine cvmix_epbl_column(NZ, Kd, &
   max_MLD = 0.0 ; do k=1,nz ; max_MLD = max_MLD + h(k)*H_to_m ; enddo
   min_MLD = 0.0 !min_MLD will initialize as 0.
   !/BGR: May add user-input bounds for max/min MLD
-  
+
   !/BGR: Add MLD_guess based on stored previous value.
   !      note that this is different from ML_Depth already
   !      computed by EPBL, need to figure out why.
@@ -515,19 +514,19 @@ subroutine cvmix_epbl_column(NZ, Kd, &
      !Otherwise guess middle of water column (or stab_scale if smaller).
      MLD_guess = 0.5 * (min_MLD+max_MLD)
   endif
-  
+
   ! Iterate up to MAX_OBL_IT times to determine a converged EPBL depth.
   OBL_CONVERGED = .false.
 
-  do OBL_IT=1,MAX_OBL_IT ; 
+  do OBL_IT=1,MAX_OBL_IT ;
      if (.not. OBL_CONVERGED) then
-     
+
         ! Reset ML_depth
         CS%ML_depth = h(1)*H_to_m
         !CS%ML_depth2(ii,jj) = h(i,1)*H_to_m
-        
+
         sfc_connected = .true.
-       
+
         if (CS%mstar_mode.gt.0) then
           call get_mstar(CS, NZ, Buoy_flux, u_star, u_star_mean, &
                     MLD_guess, absf, g_earth, rho0, MSTAR_MIX,mstar_conv_adj,&
@@ -546,7 +545,7 @@ subroutine cvmix_epbl_column(NZ, Kd, &
               CS%diag_TKE_forcing = CS%diag_TKE_forcing + CS%nstar*TKE_forced(1) * IdtdR0
             endif
           endif
-           
+
           if (TKE_forced(1) <= 0.0) then
             mech_TKE = mech_TKE + TKE_forced(1)
             if (mech_TKE < 0.0) mech_TKE = 0.0
@@ -560,32 +559,32 @@ subroutine cvmix_epbl_column(NZ, Kd, &
           mech_TKE = mech_TKE_top*ENHANCE_M + MSTAR_LT ;
           conv_PErel = conv_PErel_top
         endif
-        
+
         if (CS%TKE_diagnostics) then
            dTKE_conv = 0.0 ; dTKE_forcing = 0.0 ; dTKE_mixing = 0.0
            dTKE_MKE = 0.0 ; dTKE_mech_decay = 0.0 ; dTKE_conv_decay = 0.0
         endif
-        
+
         ! Store in 1D arrays cleared out each iteration.  Only write in
         !  3D arrays after convergence.
         do k=1,nz
            Vstar_Used(k) = 0.0 ; Mixing_Length_Used(k) = 0.0
         enddo
         if (.not.CS%Use_MLD_Iteration) OBL_CONVERGED = .true.
-        
+
         if ((.not.CS%Use_MLD_Iteration) .or. &
              (CS%transLay_scale >= 1.0) .or. (CS%transLay_scale < 0.0) ) then
-           do K=1,nz+1 
-              MixLen_shape(K) = 1.0 
+           do K=1,nz+1
+              MixLen_shape(K) = 1.0
            enddo
         elseif (MLD_guess <= 0.0) then
            if (CS%transLay_scale > 0.0) then
-              do K=1,nz+1 
-                 MixLen_shape(K) = CS%transLay_scale 
+              do K=1,nz+1
+                 MixLen_shape(K) = CS%transLay_scale
               enddo
            else
-              do K=1,nz+1 
-                 MixLen_shape(K) = 1.0 
+              do K=1,nz+1
+                 MixLen_shape(K) = 1.0
               enddo
            endif
         else
@@ -604,24 +603,23 @@ subroutine cvmix_epbl_column(NZ, Kd, &
               endif
            enddo
         endif
-        
-        
+
+
         Kd(1) = 0.0 ; Kddt_h(1) = 0.0
         hp_a = h(1)
         dT_to_dPE_a(1) = dT_to_dPE(1) ; dT_to_dColHt_a(1) = dT_to_dColHt(1)
         dS_to_dPE_a(1) = dS_to_dPE(1) ; dS_to_dColHt_a(1) = dS_to_dColHt(1)
-        
+
         htot = h(1) ; uhtot = u(1)*h(1) ; vhtot = v(1)*h(1)
-        
+
         if (debug) then
            mech_TKE_k(1) = mech_TKE ; conv_PErel_k(1) = conv_PErel
            nstar_k(:) = 0.0 ; nstar_k(1) = CS%nstar ; num_itts(:) = -1
         endif
-        
+
         do K=2,nz
            ! Apply dissipation to the TKE, here applied as an exponential decay
            ! due to 3-d turbulent energy being lost to inefficient rotational modes.
-           
            !   There should be several different "flavors" of TKE that decay at
            ! different rates.  The following form is often used for mechanical
            ! stirring from the surface, perhaps due to breaking surface gravity
@@ -632,7 +630,6 @@ subroutine cvmix_epbl_column(NZ, Kd, &
            if (CS%TKE_diagnostics) &
                 dTKE_mech_decay = dTKE_mech_decay + (exp_kh-1.0) * mech_TKE * IdtdR0
            mech_TKE = mech_TKE * exp_kh
-           
            !   Accumulate any convectively released potential energy to contribute
            ! to wstar and to drive penetrating convection.
            if (TKE_forced(k) > 0.0) then
@@ -644,7 +641,7 @@ subroutine cvmix_epbl_column(NZ, Kd, &
            if (debug) then
               mech_TKE_k(K) = mech_TKE ; conv_PErel_k(K) = conv_PErel
            endif
-           
+
            !  Determine the total energy
            nstar_FC = CS%nstar
            if (CS%nstar * conv_PErel > 0.0) then
@@ -655,9 +652,9 @@ subroutine cvmix_epbl_column(NZ, Kd, &
                    sqrt(0.5 * dt * Rho0 * (absf*(htot*H_to_m))**3 * conv_PErel))
            endif
            if (debug) nstar_k(K) = nstar_FC
-           
+
            tot_TKE = mech_TKE + nstar_FC * conv_PErel
-           
+
            !   For each interior interface, first discard the TKE to account for
            ! mixing of shortwave radiation through the next denser cell.
            if (TKE_forced(k) < 0.0) then
@@ -686,7 +683,7 @@ subroutine cvmix_epbl_column(NZ, Kd, &
                  conv_PErel = TKE_reduc*conv_PErel
               endif
            endif
-           
+
            ! Precalculate some temporary expressions that are independent of Kddt_h(K).
            if (CS%orig_PE_calc) then
               if (K==2) then
@@ -697,7 +694,7 @@ subroutine cvmix_epbl_column(NZ, Kd, &
               endif
            endif
            dt_h = (m_to_H**2*dt) / max(0.5*(h(k-1)+h(k)), 1e-15*h_sum)
-           
+
            !   This tests whether the layers above and below this interface are in
            ! a convetively stable configuration, without considering any effects of
            ! mixing at higher interfaces.  It is an approximation to the more
@@ -707,14 +704,13 @@ subroutine cvmix_epbl_column(NZ, Kd, &
            Convectively_stable = ( 0.0 <= &
                 ( (dT_to_dColHt(k) + dT_to_dColHt(k-1) ) * (T0(k-1)-T0(k)) + &
                 (dS_to_dColHt(k) + dS_to_dColHt(k-1) ) * (S0(k-1)-S0(k)) ) )
-           
+
            if ((mech_TKE + conv_PErel) <= 0.0 .and. Convectively_stable) then
               ! Energy is already exhausted, so set Kd = 0 and cycle or exit?
               tot_TKE = 0.0 ; mech_TKE = 0.0 ; conv_PErel = 0.0
               Kd(K) = 0.0 ; Kddt_h(K) = 0.0
               sfc_disconnect = .true.
               ! if (.not.debug) exit
-              
               !   The estimated properties for layer k-1 can be calculated, using
               ! greatly simplified expressions when Kddt_h = 0.  This enables the
               ! tridiagonal solver for the whole column to be completed for debugging
@@ -726,16 +722,15 @@ subroutine cvmix_epbl_column(NZ, Kd, &
                  dTe(k-1) = b1 * ( dTe_t2 )
                  dSe(k-1) = b1 * ( dSe_t2 )
               endif
-              
               hp_a = h(k)
               dT_to_dPE_a(k) = dT_to_dPE(k)
               dS_to_dPE_a(k) = dS_to_dPE(k)
               dT_to_dColHt_a(k) = dT_to_dColHt(k)
               dS_to_dColHt_a(k) = dS_to_dColHt(k)
-              
+
            else ! tot_TKE > 0.0 or this is a potentially convectively unstable profile.
               sfc_disconnect = .false.
-              
+
               ! Precalculate some more temporary expressions that are independent of
               ! Kddt_h(K).
               if (CS%orig_PE_calc) then
@@ -759,12 +754,12 @@ subroutine cvmix_epbl_column(NZ, Kd, &
                  endif
                  Th_b(k) = h(k) * T0(k) ; Sh_b(k) = h(k) * S0(k)
               endif
-              
+
               !   Using Pr=1 and the diffusivity at the bottom interface (once it is
               ! known), determine how much resolved mean kinetic energy (MKE) will be
               ! extracted within a timestep and add a fraction CS%MKE_to_TKE_effic of
               ! this to the mTKE budget available for mixing in the next layer.
-           
+
               if ((CS%MKE_to_TKE_effic > 0.0) .and. (htot*h(k) > 0.0)) then
                  ! This is the energy that would be available from homogenizing the
                  ! velocities between layer k and the layers above.
@@ -778,7 +773,7 @@ subroutine cvmix_epbl_column(NZ, Kd, &
               else
                  dMKE_max = 0.0 ; MKE2_Hharm = 0.0
               endif
-              
+
               ! At this point, Kddt_h(K) will be unknown because its value may depend
               ! on how much energy is available.  mech_TKE might be negative due to
               ! contributions from TKE_forced.
@@ -802,7 +797,7 @@ subroutine cvmix_epbl_column(NZ, Kd, &
               endif
               Vstar_Used(k) = vstar ! Track vstar
               Kddt_h_g0 = Kd_guess0*dt_h
-              
+
               if (CS%orig_PE_calc) then
                  call find_PE_chg_orig(Kddt_h_g0, h(k), hp_a, dTe_term, dSe_term, &
                       dT_km1_t2, dS_km1_t2, dT_to_dPE(k), dS_to_dPE(k), &
@@ -820,9 +815,9 @@ subroutine cvmix_epbl_column(NZ, Kd, &
                       PE_chg=PE_chg_g0, dPEc_dKd=dPEa_dKd_g0, dPE_max=PE_chg_max, &
                       dPEc_dKd_0=dPEc_dKd_Kd0 )
               endif
-              
+
               MKE_src = dMKE_max*(1.0 - exp(-Kddt_h_g0 * MKE2_Hharm))
-              
+
               if (pe_chg_g0 .gt. 0.0) then
                  !Negative buoyancy (increases PE)
                  N2_dissipation = 1.+CS%N2_DISSIPATION_SCALE_NEG
@@ -830,7 +825,7 @@ subroutine cvmix_epbl_column(NZ, Kd, &
                  !Positive buoyancy (decreases PE)
                  N2_dissipation = 1.+CS%N2_DISSIPATION_SCALE_POS
               endif
-              
+
               if ((PE_chg_g0 < 0.0) .or. ((vstar == 0.0) .and. (dPEc_dKd_Kd0 < 0.0))) then
                  ! This column is convectively unstable.
                  if (PE_chg_max <= 0.0) then
@@ -853,7 +848,7 @@ subroutine cvmix_epbl_column(NZ, Kd, &
                        vstar = 0.0 ; Kd(k) = 0.0
                     endif
                     Vstar_Used(k) = vstar
-                    
+
                     if (CS%orig_PE_calc) then
                        call find_PE_chg_orig(Kd(k)*dt_h, h(k), hp_a, dTe_term, dSe_term, &
                             dT_km1_t2, dS_km1_t2, dT_to_dPE(k), dS_to_dPE(k), &
@@ -889,13 +884,13 @@ subroutine cvmix_epbl_column(NZ, Kd, &
                     CS%ML_depth = CS%ML_depth + H_to_m * h(k)
                     !CS%ML_depth2(ii,jj) = CS%ML_depth2(ii,jj) + H_to_m * h(i,k)
                  endif
-                 
+
                  Kddt_h(K) = Kd(k)*dt_h
               elseif (tot_TKE + (MKE_src - N2_DISSIPATION*PE_chg_g0) >= 0.0) then
                  ! There is energy to support the suggested mixing.  Keep that estimate.
                  Kd(k) = Kd_guess0
                  Kddt_h(K) = Kddt_h_g0
-                 
+
                  ! Reduce the mechanical and convective TKE proportionately.
                  tot_TKE = tot_TKE + MKE_src
                  TKE_reduc = 0.0   ! tot_TKE could be 0 if Convectively_stable is false.
@@ -925,7 +920,7 @@ subroutine cvmix_epbl_column(NZ, Kd, &
                  Kddt_h_max = Kddt_h_g0 ; Kddt_h_min = 0.0
                  TKE_left_max = tot_TKE + (MKE_src - N2_DISSIPATION*PE_chg_g0) ;
                  TKE_left_min = tot_TKE
-                 
+
                  ! As a starting guess, take the minimum of a false position estimate
                  ! and a Newton's method estimate starting from Kddt_h = 0.0.
                  Kddt_h_guess = tot_TKE * Kddt_h_max / max( N2_DISSIPATION*PE_chg_g0 &
@@ -958,7 +953,7 @@ subroutine cvmix_epbl_column(NZ, Kd, &
                     endif
                     MKE_src = dMKE_max * (1.0 - exp(-MKE2_Hharm * Kddt_h_guess))
                     dMKE_src_dK = dMKE_max * MKE2_Hharm * exp(-MKE2_Hharm * Kddt_h_guess)
-                    
+
                     TKE_left = tot_TKE + (MKE_src - N2_DISSIPATION*PE_chg)
                     if (debug) then
                        Kddt_h_itt(itt) = Kddt_h_guess ; MKE_src_itt(itt) = MKE_src
@@ -973,7 +968,7 @@ subroutine cvmix_epbl_column(NZ, Kd, &
                     else
                        Kddt_h_max = Kddt_h_guess ; TKE_left_max = TKE_left
                     endif
-                    
+
                     ! Try to use Newton's method, but if it would go outside the bracketed
                     ! values use the false-position method instead.
                     use_Newt = .true.
@@ -985,7 +980,7 @@ subroutine cvmix_epbl_column(NZ, Kd, &
                        if ((Kddt_h_Newt > Kddt_h_max) .or. (Kddt_h_Newt < Kddt_h_min)) &
                             use_Newt = .false.
                     endif
-                    
+
                     if (use_Newt) then
                        Kddt_h_next = Kddt_h_guess + dKddt_h_Newt
                        dKddt_h = dKddt_h_Newt
@@ -994,7 +989,7 @@ subroutine cvmix_epbl_column(NZ, Kd, &
                             (TKE_left_max - TKE_left_min)
                        dKddt_h = Kddt_h_next - Kddt_h_guess
                     endif
-                    
+
                     if ((abs(dKddt_h) < 1e-9*Kddt_h_guess) .or. (itt==max_itt)) then
                        ! Use the old value so that the energy calculation does not need to be repeated.
                        if (debug) num_itts(K) = itt
@@ -1004,7 +999,7 @@ subroutine cvmix_epbl_column(NZ, Kd, &
                     endif
                  enddo
                  Kd(K) = Kddt_h_guess / dt_h ; Kddt_h(K) = Kd(K)*dt_h
-                 
+
                  ! All TKE should have been consumed.
                  if (CS%TKE_diagnostics) then
                     dTKE_mixing = dTKE_mixing - (tot_TKE + MKE_src) * IdtdR0
@@ -1012,13 +1007,13 @@ subroutine cvmix_epbl_column(NZ, Kd, &
                     dTKE_conv_decay = dTKE_conv_decay + &
                          (CS%nstar-nstar_FC) * conv_PErel * IdtdR0
                  endif
-                 
+
                  if (sfc_connected) CS%ML_depth = CS%ML_depth + &
                       (PE_chg / PE_chg_g0) * H_to_m * h(k)
                  tot_TKE = 0.0 ; mech_TKE= 0.0 ; conv_PErel = 0.0
                  sfc_disconnect = .true.
               endif
-              
+
               Kddt_h(K) = Kd(K)*dt_h
               !   At this point, the final value of Kddt_h(K) is known, so the
               ! estimated properties for layer k-1 can be calculated.
@@ -1034,9 +1029,9 @@ subroutine cvmix_epbl_column(NZ, Kd, &
               dS_to_dPE_a(k) = dS_to_dPE(k) + c1(K)*dS_to_dPE_a(k-1)
               dT_to_dColHt_a(k) = dT_to_dColHt(k) + c1(K)*dT_to_dColHt_a(k-1)
               dS_to_dColHt_a(k) = dS_to_dColHt(k) + c1(K)*dS_to_dColHt_a(k-1)
-              
+
            endif  ! tot_TKT > 0.0 branch.  Kddt_h(K) has been set.
-           
+
            ! Store integrated velocities and thicknesses for MKE conversion calculations.
            if (sfc_disconnect) then
               ! There is no turbulence at this interface, so zero out the running sums.
@@ -1049,7 +1044,7 @@ subroutine cvmix_epbl_column(NZ, Kd, &
               vhtot = vhtot + v(k)*h(k)
               htot  = htot + h(k)
            endif
-           
+
            if (debug) then
               if (k==2) then
                  Te(1) = b1*(h(1)*T0(1))
@@ -1061,7 +1056,7 @@ subroutine cvmix_epbl_column(NZ, Kd, &
            endif
         enddo
         Kd(nz+1) = 0.0
-        
+
         if (debug) then
            ! Complete the tridiagonal solve for Te.
            b1 = 1.0 / hp_a
@@ -1073,13 +1068,13 @@ subroutine cvmix_epbl_column(NZ, Kd, &
            enddo
         endif
         if (present(dT_expected)) then
-           do k=1,nz 
-              dT_expected(k) = Te(k) - T0(k) 
+           do k=1,nz
+              dT_expected(k) = Te(k) - T0(k)
            enddo
         endif
         if (present(dS_expected)) then
-           do k=1,nz 
-              dS_expected(k) = Se(k) - S0(k) 
+           do k=1,nz
+              dS_expected(k) = Se(k) - S0(k)
            enddo
         endif
         if (debug) then
@@ -1151,7 +1146,7 @@ subroutine cvmix_epbl_column(NZ, Kd, &
         ! For next pass, guess average of minimum and maximum values.
         MLD_guess = min_MLD*0.5 + max_MLD*0.5
         ITresult(obl_it) = MLD_FOUND
-     endif; 
+     endif;
   enddo ! Iteration loop for converged boundary layer thickness.
   if (.not.OBL_CONVERGED) then
      !/Temp output, warn that EPBL didn't converge
@@ -1175,7 +1170,7 @@ subroutine cvmix_epbl_column(NZ, Kd, &
   endif
 
   CS%mstar_mix = MSTAR_MIX
- 
+
   if (CS%TKE_diagnostics) then
      CS%diag_TKE_MKE = CS%diag_TKE_MKE + dTKE_MKE
      CS%diag_TKE_conv = CS%diag_TKE_conv + dTKE_conv
@@ -1652,7 +1647,7 @@ subroutine Get_LA_external(nlev, ustar, hbl, LA)
   HBL8 = hbl
   call enhancement_factor(nlev,ustar8,hbl8,lasl_out=lasl)
   LA=LASL
-  
+
 end subroutine Get_LA_external
 
 subroutine Get_Mstar(CS, NLEV, Bflux, u_star, u_star_mean,&
@@ -1674,18 +1669,18 @@ subroutine Get_Mstar(CS, NLEV, Bflux, u_star, u_star_mean,&
   real :: Bflux_stable
   real :: Bflux_unstable
   real :: stab_scale
-  real, parameter :: vonkar = 0.4 
+  real, parameter :: vonkar = 0.4
   real, parameter :: C_MO = 1. ! Constant in STAB_SCALE for Monin-Obukhov
   real, parameter :: C_EK = 2. ! Constant in STAB_SCALE for Ekman length
 
   real :: MLD_over_STAB
   real :: mstar_stab
   real :: mstar_rot
-  real :: MLD_o_Ekman 
-  real :: MLD_o_Obukhov_stab 
-  real :: MLD_o_Obukhov_un 
-  real :: Ekman_o_Obukhov_stab 
-  real :: Ekman_o_Obukhov_un 
+  real :: MLD_o_Ekman
+  real :: MLD_o_Obukhov_stab
+  real :: MLD_o_Obukhov_un
+  real :: Ekman_o_Obukhov_stab
+  real :: Ekman_o_Obukhov_un
   real :: il_ekman
   real :: il_obukhov
 
@@ -1704,7 +1699,7 @@ subroutine Get_Mstar(CS, NLEV, Bflux, u_star, u_star_mean,&
     ! Inverse of Ekman and Obukhov
     iL_Ekman   = absf/U_star
     iL_Obukhov = bflux*vonkar/U_Star**3
-  
+
     ! Note the value of mech_TKE(i) now must be iterated over, so it is moved here
     ! First solve for the TKE to PE length scale
     if (CS%MSTAR_MODE == CS%MLD_o_OBUKHOV) then
@@ -1809,7 +1804,7 @@ subroutine Get_Mstar(CS, NLEV, Bflux, u_star, u_star_mean,&
     CS%La = 0.
     CS%La_mod = 0.
   endif
-  
+
 return
 end subroutine Get_Mstar
 

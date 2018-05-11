@@ -28,7 +28,7 @@ implicit none ; private
 
 public cvmix_kappa_shear_column, cvmix_kappa_shear_init
 
-type, public :: cvmix_kappa_shear_CS ; 
+type, public :: cvmix_kappa_shear_CS ;
   real    :: RiNo_crit=&     ! The critical shear Richardson number for
              0.25            ! shear-entrainment. The theoretical value is 0.25.
                              ! The values found by Jackson et al. are 0.25-0.35.
@@ -149,10 +149,10 @@ subroutine cvmix_kappa_shear_column(GVke, nzc, dt, f2, use_temperature, &
   real, dimension(GVke), &
                      intent(in)    :: dz       !< The layer thickness, in m.
   real, dimension(nzc+1), &
-                     intent(in)    :: dbuoy_dT !<The partial derivatives of buoyancy 
+                     intent(in)    :: dbuoy_dT !<The partial derivatives of buoyancy
                                                !! with changes in temperature, in m s-2 K-1
   real, dimension(nzc+1), &
-                     intent(in)    :: dbuoy_dS !<The partial derivatives of buoyancy 
+                     intent(in)    :: dbuoy_dS !<The partial derivatives of buoyancy
                                                !! with changes in salinity, in m s-2 psu-1
 
   real, dimension(nzc), intent(inout) :: u    !< The zonal velocity after a timestep of mixing, in m s-1.

@@ -98,6 +98,9 @@
    REALTYPE, public                    :: avmolS
    integer,  public                    :: MaxItz0b
    logical,  public                    :: no_shear
+!  Stokes-Coriolis
+!  Qing Li, 20180509
+   logical,  public                    :: stokes_coriolis
 
 !  the roughness lengths
    REALTYPE, public                    :: z0b,z0s,za
@@ -165,7 +168,8 @@
    namelist /meanflow/  h0b,z0s_min,charnock,charnock_val,ddu,ddl,     &
                         grid_method,c1ad,c2ad,c3ad,c4ad,Tgrid,NNnorm,  &
                         SSnorm,dsurf,dtgrid,grid_file,gravity,rho_0,cp,&
-                        avmolu,avmolT,avmolS,MaxItz0b,no_shear
+                        avmolu,avmolT,avmolS,MaxItz0b,no_shear,        &
+                        stokes_coriolis
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -199,6 +203,7 @@
    avmolS       = 1.1e-9
    MaxItz0b     = 10
    no_shear     = .false.
+   stokes_coriolis = .false.
 
 !  Read namelist from file.
    open(namlst,file=fn,status='old',action='read',err=80)
@@ -521,7 +526,8 @@
       h0b,z0s_min,charnock,charnock_val,ddu,ddl,    &
       grid_method,c1ad,c2ad,c3ad,c4ad,Tgrid,NNnorm, &
       SSnorm,dsurf,dtgrid,grid_file,gravity,rho_0,  &
-      cp,avmolu,avmolT, avmolS,MaxItz0b,no_shear
+      cp,avmolu,avmolT, avmolS,MaxItz0b,no_shear,   &
+      stokes_coriolis
 
    LEVEL2 'z0b,z0s,za',z0b,z0s,za
    LEVEL2 'cori',cori

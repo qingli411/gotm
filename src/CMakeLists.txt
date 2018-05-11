@@ -148,8 +148,12 @@ add_library(turbulence
             turbulence/cmue_sg.F90
             turbulence/compute_cpsi3.F90
             turbulence/compute_rist.F90
+            turbulence/cvmix_energetic_pbl.F90
+            turbulence/cvmix_kappa_shear_column.F90
             turbulence/dissipationeq.F90
             turbulence/epsbalgebraic.F90
+            turbulence/EPBL_aux.F90
+            turbulence/EPBL_gotm.F90
             turbulence/fk_craig.F90
             turbulence/genericeq.F90
             turbulence/gotm_lib_version.F90

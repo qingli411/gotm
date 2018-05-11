@@ -172,8 +172,10 @@
 #endif
 
 !     add non-local fluxes
-#ifdef NONLOCAL
-!      Qsour(i) = Qsour(i) - ( gamu(i) - gamu(i-1) )/h(i)
+!     or down Stokes gradient fluxes
+!     Qing Li, 20180509
+#if defined(NONLOCAL) || defined(STOKESFLUX)
+      Qsour(i) = Qsour(i) - ( gamu(i) - gamu(i-1) )/h(i)
 #endif
 
    end do

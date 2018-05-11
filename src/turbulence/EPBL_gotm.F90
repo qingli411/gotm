@@ -16,7 +16,7 @@ MODULE EPBL_GOTM
 !   1. epbl_gotm_init
 !   2. epbl_gotm_interface
 !-----------------------------------------------------------------------
-! External subroutines: 
+! External subroutines:
 !   1. EPBL_aux/cvmix_epbl_interface_init
 !   2. EPBL_aux/cvmix_epbl_interface
 !     Sets control structures and interfaces to ePBL code.
@@ -103,9 +103,9 @@ subroutine epbl_gotm_init(nlev,namlst)
   integer, intent(in) :: nlev, namlst
   integer :: rc
   real :: rho0_4, grav_4 ! Used for converting from real(8) to real(4)
-!  
+!
   namelist /momturb/ mode, langmuir_method, efactor_method, efactor_file
-! 
+!
   allocate(num(0:nlev),stat=rc)
   if (rc /= 0) stop 'init_turbulence: Error allocating (num)'
   num = _ZERO_
@@ -166,7 +166,7 @@ subroutine epbl_gotm_init(nlev,namlst)
   call cvmix_interface_init(rho0_=rho0_4,grav_=grav_4)
   call cvmix_epbl_interface_init(namlst)
   call cvmix_jhl_interface_init(namlst)
-  
+
 end subroutine epbl_gotm_init
 !=======================================================================
 subroutine epbl_gotm_interface( nlev,h,u,v,t,s,u_taus,u_taub,&
@@ -289,7 +289,7 @@ subroutine compute_state_derivs(T,S,H,dSV_dT, dSV_dS, &
   real :: ZtoP = 0.1 ! Approx conversion of water depth to dbar (equivalent to GOTM)
   integer :: j
   REALTYPE :: Tr8,Sr8,Pr8
-! 
+!
   P=H(1)/2*ZtoP !Surface pressure approx 0
   do j=1,npts
      if (j>1) then

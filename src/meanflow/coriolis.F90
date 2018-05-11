@@ -15,7 +15,9 @@
 ! !USES:
    USE meanflow, only: u,v,cori
    USE meanflow, only: stokes_coriolis
-   USE observations, only: ustokes,vstokes
+   ! USE observations, only: ustokes,vstokes
+   USE observations,   only: us_x,us_y,delta
+   USE meanflow, only: z
 !
    IMPLICIT NONE
 !
@@ -34,6 +36,7 @@
 ! !LOCAL VARIABLES:
    integer                   :: i
    REALTYPE                  :: ua,omega,cosomega,sinomega
+   REALTYPE                  :: depth
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -44,9 +47,13 @@
 
    if (stokes_coriolis) then
       do i=1,nlev
+         ! ua=u(i)
+         ! u(i)= u(i)*cosomega + (v(i)+vstokes(i))*sinomega
+         ! v(i)=-(ua  +ustokes(i))*sinomega + v(i)*cosomega
+         depth=(z(nlev)-z(i))
          ua=u(i)
-         u(i)= u(i)*cosomega + (v(i)+vstokes(i))*sinomega
-         v(i)=-(ua  +ustokes(i))*sinomega + v(i)*cosomega
+         u(i)= u(i) *cosomega+(v(i)+us_y*exp(-depth/delta))*sinomega
+         v(i)=-(ua+us_x*exp(-depth/delta))   *sinomega+v(i)*cosomega
       end do
    else
       do i=1,nlev

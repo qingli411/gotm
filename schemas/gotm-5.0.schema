@@ -757,7 +757,10 @@
             </options>
          </element>
          <element name="efactor_method" type="int" label="method to compute enhancement factor">
-            <condition type="eq" variable="./langmuir_method" value="1" />
+            <condition type="or">
+                <condition type="eq" variable="./langmuir_method" value="1" />
+                <condition type="eq" variable="./langmuir_method" value="2" />
+            </condition>
             <options>
                <option value="1" label="approximated by a simple enhancement facator model based on empirical wave spectrum (Li et al., 2017)" />
                <option value="2" label="read from file efactor_file" />

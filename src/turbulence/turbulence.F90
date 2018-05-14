@@ -57,6 +57,10 @@
 !  of tke and buoyancy variance
    REALTYPE, public, dimension(:), allocatable   :: P,B,Pb
 
+!  Stokes production
+!  Qing Li, 20180418
+   REALTYPE, public, dimension(:), allocatable   :: PS
+
 !  turbulent diffusivities
 !  of momentum, temperature, salinity
    REALTYPE, public, dimension(:), allocatable         :: num
@@ -78,6 +82,15 @@
 
 !  alpha_M, alpha_N, and alpha_B
    REALTYPE, public, dimension(:), allocatable   :: as,an,at
+
+!  alpha_V, alpha_W
+!  dimensionless Stokes-Eulerian cross-shear and Stokes shear^2
+!  Qing Li, 20180419
+   REALTYPE, public, dimension(:), allocatable   :: av,aw
+
+!  surface proximity function
+!  Qing Li, 20180419
+   REALTYPE, public, dimension(:), allocatable   :: SPF
 
 !  time scale ratio r
    REALTYPE, public, dimension(:), allocatable   :: r
@@ -168,6 +181,7 @@
    REALTYPE, public                              :: e1
    REALTYPE, public                              :: e2
    REALTYPE, public                              :: e3
+   REALTYPE, public                              :: e6
    REALTYPE, public                              :: sq
    REALTYPE, public                              :: sl
    integer,  public                              :: my_length
@@ -209,6 +223,9 @@
    integer, parameter, public                    :: tke_local_eq=1
    integer, parameter, public                    :: tke_keps=2
    integer, parameter, public                    :: tke_MY=3
+   ! MY style with Stokes production (Kantha & Clayson, 2004)
+   ! Qing Li, 20180419
+   integer, parameter, public                    :: tke_KC04=4
 
 !  stability functions
    integer, parameter, public                    :: Constant=1
@@ -227,6 +244,9 @@
    integer, parameter, public                    :: diss_eq=8
    integer, parameter, public                    :: length_eq=9
    integer, parameter, public                    :: generic_eq=10
+   ! MY style with Stokes production (Kantha & Clayson, 2004)
+   ! Qing Li, 20180419
+   integer, parameter, public                    :: length_eq_KC04=11
 
 !  boundary conditions
    integer, parameter, public                    :: Dirichlet=0
@@ -239,6 +259,9 @@
    integer, parameter                            :: quasiEq=1
    integer, parameter                            :: weakEqKbEq=2
    integer, parameter                            :: weakEqKb=3
+   ! SMC of Langmuir turbulence (Harcourt, 2015)
+   ! Qing Li, 20180419
+   integer, parameter                            :: quasiEqH15=4
 
 !  method to solve equation for k_b
    integer, parameter                            :: kb_algebraic=1
@@ -332,7 +355,10 @@
    namelist /keps/          ce1,ce2,ce3minus,ce3plus,sig_k,    &
                             sig_e,sig_peps
 
-   namelist /my/            e1,e2,e3,sq,sl,my_length,new_constr
+   ! add e6
+   ! Qing Li, 20180419
+   namelist /my/            e1,e2,e3,e6,sq,sl,                 &
+                            my_length,new_constr
 
    namelist /scnd/          scnd_method,kb_method,epsb_method, &
                             scnd_coeff,                        &
@@ -432,6 +458,7 @@
    e1=1.8
    e2=1.33
    e3=1.8
+   e6=4.0
    sq=0.2
    sl=0.2
    my_length=1
@@ -472,7 +499,7 @@
 
    read(namlst,nml=turbulence,err=81)
 
-   if (turb_method.eq.99 .or. turb_method.eq.98) then
+   if (turb_method.eq.99 .or. turb_method.eq.98 .or. turb_method.eq.100) then
       close (namlst)
       LEVEL2 'done.'
       LEVEL1 'done.'
@@ -531,6 +558,12 @@
    if (rc /= 0) stop 'init_turbulence: Error allocating (Pb)'
    Pb = _ZERO_
 
+   ! Stokes production
+   ! Qing Li, 20180418
+   allocate(PS(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (PS)'
+   PS = _ZERO_
+
    allocate(num(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (num)'
    num = 1.0D-6
@@ -586,6 +619,20 @@
    allocate(at(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (at)'
    at = _ZERO_
+
+   ! allocating av, aw, SPF
+   ! Qing Li, 20180419
+   allocate(av(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (av)'
+   av = _ZERO_
+
+   allocate(aw(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (aw)'
+   aw = _ZERO_
+
+   allocate(SPF(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (SPF)'
+   SPF = _ONE_
 
    allocate(r(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (r)'
@@ -1756,6 +1803,7 @@
       endif
 
    case default
+      ! TODO: add options with Stokes <19-04-18, Qing Li> !
    end select
 
    return
@@ -1988,6 +2036,7 @@
          LEVEL2 '--------------------------------------------------------'
          LEVEL2 ' '
       case default
+         ! TODO: add options with Stokes <19-04-18, Qing Li> !
    end select
 
    return
@@ -2001,11 +2050,10 @@
 !
 ! !INTERFACE:
    subroutine do_turbulence(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,      &
-                            NN,SS,xP)
+                            NN,SS,CSSTK,SSSTK,xP)
 !
 ! !DESCRIPTION: This routine is the central point of the
-! turbulence scheme. It determines the order, in which
-! turbulence variables are updated, and calls
+! turbulence scheme. It determines the order, in which! turbulence variables are updated, and calls
 ! other member functions updating
 ! the TKE, the length-scale, the dissipation rate, the ASM etc.
 ! Note, that the list of arguments in {\tt do\_turbulence()} corresponds
@@ -2061,10 +2109,11 @@
    IMPLICIT NONE
 
    interface
-      subroutine production(nlev,NN,SS,xP)
+      subroutine production(nlev,NN,SS,CSSTK,xP)
         integer,  intent(in)                :: nlev
         REALTYPE, intent(in)                :: NN(0:nlev)
         REALTYPE, intent(in)                :: SS(0:nlev)
+        REALTYPE, intent(in)                :: CSSTK(0:nlev)
         REALTYPE, intent(in), optional      :: xP(0:nlev)
       end subroutine production
    end interface
@@ -2099,6 +2148,14 @@
 !  shear-frequency squared (1/s^2)
    REALTYPE, intent(in)                :: SS(0:nlev)
 
+!  CSSTK, SSSTK
+!  Qing Li, 20180419
+!  Stokes-Eulerian cross-shear (1/s^2)
+   REALTYPE, intent(in)                :: CSSTK(0:nlev)
+
+!  Stokes shear squared (1/s^2)
+   REALTYPE, intent(in)                :: SSSTK(0:nlev)
+
 !  TKE production due to seagrass
 !  friction (m^2/s^3)
    REALTYPE, intent(in), optional      :: xP(0:nlev)
@@ -2131,10 +2188,10 @@
 
       if ( PRESENT(xP) ) then
 !        with seagrass turbulence
-         call production(nlev,NN,SS,xP)
+         call production(nlev,NN,SS,CSSTK,xP)
       else
 !        without
-         call production(nlev,NN,SS)
+         call production(nlev,NN,SS,CSSTK)
       end if
 
       call alpha_mnb(nlev,NN,SS)
@@ -2152,10 +2209,10 @@
 
       if ( PRESENT(xP) ) then
 !        with seagrass turbulence
-         call production(nlev,NN,SS,xP)
+         call production(nlev,NN,SS,CSSTK,xP)
       else
 !        without
-         call production(nlev,NN,SS)
+         call production(nlev,NN,SS,CSSTK)
       end if
 
       select case(scnd_method)
@@ -2184,17 +2241,32 @@
 
       case (weakEqKb)
 
-      STDERR 'This second-order model is not yet tested.'
-      STDERR 'Choose scnd_method=1,2 in gotmturb.nml.'
-      STDERR 'Program execution stopped ...'
-      stop 'turbulence.F90'
+         STDERR 'This second-order model is not yet tested.'
+         STDERR 'Choose scnd_method=1,2 in gotmturb.nml.'
+         STDERR 'Program execution stopped ...'
+         stop 'turbulence.F90'
+
+      case (quasiEqH15)
+         ! quasi-equilibrium model
+         ! SMC model of Langmuir turbulence (Harcourt, 2015)
+         ! Qing Li, 20180419
+
+         call surface_proximity_function(nlev,depth,h)
+         call alpha_mvwnb(nlev,NN,SS,CSSTK,SSSTK)
+         call cmue_d_h15(nlev)
+         call do_tke(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
+         call do_kb(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
+         call do_lengthscale(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,NN,SS)
+         call do_epsb(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
+         call alpha_mvwnb(nlev,NN,SS,CSSTK,SSSTK)
+         call kolpran(nlev)
 
       case default
 
-      STDERR 'Not a valid method for second-order model'
-      STDERR 'Choose scnd_method=1,2,3 in gotmturb.nml.'
-      STDERR 'Program execution stopped ...'
-      stop 'turbulence.F90'
+         STDERR 'Not a valid method for second-order model'
+         STDERR 'Choose scnd_method=1,2,3 in gotmturb.nml.'
+         STDERR 'Program execution stopped ...'
+         stop 'turbulence.F90'
 
       end select
 
@@ -2260,6 +2332,9 @@
       case(tke_MY)
          ! use differential equation for q^2/2 (Mellor-Yamada style)
          call q2over2eq(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
+      case(tke_KC04)
+         ! use differential equation for q^2/2 (Kantha & Clayson, 2004 style)
+         call q2over2eq_kc04(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
       case default
    end select
 
@@ -2293,6 +2368,7 @@
    REALTYPE, intent(in)                :: dt,u_taus,u_taub,z0s,z0b
    REALTYPE, intent(in)                :: h(0:nlev)
    REALTYPE, intent(in)                :: NN(0:nlev),SS(0:nlev)
+   ! TODO: optional input of CSSTK and SSSTK? <19-04-18, Qing Li> !
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
@@ -2372,6 +2448,10 @@
          call lengthscaleeq(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,NN,SS)
       case(BougeaultAndre)
          call potentialml(nlev,z0b,z0s,h,depth,NN)
+      ! MY style with Stokes production (Kantha & Clayson, 2004)
+      ! Qing Li, 20180419
+      case(length_eq_KC04)
+         call lengthscaleeq_kc04(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,NN,SS)
       case default
          call algebraiclength(len_scale_method,nlev,z0b,z0s,depth,h,NN)
    end select
@@ -2405,6 +2485,7 @@
    REALTYPE, intent(in)                :: dt,u_taus,u_taub,z0s,z0b
    REALTYPE, intent(in)                :: h(0:nlev)
    REALTYPE, intent(in)                :: NN(0:nlev),SS(0:nlev)
+   ! TODO: optional input of CSSTK and SSSTK? <19-04-18, Qing Li> !
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
@@ -2684,6 +2765,79 @@
 
        return
      end subroutine compute_cm0
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Compute the surface proximity function
+!
+! !INTERFACE:
+   subroutine surface_proximity_function(nlev,depth,h)
+!
+! !DESCRIPTION:
+! Compute the surface proximity function (SPF) used the second moment
+! closure model of Langmuir turbulence \citep{Harcourt2015}. SPF is defined
+! as $\mathrm{SPF} = 1-f_z^S$, where
+! \begin{equation}
+! f_z^S=1+\tanh\left(C_l^S z/l^S\right),
+! \end{equation}
+! with $C_l^S=0.25$. The length scale $l^S$ is an average of the dissipation
+! length scale weighted by positive CL vortex production,
+! \begin{equation}
+! l^S=\langle l \rangle_{P^S>0}\equiv\frac{\int l P^S_+ dz}{\int P^S_+ dz}
+! \end{equation}
+! where $P^S_+=\max(0,P^S)$.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer,  intent(in)                 :: nlev
+   REALTYPE, intent(in)                 :: depth
+   REALTYPE, intent(in)                 :: h(0:nlev)
+!
+! !REVISION HISTORY:
+!  Original author(s): Qing Li
+!
+!EOP
+!
+! !LOCAL VARIABLES:
+     integer                  :: i
+     REALTYPE                 :: lS, znrm, dz
+     REALTYPE                 :: fzS(0:nlev), zz(0:nlev)
+     REALTYPE, parameter      :: ClS = 0.25
+!
+!-----------------------------------------------------------------------
+!BOC
+
+   ! find the length scale
+   lS = _ZERO_
+   znrm = _ZERO_
+   do i=1,nlev-1
+      dz = 0.5*(h(i)+h(i+1))
+      znrm = znrm + max(_ZERO_,PS(i))*dz
+      lS = lS + L(i)*max(_ZERO_,PS(i))*dz
+   end do
+   znrm = znrm + 0.5*max(_ZERO_,PS(nlev))*h(nlev)
+   lS = lS + 0.5*L(nlev)*max(_ZERO_,PS(nlev))*h(nlev)
+   lS = lS/max(SMALL,znrm)
+
+   ! get depth at cell interface
+   zz(0) = -depth
+   do i=1,nlev
+      zz(i) = zz(i-1) + h(i)
+   end do
+
+   fzS = _ZERO_
+   do i=0,nlev
+      ! compute fzS
+      fzS(i) = _ONE_ + tanh(ClS*zz(i)/lS)
+      ! surface proximity function
+      SPF(i) = _ONE_ - fzS(i)
+   end do
+
+   end subroutine surface_proximity_function
 !EOC
 
 
@@ -3407,6 +3561,9 @@
    if (allocated(P)) deallocate(P)
    if (allocated(B)) deallocate(B)
    if (allocated(Pb)) deallocate(Pb)
+   ! PS
+   ! Qing Li, 20180418
+   if (allocated(PS)) deallocate(PS)
    if (allocated(num)) deallocate(num)
    if (allocated(nuh)) deallocate(nuh)
    if (allocated(nus)) deallocate(nus)
@@ -3421,6 +3578,11 @@
    if (allocated(an)) deallocate(an)
    if (allocated(as)) deallocate(as)
    if (allocated(at)) deallocate(at)
+   ! av, aw, SPF
+   ! Qing Li, 20180419
+   if (allocated(av)) deallocate(av)
+   if (allocated(aw)) deallocate(aw)
+   if (allocated(SPF)) deallocate(SPF)
    if (allocated(r)) deallocate(r)
    if (allocated(Rig)) deallocate(Rig)
    if (allocated(xRf)) deallocate(xRf)
@@ -3468,13 +3630,19 @@
    LEVEL2 'tke,eps,L',tke,eps,L
    LEVEL2 'tkeo',tkeo
    LEVEL2 'kb,epsb',kb,epsb
-   LEVEL2 'P,B,Pb',P,B,Pb
+   ! PS
+   ! Qing Li, 20180418
+   LEVEL2 'P,B,Pb,PS',P,B,Pb,PS
    LEVEL2 'num,nuh,nus',num,nuh,nus
    LEVEL2 'gamu,gamv',gamu,gamv
    LEVEL2 'gamb,gamh,gams',gamb,gamh,gams
    LEVEL2 'cmue1,cmue2',cmue1,cmue2
    LEVEL2 'gam',gam
    LEVEL2 'as,an,at',as,an,at
+   ! av, aw, SPF
+   ! Qing Li, 20180419
+   LEVEL2 'av,aw',av,aw
+   LEVEL2 'SPF',SPF
    LEVEL2 'r',r
    LEVEL2 'Rig',Rig
    LEVEL2 'xRf',xRf
@@ -3513,7 +3681,7 @@
    LEVEL2 'keps namelist',  ce1,ce2,ce3minus,ce3plus,sig_k,    &
                             sig_e,sig_peps
 
-   LEVEL2 'my namelist',    e1,e2,e3,sq,sl,my_length,new_constr
+   LEVEL2 'my namelist',    e1,e2,e3,e6,sq,sl,my_length,new_constr
 
    LEVEL2 'scnd namelist',  scnd_method,kb_method,epsb_method, &
                             scnd_coeff,                        &

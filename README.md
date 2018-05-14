@@ -5,14 +5,13 @@ A comprehensive description of GOTM including compilation instructions are given
 This copy of GOTM code is used as a driver to setup simulations to compare different ocean surface boundary layer schemes with Langmuir turbulence. It is built on [GOTM](https://github.com/gotm-model/code) version 5.0.0. New capabilities include the following.
 
 * Stokes drift support. The full profile (grid cell averaged), surface values and the penetration depth of Stokes drift are calculated from wave spectrum (e.g., wave buoy data) or partitioned surface Stokes drift (e.g., WAVEWATCH III output).
-
 * [CVMix](https://github.com/CVMix/CVMix-src) support.
-
 * Langmuir mixing parameterization and Langmuir turbulence enhanced entrainment in KPP via CVMix ([Li et al., 2016](https://doi.org/10.1016%2Fj.ocemod.2015.07.020); [Li and Fox-Kemper, 2017](https://doi.org/10.1175%2FJPO-D-17-0085.1)).
-
-* OSMOSIS scheme. _To be tested._
-
-* Second moment closure models of Langmuir turbulence ([Harcourt 2013](https://doi.org/10.1175%2FJPO-D-12-0105.1), [2015](https://doi.org/10.1175%2FJPO-D-14-0046.1)). _To be included._
+* OSMOSIS scheme. _Testing._
+* Second moment closure models of Langmuir turbulence ([Harcourt 2013](https://doi.org/10.1175%2FJPO-D-12-0105.1), [2015](https://doi.org/10.1175%2FJPO-D-14-0046.1)). _Testing._
+* ePBL. _Testing._
+* Reichl-Kukulka's KPP-LT. _To be included._
+* UCLA ROMS KPP. _To be included._
 
 # Install
 

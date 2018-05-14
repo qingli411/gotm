@@ -109,6 +109,8 @@
    integer, private          :: eps_id,epsb_id
    integer, private          :: eps_obs_id=-1
    integer, private          :: P_id,G_id,Pb_id
+   ! Qing Li, 20180418
+   integer, private          :: PS_id
    integer, private          :: uu_id,vv_id,ww_id
    integer, private          :: o2_obs_id
    integer, private          :: ncdf_time_unit
@@ -360,6 +362,10 @@
       call check_err(iret)
       iret = nf90_def_var(ncid,'Pb',NCDF_FLOAT_PRECISION,dim4d,Pb_id)
       call check_err(iret)
+      ! Stokes production
+      ! Qing Li, 20180418
+      iret = nf90_def_var(ncid,'PS',NCDF_FLOAT_PRECISION,dim4d,PS_id)
+      call check_err(iret)
       iret = nf90_def_var(ncid,'uu',NCDF_FLOAT_PRECISION,dim4d,uu_id)
       call check_err(iret)
       iret = nf90_def_var(ncid,'vv',NCDF_FLOAT_PRECISION,dim4d,vv_id)
@@ -514,6 +520,8 @@
       iret = set_attributes(ncid,P_id,units='m2/s3',long_name='shear production')
       iret = set_attributes(ncid,G_id,units='m2/s3',long_name='buoyancy production')
       iret = set_attributes(ncid,Pb_id,units='m2/s5',long_name='production of kb')
+      ! Qing Li, 20180418
+      iret = set_attributes(ncid,PS_id,units='m2/s3',long_name='Stokes production')
       iret = set_attributes(ncid,uu_id,units='m2/s2',long_name='variance of u-fluctuation')
       iret = set_attributes(ncid,vv_id,units='m2/s2',long_name='variance of v-fluctuation')
       iret = set_attributes(ncid,ww_id,units='m2/s2',long_name='variance of w-fluctuation')
@@ -578,7 +586,7 @@
    use airsea,       only: int_swr,int_heat,int_total
    use meanflow,     only: depth0,u_taub,u_taus,rho_0,gravity
    use meanflow,     only: h,u,v,z,S,rad,T,buoy,SS,NN
-   use turbulence,   only: P,B,Pb
+   use turbulence,   only: P,B,Pb,PS
    use turbulence,   only: num,nuh,nus
    use turbulence,   only: gamu,gamv,gamh,gams
    use turbulence,   only: tke,kb,eps,epsb,L,uu,vv,ww
@@ -760,6 +768,8 @@
       iret = store_data(ncid,P_id,XYZT_SHAPE,nlev,array=P)
       iret = store_data(ncid,G_id,XYZT_SHAPE,nlev,array=B)
       iret = store_data(ncid,Pb_id,XYZT_SHAPE,nlev,array=Pb)
+      ! Qing Li, 20180418
+      iret = store_data(ncid,PS_id,XYZT_SHAPE,nlev,array=PS)
       iret = store_data(ncid,uu_id,XYZT_SHAPE,nlev,array=uu)
       iret = store_data(ncid,vv_id,XYZT_SHAPE,nlev,array=vv)
       iret = store_data(ncid,ww_id,XYZT_SHAPE,nlev,array=ww)

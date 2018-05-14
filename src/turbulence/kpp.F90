@@ -218,7 +218,7 @@
 
 ! !PUBLIC MEMBER FUNCTIONS:
 !
-   public init_kpp, do_kpp, clean_kpp
+   public init_kpp, do_kpp, clean_kpp, enhancement_factor
 
 ! !PUBLIC DATA MEMBERS:
 !
@@ -340,14 +340,14 @@
 
 !  method of Langmuir turbulence parameterization
 !  Qing Li, 20180410
-   integer, parameter ::  KPP_LT_NOLANGMUIR = 0
-   integer, parameter ::  KPP_LT_EFACTOR = 1
-   integer, parameter ::  KPP_LT_ENTRAINMENT = 2
+   integer, parameter, public ::  KPP_LT_NOLANGMUIR = 0
+   integer, parameter, public ::  KPP_LT_EFACTOR = 1
+   integer, parameter, public ::  KPP_LT_ENTRAINMENT = 2
 !  method of enhancement factor
-   integer, parameter ::  KPP_LT_EFACTOR_MODEL = 1
-   integer, parameter ::  KPP_LT_EFACTOR_READ = 2
-   integer, parameter ::  KPP_LT_EFACTOR_SPEC = 3
-   integer, parameter ::  KPP_LT_EFACTOR_USTOKES = 4
+   integer, parameter, public ::  KPP_LT_EFACTOR_MODEL = 1
+   integer, parameter, public ::  KPP_LT_EFACTOR_READ = 2
+   integer, parameter, public ::  KPP_LT_EFACTOR_SPEC = 3
+   integer, parameter, public ::  KPP_LT_EFACTOR_USTOKES = 4
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
@@ -394,9 +394,9 @@
 
 !  method to parameterize the effects of Langmuir turbulence
 !  Qing Li, 20180410
-   integer                               ::    langmuir_method
-   integer                               ::    efactor_method
-   character(len=PATH_MAX)               ::    efactor_file
+   integer, public                       ::    langmuir_method
+   integer, public                       ::    efactor_method
+   character(len=PATH_MAX), public       ::    efactor_file
 
 !  use CVMix if true
 !  Qing Li, 20180126
@@ -746,6 +746,7 @@
    LEVEL2 '--------------------------------------------------------'
 
    if (lcvmix) then
+#ifdef KPP_CVMIX
 !     CVMix: initialize parameter datatype
 !     Qing Li, 20180126
       call cvmix_init_kpp(ri_crit=Ric,                                &
@@ -770,6 +771,7 @@
       call cvmix_put(CVmix_vars, 'Tdiff', nuh)
       call cvmix_put(CVmix_vars, 'Sdiff', nus)
       call cvmix_put(CVmix_params, 'Gravity', kpp_g)
+#endif
    else
 !     pre-compute coefficient for turbulent shear velocity
       Vtc=Cv*sqrt(-betaT)/(sqrt(kpp_cs*epsilon)*Ric*kappa*kappa)
@@ -952,8 +954,10 @@
 
    if (kpp_sbl) then
       if (lcvmix) then
+#ifdef KPP_CVMIX
          call surface_layer_cvmix(nlev,h,rho,u,v,NN,u_taus,u_taub,   &
                          tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f)
+#endif
       else
          call surface_layer(nlev,h,rho,u,v,NN,u_taus,u_taub,         &
                          tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f)
@@ -1688,7 +1692,7 @@
  end subroutine surface_layer
 !EOC
 
-
+#ifdef KPP_CVMIX
 !-----------------------------------------------------------------------
 !BOP
 !
@@ -1983,6 +1987,8 @@
 
  end subroutine surface_layer_cvmix
 !EOC
+! KPP_CVMIX
+#endif
 
 
 !-----------------------------------------------------------------------
@@ -2550,8 +2556,7 @@
 !
 ! !INTERFACE:
    subroutine enhancement_factor(nlev, u_taus, hbl, &
-                                 efactor, efactor_entr, lasl)
-
+                                 efactor_out, efactor_entr_out, lasl_out)
 ! !DESCRIPTION:
 !  This routine returns the enhancement factor according to the
 !  Langmuir turbulence parameterization options.
@@ -2564,8 +2569,8 @@
    REALTYPE, intent(in)                :: u_taus, hbl
 !
 ! !OUTPUT PARAMETERS:
-   REALTYPE, intent(out)               :: efactor, efactor_entr
-   REALTYPE, intent(out)               :: lasl
+   REALTYPE, intent(out), optional      :: efactor_out, efactor_entr_out
+   REALTYPE, intent(out), optional      :: lasl_out
 !
 ! !REVISION HISTORY:
 !  Original author(s): Qing Li
@@ -2574,6 +2579,7 @@
 !-----------------------------------------------------------------------
 ! !LOCAL VARIABLES:
    REALTYPE                            :: wind10m, ussl_model
+   REALTYPE                            :: efactor, efactor_entr, lasl
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -2584,11 +2590,17 @@
       ! get enhancement factor
       select case(efactor_method)
       case(KPP_LT_EFACTOR_MODEL)
+#ifdef KPP_CVMIX
          ! 10-meter wind speed
          wind10m = sqrt(u10**2+v10**2)
          efactor = cvmix_kpp_efactor_model(wind10m, u_taus, hbl, CVmix_params)
          ussl_model = cvmix_kpp_ustokes_SL_model(wind10m, hbl, CVmix_params)
          lasl = sqrt(u_taus/ussl_model)
+#else
+         efactor = _ONE_
+         efactor_entr = _ONE_
+         lasl = _ONE_/SMALL
+#endif
       case(KPP_LT_EFACTOR_READ)
          ! TODO: read from file <13-12-17, Qing Li> !
          efactor = _ONE_
@@ -2613,6 +2625,10 @@
       efactor_entr = _ONE_
       lasl = _ONE_/SMALL
    end if
+
+   if (present(efactor_out)) efactor_out = efactor
+   if (present(efactor_entr_out)) efactor_entr_out = efactor_entr
+   if (present(lasl_out)) lasl_out = lasl
 
    end subroutine enhancement_factor
 !EOC

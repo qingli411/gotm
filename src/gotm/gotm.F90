@@ -62,7 +62,8 @@
    use kpp,         only: init_kpp,do_kpp,clean_kpp
    ! Qing Li, 20180402
    use zdfosm,         only: init_osm,do_osm,clean_osm
-
+   use EPBL_gotm, only: epbl_gotm_init, epbl_gotm_interface
+   
    use mtridiagonal,only: init_tridiagonal,clean_tridiagonal
    use eqstate,     only: init_eqstate
 
@@ -241,7 +242,7 @@
 !  Qing Li, 20171220
 !  should be after update grid
 !  Qing Li, 20180410
-   call stokes_drift(wav_freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,zi,us_x,us_y,delta,ustokes,vstokes)
+   call stokes_drift(wav_freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,zi,us_x,us_y,delta,ustokes,vstokes,dusdz,dvsdz)
    ! DEBUG QL
    ! do k=0,nlev
    !    LEVEL2 'z = ', z(k), ' zi = ', zi(k), ' us = ', ustokes(k), ' vs = ', vstokes(k)
@@ -266,6 +267,11 @@
       call init_kpp(namlst,'kpp.nml',nlev,depth,h,gravity,rho_0)
    endif
 
+   ! Initialize EPBL/JHL Model
+   if (turb_method.eq.100) then
+      call epbl_gotm_init(nlev,namlst)
+   endif
+   
    call init_air_sea(namlst,latitude,longitude)
 
    call do_register_all_variables(latitude,longitude,nlev)
@@ -435,7 +441,7 @@
 !     Qing Li, 20171220
 !     should be after updategrid
 !     Qing Li, 20180410
-      call stokes_drift(wav_freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,zi,us_x,us_y,delta,ustokes,vstokes)
+      call stokes_drift(wav_freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,zi,us_x,us_y,delta,ustokes,vstokes,dusdz,dvsdz)
 
       call wequation(nlev,dt)
       call coriolis(nlev,dt)
@@ -495,14 +501,22 @@
          call do_kpp(nlev,depth,h,rho,u,v,NN,NNT,NNS,SS,                &
                      u_taus,u_taub,tFlux,btFlux,sFlux,bsFlux,           &
                      tRad,bRad,cori)
+      case (100)
+!        update EPBL model
+         call convert_fluxes(nlev,gravity,cp,rho_0,heat,precip+evap,    &
+              rad,T,S,tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
+         call epbl_gotm_interface(nlev,h,u,v,T,S,&
+              u_taus,u_taub,tFlux,btFlux,sFlux,&
+              bsFlux,tRad,bRad,cori, dt)
+         
       case default
 !        update one-point models
 # ifdef SEAGRASS
          call do_turbulence(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,      &
-                            NN,SS,xP)
+                            NN,SS,CSSTK,SSSTK,xP)
 # else
          call do_turbulence(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,      &
-                            NN,SS)
+                            NN,SS,CSSTK,SSSTK)
 # endif
       end select
 

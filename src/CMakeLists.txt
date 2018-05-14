@@ -137,17 +137,23 @@ set(GOTM_LIBS ${GOTM_LIBS} util)
 add_library(turbulence
             turbulence/algebraiclength.F90
             turbulence/alpha_mnb.F90
+            turbulence/alpha_mvwnb.F90
             turbulence/cmue_a.F90
             turbulence/cmue_b.F90
             turbulence/cmue_c.F90
             turbulence/cmue_d.F90
+            turbulence/cmue_d_h15.F90
             turbulence/cmue_ma.F90
             turbulence/cmue_rf.F90
             turbulence/cmue_sg.F90
             turbulence/compute_cpsi3.F90
             turbulence/compute_rist.F90
+            turbulence/cvmix_energetic_pbl.F90
+            turbulence/cvmix_kappa_shear_column.F90
             turbulence/dissipationeq.F90
             turbulence/epsbalgebraic.F90
+            turbulence/EPBL_aux.F90
+            turbulence/EPBL_gotm.F90
             turbulence/fk_craig.F90
             turbulence/genericeq.F90
             turbulence/gotm_lib_version.F90
@@ -157,9 +163,11 @@ add_library(turbulence
             turbulence/kbeq.F90
             turbulence/kpp.F90
             turbulence/lengthscaleeq.F90
+            turbulence/lengthscaleeq_kc04.F90
             turbulence/potentialml.F90
             turbulence/production.F90
             turbulence/q2over2eq.F90
+            turbulence/q2over2eq_kc04.F90
             turbulence/r_ratio.F90
             turbulence/tkealgebraic.F90
             turbulence/tkeeq.F90

@@ -46,6 +46,11 @@
 !  (total, from u only, from v only)
    REALTYPE, public, dimension(:), allocatable  :: SS,SSU,SSV
 
+!  CSSTK, SSSTK
+!  Qing Li, 20180419
+!  Stokes-Eulerian cross-shear and Stokes shear squared
+   REALTYPE, public, dimension(:), allocatable  :: CSSTK,SSSTK
+
 !  buoyancy, short-wave radiation,
 !  extra production of tke by see-grass etc
    REALTYPE, public, dimension(:), allocatable  :: buoy,rad,xP
@@ -93,6 +98,9 @@
    REALTYPE, public                    :: avmolS
    integer,  public                    :: MaxItz0b
    logical,  public                    :: no_shear
+!  Stokes-Coriolis
+!  Qing Li, 20180509
+   logical,  public                    :: stokes_coriolis
 
 !  the roughness lengths
    REALTYPE, public                    :: z0b,z0s,za
@@ -160,7 +168,8 @@
    namelist /meanflow/  h0b,z0s_min,charnock,charnock_val,ddu,ddl,     &
                         grid_method,c1ad,c2ad,c3ad,c4ad,Tgrid,NNnorm,  &
                         SSnorm,dsurf,dtgrid,grid_file,gravity,rho_0,cp,&
-                        avmolu,avmolT,avmolS,MaxItz0b,no_shear
+                        avmolu,avmolT,avmolS,MaxItz0b,no_shear,        &
+                        stokes_coriolis
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -194,6 +203,7 @@
    avmolS       = 1.1e-9
    MaxItz0b     = 10
    no_shear     = .false.
+   stokes_coriolis = .false.
 
 !  Read namelist from file.
    open(namlst,file=fn,status='old',action='read',err=80)
@@ -316,6 +326,16 @@
    if (rc /= 0) STOP 'init_meanflow: Error allocating (SSV)'
    SSV = _ZERO_
 
+   ! CSSTK, SSSTK
+   ! Qing Li, 20180419
+   allocate(CSSTK(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (CSSTK)'
+   CSSTK = _ZERO_
+
+   allocate(SSSTK(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (SSSTK)'
+   SSSTK = _ZERO_
+
    allocate(xP(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (xP)'
    xP = _ZERO_
@@ -419,6 +439,10 @@
    if (allocated(SS)) deallocate(SS)
    if (allocated(SSU)) deallocate(SSU)
    if (allocated(SSV)) deallocate(SSV)
+   ! CSSTK, SSSTK
+   ! Qing Li, 20180419
+   if (allocated(CSSTK)) deallocate(CSSTK)
+   if (allocated(SSSTK)) deallocate(SSSTK)
    if (allocated(xP)) deallocate(xP)
    if (allocated(buoy)) deallocate(buoy)
    if (allocated(rad)) deallocate(rad)
@@ -479,6 +503,10 @@
    if (allocated(SS))  LEVEL2 'SS',SS
    if (allocated(SSU)) LEVEL2 'SSU',SSU
    if (allocated(SSV)) LEVEL2 'SSV',SSV
+   ! CSSTK, SSSTK
+   ! Qing Li, 20180419
+   if (allocated(CSSTK)) LEVEL2 'CSSTK',CSSTK
+   if (allocated(SSSTK)) LEVEL2 'SSSTK',SSSTK
    if (allocated(buoy)) LEVEL2 'buoy',buoy
    if (allocated(rad)) LEVEL2 'rad',rad
    if (allocated(xp))  LEVEL2 'xP',xP
@@ -498,7 +526,8 @@
       h0b,z0s_min,charnock,charnock_val,ddu,ddl,    &
       grid_method,c1ad,c2ad,c3ad,c4ad,Tgrid,NNnorm, &
       SSnorm,dsurf,dtgrid,grid_file,gravity,rho_0,  &
-      cp,avmolu,avmolT, avmolS,MaxItz0b,no_shear
+      cp,avmolu,avmolT, avmolS,MaxItz0b,no_shear,   &
+      stokes_coriolis
 
    LEVEL2 'z0b,z0s,za',z0b,z0s,za
    LEVEL2 'cori',cori

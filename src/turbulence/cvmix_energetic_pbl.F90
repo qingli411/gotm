@@ -1761,8 +1761,9 @@ subroutine Get_Mstar(CS, NLEV, Bflux, u_star, u_star_mean,&
       if (CS%LA_LF17) then
          call get_LA_windsea( u_star_mean, BLD*CS%LaDepthRatio, Rho0, g_Earth, LA)
       else
-         call get_LA_external(nlev, u_star_mean, BLD, LA)
+         call get_LA_external(nlev, u_star_mean, BLD*CS%LaDepthRatio/.2, LA)
       endif
+
       ! 2. Get parameters for modified LA
       MLD_o_Ekman = abs(BLD*iL_Ekman)
       MLD_o_Obukhov_stab = abs(max(0.,BLD*iL_Obukhov))

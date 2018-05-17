@@ -201,6 +201,8 @@
   use observations, only: nfreq, wav_freq, wav_spec, wav_xcmp, wav_ycmp
   use observations, only: ustokes, vstokes, us_x, us_y, Hs
 
+  use stokes, only: Get_LaNum
+  use stokes, only: us, vs
 #ifdef EXTRA_OUTPUT
   use turbulence,   only: turb1,turb2,turb3,turb4,turb5
 #endif
@@ -353,6 +355,7 @@
    integer, parameter, public ::  KPP_LT_EFACTOR_READ = 2
    integer, parameter, public ::  KPP_LT_EFACTOR_SPEC = 3
    integer, parameter, public ::  KPP_LT_EFACTOR_USTOKES = 4
+   integer, parameter, public ::  KPP_LT_EFACTOR_HURR = 5
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
@@ -764,6 +767,8 @@
          LEVEL4 'Calculate enhancement factor from wave spectrum'
       case(KPP_LT_EFACTOR_USTOKES)
          LEVEL4 'Calculate enhancement factor from Stokes drift'
+      case (KPP_LT_EFACTOR_HURR)
+         LEVEL4 'Calculate enhancement factor from hurricane spectrum'
       case default
          stop 'init_kpp: unsupported efactor_method'
       end select
@@ -1377,6 +1382,10 @@
 !  Update potential density and velocity components surface reference
 !  values.
 !-----------------------------------------------------------------------
+      if (langmuir_method==KPP_LT_RWHGK16) then
+         u=u+us
+         v=v+vs
+      endif
 ! Qing Li, 20171213
       ! determine which layer contains surface layer
       surfthick = epsilon*depth
@@ -1400,6 +1409,10 @@
          Uref = Uref/surfthick
          Vref = Vref/surfthick
       end if
+      if (langmuir_method==KPP_LT_RWHGK16) then
+         u=u-us
+         v=v-vs
+      endif
 #endif
 
 #ifdef KPP_TWOPOINT_REF
@@ -1885,6 +1898,10 @@
          end if
       end do
       ! update Rref, Uref and Vref
+      if (langmuir_method == KPP_LT_RWHGK16) then
+         u=u+us
+         v=v+vs
+      endif
       if (kref < nlev) then
          Rref = rho(kref)*(surfthick+z_w(kref))
          Uref =   u(kref)*(surfthick+z_w(kref))
@@ -1902,7 +1919,10 @@
       Rk = rho(kp1)
       Uk =   u(kp1)
       Vk =   v(kp1)
-
+      if (langmuir_method == KPP_LT_RWHGK16) then
+         u=u-us
+         v=v-vs
+      endif
       ! compute the Bulk Richardson number
       RiBulk(kp1:kp1) = cvmix_kpp_compute_bulk_Richardson(           &
                 zt_cntr = (/-depth/),                                &
@@ -2647,6 +2667,10 @@
          call kpp_efactor_ustokes(nlev, z_r, z_w, ustokes, vstokes, &
                                   us_x, us_y, u10, v10, Hs, u_taus, hbl, &
                                   efactor, lasl)
+      case(KPP_LT_EFACTOR_HURR)
+         call Get_LaNum(hbl*0.2,u_taus,lasl)
+         call get_efactor(lasl,_ZERO_,_ZERO_,langmuir_method,efactor)
+         print*,lasl,efactor
       case default
          stop 'do_kpp: unsupported efactor_method'
       end select

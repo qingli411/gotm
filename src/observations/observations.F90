@@ -25,7 +25,9 @@
 !
 ! !USES:
    use input
-   
+   use Stokes, only: init_stokes, InterpStokesProfile
+   use Stokes, only: US,VS
+
    IMPLICIT NONE
 
 !  default: all is private.
@@ -200,7 +202,6 @@
    character(LEN=PATH_MAX)   :: usdelta_file
    REALTYPE                  :: Wind_X_For_Waves
    REALTYPE                  :: Wind_Y_For_Waves
-   
 
 !  Observed velocity profile profiles - typically from ADCP
    integer                   :: vel_prof_method
@@ -234,7 +235,8 @@
    integer, parameter        :: FROMUSP=3
    integer, parameter        :: FROMUSDELTA=4
    integer, parameter        :: THEORYWAVE=5
-   
+   integer, parameter        :: HURRSPEC=6
+
    REALTYPE, parameter       :: gravity = 9.81
 !
 ! !REVISION HISTORY:
@@ -455,7 +457,7 @@
    usdelta_file='usdelta.dat'
    wind_x_for_waves=_ZERO_
    wind_y_for_waves=_ZERO_
-   
+
 !  Observed velocity profile profiles - typically from ADCP
    vel_prof_method=0
    vel_prof_file='velprof.dat'
@@ -841,6 +843,11 @@
          call register_input_0d(usdelta_file,3,delta,'Stokes drift penetration depth')
          LEVEL2 'Reading surface Stokes drift and penetration depth data from:'
          LEVEL3 trim(usdelta_file)
+      case (THEORYWAVE)
+         LEVEL2 'Using Stokes drift from theory-wave.:'
+      case (HURRSPEC)
+         LEVEL2 'Using Stokes drift from hurricane spectrum.:'
+         call init_stokes(.true.,_ONE_)
       case default
          LEVEL1 'A non-valid ustokes_method has been given ',ustokes_method
          stop 'init_observations()'
@@ -1048,12 +1055,20 @@
       case (FROMUSDELTA)
          call stokes_drift_usdelta(nlev,z,zi,us_x,us_y,delta,ustokes,vstokes)
       case (THEORYWAVE)
-         do i=1,nlev-1
+         ustokes(:)=0.0
+         vstokes(:)=0.0
+         do i=2,nlev
             call stokes_drift_theory(wind_x_for_waves,zi(i),&
-                 zi(i+1),ustokes(i))
+                 zi(i-1),ustokes(i))
             call stokes_drift_theory(wind_y_for_waves,zi(i),&
-                 zi(i+1),vstokes(i))
+                 zi(i-1),vstokes(i))
          enddo
+      case (HURRSPEC)
+         ustokes(:)=0.0
+         vstokes(:)=0.0
+         call interpstokesprofile()
+         ustokes(:)=US(:)
+         vstokes(:)=VS(:)
       case default
          LEVEL1 'A non-valid ustokes_method has been given ', ustokes_method
          stop 'stokes_drift()'
@@ -1342,20 +1357,20 @@
     ! loss ratio of Stokes transport
     r_loss = 0.667
     REALTYPE :: Z_STORE(2), STOKES_STORE(2) !Store the depth/integrals
-    
+
      REALTYPE :: us, hm0, fm, fp, vstokes, kphil, kstar
      REALTYPE :: z0, z0i, r1, r2, r3, r4, tmp
      REALTYPE :: PI
      INTEGER :: I
      PI=4.0*atan(1.0)
-     
+
      Z_STORE(1) = ZUP
      Z_STORE(2) = ZDN
      STOKES_STORE(:) = _ZERO_
      STOKES_AVG = _ZERO_
-     
+
      if (u10 .gt. _ZERO_) then
-        
+
         ! surface Stokes drift
         us = us_to_u10 * u10
         !
@@ -1387,27 +1402,35 @@
         kstar = kphil * 2.56
         ! Stokes integral to ZUP
         do i=1,2
-           z0 = Z_STORE(i)
-           z0i = _ONE_/z0
-           ! term 1 to 4
-           r1 = (0.151 / kphil * z0i - 0.84) &
-                *(_ONE_ - exp(-2.0 * kphil * z0))
-           r2 = -(0.84 + 0.0591 / kphil * z0i) &
-                *sqrt(2.0 * PI * kphil * z0) &
-                *erfc(sqrt(2.0 * kphil * z0))
-           r3 = (0.0632 / kstar * z0i + 0.125) &
-                *(_ONE_ - exp(-2.0 * kstar * z0))
-           r4 = (0.125 + 0.0946 / kstar * z0i) &
-                *sqrt(2.0 * PI * kstar * z0) &
-                *erfc(sqrt(2.0 * kstar * z0))
-           STOKES_STORE(i) = us*(0.715 + r1 + r2 + r3 + r4)
+           z0 = abs(Z_STORE(i))
+           if (z0>1.e-4) then
+              z0i = abs(_ONE_/z0)
+              ! term 1 to 4
+              r1 = (0.151 / kphil * z0i - 0.84) &
+                   *(_ONE_ - exp(-2.0 * kphil * z0))
+              r2 = -(0.84 + 0.0591 / kphil * z0i) &
+                   *sqrt(2.0 * PI * kphil * z0) &
+                   *erfc(sqrt(2.0 * kphil * z0))
+              r3 = (0.0632 / kstar * z0i + 0.125) &
+                   *(_ONE_ - exp(-2.0 * kstar * z0))
+              r4 = (0.125 + 0.0946 / kstar * z0i) &
+                   *sqrt(2.0 * PI * kstar * z0) &
+                   *erfc(sqrt(2.0 * kstar * z0))
+              STOKES_STORE(i) = us*(0.715 + r1 + r2 + r3 + r4)
+           else
+              STOKES_STORE(i)=_ZERO_
+           endif
         enddo
-        STOKES_AVG = STOKES_STORE(2) - STOKES_STORE(1)
+        STOKES_AVG = (STOKES_STORE(2)*Z_STORE(2) - STOKES_STORE(1)*Z_STORE(1) ) &
+             /(Z_STORE(2)-Z_STORE(1))
      endif
-
+     !print*,Z_STORE(2),STOKES_STORE(2)
+     !print*,Z_STORE(1),STOKES_STORE(1)
+     !print*,STOKES_AVG
+     return
    end subroutine stokes_drift_theory
-!EOC   
-   
+!EOC
+
 !-----------------------------------------------------------------------
 !BOP
 !

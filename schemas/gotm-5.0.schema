@@ -443,6 +443,7 @@
                <option value="3" label="second-order model" />
                <option value="98" label="OSMOSIS model" />
                <option value="99" label="KPP model" />
+               <option value="100" label="MOM turbulence model" />
             </options>
          </element>
          <element name="tke_method" type="int" label="type of equation for TKE">
@@ -754,6 +755,7 @@
                <option value="0" label="none"/>
                <option value="1" label="Langmuir mixing from an enhancement factor (Li et al., 2016)" />
                <option value="2" label="Langmuir mixing + Langmuir enhanced entrainment (Li and Fox-Kemper, 2017)" />
+               <option value="3" label="Langmuir mixing + Langmuir enhanced Vt2 (Reichl et al., 2016)" />
             </options>
          </element>
          <element name="efactor_method" type="int" label="method to compute enhancement factor">
@@ -812,6 +814,112 @@
          <element name="osm_interior" type="bool" label=".true. for active interior mixing" />
          <element name="h_i" type="float" label="Initial surface boundary layer depth" unit="m" />
       </element>
+   </element>
+   <element name="MOMturb" label="MOM turbulence model">
+      <condition type="eq" variable="/gotmturb/turbulence/turb_method" value="100" />
+      <element name="MOMturb" label="MOM turbulence model">
+        <element name="mode" type="int" label="Choose mode of MOMturbulence"/>
+        <options>
+          <option value="0" label="Max of ePBL and JHL."/>
+          <option value="1" label="ePBL."/>
+          <option value="2" label="JHLL."/>
+          <option value="3" label="ePBL + JHL."/>
+        </options>
+        <element name="langmuir_method" type="int" label="1 to enable Langmuir turbulence in MOMturb methods."/>
+        <element name="efactor_method" type="int" label="1 to enable Langmuir turbulence in MOMturb methods from theory wave."/>
+      </element>
+   </element>
+   <element name="epbl" label="ePBL turbulence model">
+      <condition type="eq" variable="/gotmturb/turbulence/turb_method" value="100" />
+      <element name="epbl" label="ePBL turbulence model">
+         <element name="nstar" type="float" label="Fraction of convectively released TKE that is available for mixing (bounded to be between 0 and 1)." />
+         <element name="mstar_mode" type="int" label="Choice of method to compute mstar for ePBL.">
+         <options>
+           <option value="0" label="Prescribed value of mstar with optional TKE decay methods based on f and N."/>
+           <option value="1" label="Parameterize value of mstar from a) the ratio of the boundary layer depth to the Ekman depth and b) the ratio of the boundary layer depth to the Obukhov depth."/>
+           <option value="2" label="Parameterize value of mstar from a) the ratio of the boundary layer depth to the Ekman depth and b) the ratio of the Ekman depth to the Obukhov depth."/>
+         </options>
+         </element>
+         <element name="mstar" type="float" label="Constant (non-dim) multiplied by u*^3 to get integrated energy rate of mixing.">
+           <condition type="eq" variable="./mstar_mode" value="0" />
+         </element>
+         <element name="tke_decay" type="float" label="Constant (non-dim) multiplied by u*/f to set the TKE decay rate due to rotation.">
+           <condition type="eq" variable="./mstar_mode" value="0" />
+         </element>
+         <element name="ekman_scale_coef" type="float" label="Non-dim scaling factor that sets the Ekman depth as used for TKE decay">
+         <condition type="eq" variable="./mstar_mode" value="0"/>
+         </element>
+         <element name="mstar_slope" type="float" label="Slope of linear relationship between Hf/u* and mstar.">
+           <condition type="eq" variable="mstar_mode" value="1"/>
+         </element>
+         <element name="mstar_xint" type="float" label="Starting point for linear relationship between Hf/u* and mstar.">
+           <condition type="eq" variable="mstar_mode" value="1"/>
+         </element>
+         <element name="mstar_at_xint" type="float" label="Starting mstar at Hf/u* of mstar_xint.">
+           <condition type="eq" variable="mstar_mode" value="1"/>
+         </element>
+         <element name="mstar_n" type="float" label="Exponent in decay at negative and positive limits of Hf/u_*">
+           <condition type="eq" variable="mstar_mode" value="1"/>
+         </element>
+         <element name="c_ek" type="float" label="Coefficient in rotation limit for mstar = c_ek log(u*f/H)">
+           <condition type='eq' variable="./mstar_mode" value="2"/>
+         </element>
+         <element name="mstar_coef" type="float" label="Coefficient in stabilizing limit for mstar = mstar_coef sqrt(Bf/u*^2f).">
+           <condition type='eq' variable="./mstar_mode" value="2"/>
+         </element>
+         <element name="mixlenexponent" type="float" label="Exponent gamma used to set shape of mixing profile for 0&lt;|z|&lt;H in L=|z|(1-|z|/H)^gamma"/>
+         <element name="mke_to_tke_effic" type="float" label="Efficiency (0 to 1) of conversion of MKE to TKE (experimental)."/>
+         <element name="wstar_ustar_coef" type="float" label="Ratio (non-dim) multiplied by convectively released energy to convert to turbulent velocity (relative to mechanically forced TKE)"/>
+	 <element name="vstar_scale_fac" type="float" label="Non-dim scaling factor for vstar.  Note that the Vstar conversion already includes von Karman coefficient."/>
+         <element name="cnv_mst_fac" type="float" label="coefficient in reduction of mstar in destabilizing condition"/>
+         <element name="translay_scale" type="float" label="Transition Layer Scale for the mixing length at the interface between the OSBL and the interior.  A positive, non-zero value accounts for mixing length not becoming zero at the interface."/>
+         <element name="mld_tol" type="float" label="The tolerance (in meters) for the iteration to determine the boundary layer depth"/>
+         <element name="min_mix_len" type="float" label="The minimum value of the mixing length in the boundary layer.  A negative value disables this feature."/>
+         <element name="n2_dissipation_scale_neg" type="float" label="Dissipation scale for TKE (w/ N^2) in the vertical due to unstable stratification."/>
+         <element name="n2_dissipation_scale_pos" type="float" label="Dissipation scale for TKE (w/ N^2) in the vertical due to stable stratification."/>
+         <element name="mstar_cap" type="float" label="Maximum allowed value of mstar."/>
+         <element name="lt_enhance_form" type="int" label="Choice for including Langmuir turbulence in ePBL">
+         <options>
+           <option value="0" label="No Langmuir turbulence"/>
+           <option value="1" label="Multiplicative enhancement following Van Roekel et al. 2012"/>
+           <option value="2" label="Multiplicative enhancement of form 1 + a LA^b (where a=LT_ENHNACE_COEF and b=LT_ENHANCE_EXP."/>
+           <option value="3" label="Additive enhancement of form a LA^b (where a=LT_ENHANCE_COEF and b=LT_ENHANCE_EXP."/>
+         </options>
+         </element>
+         <element name="lt_enhance_coef" type="float" label="">
+           <condition type="or">
+             <condition type="eq" variable="./lt_enhance_form" value="2"/>
+             <condition type="eq" variable="./lt_enhance_form" value="3"/>
+           </condition>
+         </element>
+         <element name="lt_enhance_exp" type="float" label="Exponent in fit for Langmuir Enhancement."/>
+         <element name="lac_mldoek" type="float" label="Coefficient Langmuir number modification based on Hf/u*"/>
+         <element name="lac_mldoob_stab" type="float" label="Coefficient Langmuir number modification based on HBf/u*^3 when Bf is stabilizing"/>
+         <element name="lac_ekoob_stab" type="float" label="Coefficient Langmuir number modification based on Bf/u*^2f when Bf is stabilizing"/>
+         <element name="lac_mldoob_un" type="float" label="Coefficient Langmuir number modification based on HBf/u*^3 when Bf is unstabilizing."/>
+         <element name="lac_ekoob_un" type="float" label="Coefficient Langmuir number modification based on Bf/u*^2f when Bf is unstabilizing"/>
+         <element name="ladepthratio" type="float" label="Thickness to average Stokes drift over in Langmuir number calculation"/>
+         <element name="max_enhance_m" type="float" label="Maximum value to enhance mixing by due to Langmuir Turbulence."/>
+      </element>
+   </element>
+   <element name="jhl" label="jhl turbulence model">
+      <condition type="eq" variable="/gotmturb/turbulence/turb_method" value="100" />
+      <element name="jhl" label="jhl turbulence model">
+        <element name="rino_crit" type="float" label="Critical Richardson number for JHL08.  Range in paper is 0.25-0.35."/>
+        <element name="shearmix_rate" type="float" label="Non-dimensional rate scale for shear-driven entrainment.  Range in paper is 0.085-0.089."/>
+        <element name="fri_curvature" type="float" label="Curvature of the Richardson number function relating shear sources in the Kappa equation.  Range in paper is -0.97 to -0.89."/>
+        <element name="c_n" type="float" label="Coefficient for decay of TKE due to stratification.  Range in paper is 0.24 to 0.28."/>
+        <element name="c_s" type="float" label=""/>
+        <element name="c_n" type="float" label="Coefficient for decay of TKE due to shear.  Range in paper is 0.12 to 0.14"/>
+        <element name="lambda" type="float" label="Coefficient for the buoyancy length scale.  Range in paper is 0.81 to 0.82."/>
+        <element name="lambda2_n_s" type="float" label="Square of buoyancy and shear scale equation.  Set to 0 to eliminate shear scale."/>
+        <element name="tke_bg" type="float" label="Background level of TKE in m2/s2"/>
+        <element name="kappa_0" type="float" label="Background diapycnal diffusicity in m2/s."/>
+        <element name="kappa_tol_err" type="float" label="Tolerance for error in kappa."/>
+        <element name="prandtl_turb" type="float" label="Turbulent Prandtl number to relate turbulence diffusivity to turbulent viscosity."/>
+        <element name="max_rino_it" type="int" label="Limit to number of iterations to get shear-driven mixing rate."/>
+        <element name="max_ks_it" type="int" label="Limit to number of iterations to estimate time averaged diffusivity."/>
+     </element>
    </element>
    <element name="obs" label="observations">
       <element name="sprofile" label="observed or prescribed salinity profiles">
@@ -1295,6 +1403,7 @@
                <option value="2" label="calculated from the frequency bin width weighted wave spectrum" />
                <option value="3" label="calculated from the partitioned surface Stokes drift" />
                <option value="4" label="calculated from the surface Stokes drift and penetration depth assumingexponential profile" />
+              <option value="5" label="calculated from the theory wave approach of Li et al., 2016."/>
             </options>
          </element>
          <element name="nfreq" type="int" label="number of frequency bands">

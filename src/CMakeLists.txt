@@ -175,8 +175,15 @@ add_library(turbulence
             turbulence/variances.F90
             turbulence/zdfosm.F90
            )
-target_link_libraries(turbulence util)
+
+if(GOTM_USE_CVMix)
+  target_link_libraries(turbulence "${CVMix_LIBRARIES}" util meanflow airsea) # P. Weng
+else()
+  target_link_libraries(turbulence util meanflow airsea)
+endif()
+
 set(GOTM_LIBS ${GOTM_LIBS} turbulence)
+
 
 if(GOTM_USE_FABM)
   find_path(FABM_BASE src/fabm.F90 DOC "Path to FABM source directory.")
@@ -256,6 +263,7 @@ add_library(observations
             observations/const_NNS.F90
             observations/const_NNT.F90
             observations/observations.F90
+            observations/stokes.F90
            )
 target_link_libraries(observations util input)
 set(GOTM_LIBS ${GOTM_LIBS} observations)
@@ -342,7 +350,7 @@ endif(GOTM_USE_NetCDF)
 # CVMix library
 # Qing Li, 20180126
 if(GOTM_USE_CVMix)
-    set(EXTERNAL_LIBS ${EXTERNAL_LIBS} "${CVMix_LIBRARIES}")
+  set(EXTERNAL_LIBS ${EXTERNAL_LIBS} "${CVMix_LIBRARIES}")
 endif(GOTM_USE_CVMix)
 
 

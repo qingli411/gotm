@@ -220,7 +220,7 @@ integer, intent(in) :: nlev ! Number of model levels
   ! These calls are converting from REALTYPE to real
   ustar_epbl = u_taus
   bflux_epbl = btflux+bsflux+(brad(nlev)-brad(nlev-1))! How to use brad?
-  f_epbl = f
+  f_epbl = abs(f)
   dt_epbl = dt
   ! Initialize NUH_epbl, NUH_shear, and NUH_out
   NUH_epbl(:) = 0.0; NUH_out(:) = 0.0

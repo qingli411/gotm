@@ -637,7 +637,7 @@ subroutine cvmix_epbl_column(NZ, Kd, &
               if (CS%TKE_diagnostics) &
                    dTKE_forcing = dTKE_forcing + CS%nstar*TKE_forced(k) * IdtdR0
            endif
-           
+
            if (debug) then
               mech_TKE_k(K) = mech_TKE ; conv_PErel_k(K) = conv_PErel
            endif
@@ -1023,7 +1023,7 @@ subroutine cvmix_epbl_column(NZ, Kd, &
                  dTe(k-1) = b1 * ( Kddt_h(K)*(T0(k)-T0(k-1)) + dTe_t2 )
                  dSe(k-1) = b1 * ( Kddt_h(K)*(S0(k)-S0(k-1)) + dSe_t2 )
               endif
-              
+
               hp_a = h(k) + (hp_a * b1) * Kddt_h(K)
               dT_to_dPE_a(k) = dT_to_dPE(k) + c1(K)*dT_to_dPE_a(k-1)
               dS_to_dPE_a(k) = dS_to_dPE(k) + c1(K)*dS_to_dPE_a(k-1)

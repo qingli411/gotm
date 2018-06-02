@@ -193,6 +193,7 @@
 				minInclusive="1" maxInclusive="1000" />
          <element name="no_shear" type="bool" label=".true.: shear production term P is set to zero" />
          <element name="stokes_coriolis" type="bool" label=".true.: add Stokes-Coriolis term in the Coriolis rotation" />
+         <element name="lagrangian_mixing" type="bool" label=".true.: down Lagrangian gradient mixing" />
       </element>
    </element>
    <element name="airsea">
@@ -817,14 +818,15 @@
    </element>
    <element name="MOMturb" label="MOM turbulence model">
       <condition type="eq" variable="/gotmturb/turbulence/turb_method" value="100" />
-      <element name="MOMturb" label="MOM turbulence model">
-        <element name="mode" type="int" label="Choose mode of MOMturbulence"/>
+      <element name="momturb" label="MOM turbulence model">
+        <element name="mode" type="int" label="Choose mode of MOMturbulence">
         <options>
           <option value="0" label="Max of ePBL and JHL."/>
           <option value="1" label="ePBL."/>
           <option value="2" label="JHLL."/>
           <option value="3" label="ePBL + JHL."/>
         </options>
+        </element>
         <element name="langmuir_method" type="int" label="1 to enable Langmuir turbulence in MOMturb methods."/>
         <element name="efactor_method" type="int" label="1 to enable Langmuir turbulence in MOMturb methods from theory wave."/>
       </element>

@@ -64,6 +64,7 @@
          <MaxItz0b>1</MaxItz0b>
          <no_shear>False</no_shear>
          <stokes_coriolis>False</stokes_coriolis>
+         <lagrangian_mixing>False</lagrangian_mixing>
       </meanflow>
    </gotmmean>
    <airsea>
@@ -225,11 +226,11 @@
       </osm>
    </osm>
    <MOMturb>
-     <MOMturb>
+     <momturb>
        <mode>2</mode>
        <langmuir_method>0</langmuir_method>
        <efactor_method>0</efactor_method>
-     </MOMturb>
+     </momturb>
    </MOMturb>
    <epbl>
       <epbl>

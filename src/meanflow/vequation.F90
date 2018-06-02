@@ -169,6 +169,7 @@
                       AdvVup,AdvVdw,w_adv_discr,adv_mode,V)
    end if
 
+!  down Lagrangian gradient mixing if lagrangian_mixing = .true.
    if (lagrangian_mixing) then
       V=V+Vstokes
    endif
@@ -177,6 +178,7 @@
    call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
                     DiffVup,DiffVdw,avh,Lsour,Qsour,VRelaxTau,vprof,V)
 
+!  convert back to Eulerian velocity
    if (lagrangian_mixing) then
       V=V-Vstokes
    endif

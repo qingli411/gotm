@@ -2670,7 +2670,7 @@
       case(KPP_LT_EFACTOR_HURR)
          call Get_LaNum(hbl*0.2,u_taus,lasl)
          call get_efactor(lasl,_ZERO_,_ZERO_,langmuir_method,efactor)
-         print*,lasl,efactor
+         ! print*,lasl,efactor
       case default
          stop 'do_kpp: unsupported efactor_method'
       end select

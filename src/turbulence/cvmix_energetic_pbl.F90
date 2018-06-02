@@ -484,7 +484,6 @@ subroutine cvmix_epbl_column(NZ, Kd, &
      dS_to_dPE(k) = (dMass * (pres(K) + 0.5*dPres)) * dSV_dS(k)
      dT_to_dColHt(k) = dMass * dSV_dT(k)
      dS_to_dColHt(k) = dMass * dSV_dS(k)
-
      pres(K+1) = pres(K) + dPres
   enddo
 
@@ -621,7 +620,6 @@ subroutine cvmix_epbl_column(NZ, Kd, &
         do K=2,nz
            ! Apply dissipation to the TKE, here applied as an exponential decay
            ! due to 3-d turbulent energy being lost to inefficient rotational modes.
-
            !   There should be several different "flavors" of TKE that decay at
            ! different rates.  The following form is often used for mechanical
            ! stirring from the surface, perhaps due to breaking surface gravity
@@ -632,7 +630,6 @@ subroutine cvmix_epbl_column(NZ, Kd, &
            if (CS%TKE_diagnostics) &
                 dTKE_mech_decay = dTKE_mech_decay + (exp_kh-1.0) * mech_TKE * IdtdR0
            mech_TKE = mech_TKE * exp_kh
-
            !   Accumulate any convectively released potential energy to contribute
            ! to wstar and to drive penetrating convection.
            if (TKE_forced(k) > 0.0) then
@@ -714,7 +711,6 @@ subroutine cvmix_epbl_column(NZ, Kd, &
               Kd(K) = 0.0 ; Kddt_h(K) = 0.0
               sfc_disconnect = .true.
               ! if (.not.debug) exit
-
               !   The estimated properties for layer k-1 can be calculated, using
               ! greatly simplified expressions when Kddt_h = 0.  This enables the
               ! tridiagonal solver for the whole column to be completed for debugging
@@ -726,7 +722,6 @@ subroutine cvmix_epbl_column(NZ, Kd, &
                  dTe(k-1) = b1 * ( dTe_t2 )
                  dSe(k-1) = b1 * ( dSe_t2 )
               endif
-
               hp_a = h(k)
               dT_to_dPE_a(k) = dT_to_dPE(k)
               dS_to_dPE_a(k) = dS_to_dPE(k)
@@ -1766,8 +1761,9 @@ subroutine Get_Mstar(CS, NLEV, Bflux, u_star, u_star_mean,&
       if (CS%LA_LF17) then
          call get_LA_windsea( u_star_mean, BLD*CS%LaDepthRatio, Rho0, g_Earth, LA)
       else
-         call get_LA_external(nlev, u_star_mean, BLD, LA)
+         call get_LA_external(nlev, u_star_mean, BLD*CS%LaDepthRatio/.2, LA)
       endif
+
       ! 2. Get parameters for modified LA
       MLD_o_Ekman = abs(BLD*iL_Ekman)
       MLD_o_Obukhov_stab = abs(max(0.,BLD*iL_Obukhov))

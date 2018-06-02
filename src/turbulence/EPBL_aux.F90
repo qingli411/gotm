@@ -94,6 +94,7 @@ subroutine cvmix_epbl_interface_init(namlst)
        wstar_ustar_coef,vstar_scale_fac,ekman_scale_coef,&
        translay_scale,mld_tol,min_mix_len,n2_dissipation_scale_neg,&
        n2_dissipation_scale_pos,mstar_cap,mstar_slope,mstar_xint,&
+       mstar_at_xint,&
        lt_enhance_coef, lt_enhance_exp, mstar_n, c_ek, mstar_coef,&
        lac_mldoek, lac_mldoob_stab, lac_ekoob_stab,&
        lac_mldoob_un, lac_ekoob_un, ladepthratio,&
@@ -105,7 +106,8 @@ subroutine cvmix_epbl_interface_init(namlst)
        vstar_scale_fac, ekman_scale_coef, &
        translay_scale, mld_tol, min_mix_len, &
        n2_dissipation_scale_neg, n2_dissipation_scale_pos, &
-       mstar_cap, mstar_slope, mstar_xint, lt_enhance_coef, &
+       mstar_cap, mstar_slope, mstar_xint, mstar_at_xint,&
+       lt_enhance_coef, &
        lt_enhance_exp, mstar_n, c_ek, mstar_coef, &
        Use_LA_WindSea, lac_mldoek, lac_mldoob_stab, &
        lac_ekoob_stab, lac_mldoob_un, lac_ekoob_un, &
@@ -138,6 +140,7 @@ subroutine cvmix_epbl_interface_init(namlst)
   CSepbl%mstar_cap=mstar_cap
   CSepbl%mstar_slope=mstar_slope
   CSepbl%mstar_xint=mstar_xint
+  CSepbl%mstar_at_xint=mstar_at_xint
   CSepbl%lt_enhance_coef=lt_enhance_coef
   CSepbl%lt_enhance_exp=lt_enhance_exp
   CSepbl%mstar_n=mstar_n

@@ -102,6 +102,9 @@
 !  Qing Li, 20180509
    logical,  public                    :: stokes_coriolis
 
+!  Lagrangian Mixing (BGR)
+   logical, public                     :: lagrangian_mixing
+
 !  the roughness lengths
    REALTYPE, public                    :: z0b,z0s,za
 
@@ -169,7 +172,7 @@
                         grid_method,c1ad,c2ad,c3ad,c4ad,Tgrid,NNnorm,  &
                         SSnorm,dsurf,dtgrid,grid_file,gravity,rho_0,cp,&
                         avmolu,avmolT,avmolS,MaxItz0b,no_shear,        &
-                        stokes_coriolis
+                        stokes_coriolis, lagrangian_mixing
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -204,6 +207,7 @@
    MaxItz0b     = 10
    no_shear     = .false.
    stokes_coriolis = .false.
+   lagrangian_mixing = .false.
 
 !  Read namelist from file.
    open(namlst,file=fn,status='old',action='read',err=80)
@@ -527,7 +531,7 @@
       grid_method,c1ad,c2ad,c3ad,c4ad,Tgrid,NNnorm, &
       SSnorm,dsurf,dtgrid,grid_file,gravity,rho_0,  &
       cp,avmolu,avmolT, avmolS,MaxItz0b,no_shear,   &
-      stokes_coriolis
+      stokes_coriolis, lagrangian_mixing
 
    LEVEL2 'z0b,z0s,za',z0b,z0s,za
    LEVEL2 'cori',cori

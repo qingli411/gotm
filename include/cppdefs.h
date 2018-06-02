@@ -81,7 +81,7 @@
 #define KPP_CONVEC
 #undef KPP_DDMIX
 #define KPP_TWOPOINT_REF
-#define KPP_IP_FC
+#undef KPP_IP_FC
 #undef KPP_CLIP_GS
 #define KPP_SALINITY
 ! average reference density and velocity in the surface layer

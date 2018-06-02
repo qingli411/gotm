@@ -45,9 +45,11 @@
    use meanflow,     only: gravity,avmolu
    use meanflow,     only: h,v,vo,u,w,avh
    use meanflow,     only: drag,SS,runtimev
+   use meanflow,     only: lagrangian_mixing
    use observations, only: w_adv_method,w_adv_discr
    use observations, only: vprof,vel_relax_tau,vel_relax_ramp
    use observations, only: idpdy,dpdy
+   use observations, only: vstokes
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
 
@@ -167,9 +169,19 @@
                       AdvVup,AdvVdw,w_adv_discr,adv_mode,V)
    end if
 
+!  down Lagrangian gradient mixing if lagrangian_mixing = .true.
+   if (lagrangian_mixing) then
+      V=V+Vstokes
+   endif
+
 !  do diffusion step
    call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
                     DiffVup,DiffVdw,avh,Lsour,Qsour,VRelaxTau,vprof,V)
+
+!  convert back to Eulerian velocity
+   if (lagrangian_mixing) then
+      V=V-Vstokes
+   endif
 
    return
    end subroutine vequation

@@ -25,6 +25,8 @@
 !
 ! !USES:
    use input
+   use Stokes, only: init_stokes, InterpStokesProfile
+   use Stokes, only: US,VS
 
    IMPLICIT NONE
 
@@ -198,7 +200,8 @@
    character(LEN=PATH_MAX)   :: spec_file
    character(LEN=PATH_MAX)   :: usp_file
    character(LEN=PATH_MAX)   :: usdelta_file
-
+   REALTYPE                  :: Wind_X_For_Waves
+   REALTYPE                  :: Wind_Y_For_Waves
 
 !  Observed velocity profile profiles - typically from ADCP
    integer                   :: vel_prof_method
@@ -231,6 +234,8 @@
    integer, parameter        :: FROMSPEC=2
    integer, parameter        :: FROMUSP=3
    integer, parameter        :: FROMUSDELTA=4
+   integer, parameter        :: THEORYWAVE=5
+   integer, parameter        :: HURRSPEC=6
 
    REALTYPE, parameter       :: gravity = 9.81
 !
@@ -324,7 +329,8 @@
 !  Stokes drift namelist
 !  Qing Li, 20180311
    namelist /stokes_drift/                                          &
-            ustokes_method,nfreq,spec_file,usp_file,usdelta_file
+        ustokes_method,nfreq,spec_file,usp_file,usdelta_file,&
+        wind_x_for_waves, wind_y_for_waves
 
    namelist /velprofile/ vel_prof_method,vel_prof_file,         &
             vel_relax_tau,vel_relax_ramp
@@ -449,6 +455,8 @@
    spec_file='spec.dat'
    usp_file='usp.dat'
    usdelta_file='usdelta.dat'
+   wind_x_for_waves=_ZERO_
+   wind_y_for_waves=_ZERO_
 
 !  Observed velocity profile profiles - typically from ADCP
    vel_prof_method=0
@@ -835,6 +843,11 @@
          call register_input_0d(usdelta_file,3,delta,'Stokes drift penetration depth')
          LEVEL2 'Reading surface Stokes drift and penetration depth data from:'
          LEVEL3 trim(usdelta_file)
+      case (THEORYWAVE)
+         LEVEL2 'Using Stokes drift from theory-wave.:'
+      case (HURRSPEC)
+         LEVEL2 'Using Stokes drift from hurricane spectrum.:'
+         call init_stokes(.true.,_ONE_)
       case default
          LEVEL1 'A non-valid ustokes_method has been given ',ustokes_method
          stop 'init_observations()'
@@ -1041,6 +1054,21 @@
          call stokes_drift_usp(freq,xcmp,ycmp,nlev,z,zi,us_x,us_y,delta,ustokes,vstokes)
       case (FROMUSDELTA)
          call stokes_drift_usdelta(nlev,z,zi,us_x,us_y,delta,ustokes,vstokes)
+      case (THEORYWAVE)
+         ustokes(:)=0.0
+         vstokes(:)=0.0
+         do i=2,nlev
+            call stokes_drift_theory(wind_x_for_waves,zi(i),&
+                 zi(i-1),ustokes(i))
+            call stokes_drift_theory(wind_y_for_waves,zi(i),&
+                 zi(i-1),vstokes(i))
+         enddo
+      case (HURRSPEC)
+         ustokes(:)=0.0
+         vstokes(:)=0.0
+         call interpstokesprofile()
+         ustokes(:)=US(:)
+         vstokes(:)=VS(:)
       case default
          LEVEL1 'A non-valid ustokes_method has been given ', ustokes_method
          stop 'stokes_drift()'
@@ -1286,6 +1314,121 @@
    end do
 
    end subroutine stokes_drift_usdelta
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: stokes_drift_theory
+!
+! !INTERFACE:
+   subroutine stokes_drift_theory(u10, ZUP, ZDN, Stokes_Avg)
+! !DESCRIPTION:
+!   This function returns the surface layer averaged Stokes drift, given
+!    the 10-meter wind (m/s) and the boundary layer depth (m).
+!
+! Qing Li, 20180130
+! !USES:
+     use meanflow, only: gravity
+! !INPUT PARAMETERS:
+! 10 meter wind (m/s)
+    REALTYPE, intent(in)                   :: U10
+! Top of Layer for averaging (ZUP)
+    REALTYPE, intent(in)                   :: ZUP
+! Bottom of Layer for averaging (ZDN)
+    REALTYPE, intent(in)                   :: ZDN
+! !OUTPUT PARAMETERS:
+    REALTYPE, intent(out)               :: Stokes_Avg
+
+! !REVISION HISTORY:
+!  Original author(s): Qing Li
+!  (Re)added to GOTM: Brandon Reichl
+!
+!EOP
+! !LOCAL VARIABLES:
+    REALTYPE, parameter :: &
+    ! ratio of U19.5 to U10 (Holthuijsen, 2007)
+    u19p5_to_u10 = 1.075, &
+    ! ratio of mean frequency to peak frequency for
+    ! Pierson-Moskowitz spectrum (Webb, 2011)
+    fm_to_fp = 1.296, &
+    ! ratio of surface Stokes drift to U10
+    us_to_u10 = 0.0162, &
+    ! loss ratio of Stokes transport
+    r_loss = 0.667
+    REALTYPE :: Z_STORE(2), STOKES_STORE(2) !Store the depth/integrals
+
+     REALTYPE :: us, hm0, fm, fp, vstokes, kphil, kstar
+     REALTYPE :: z0, z0i, r1, r2, r3, r4, tmp
+     REALTYPE :: PI
+     INTEGER :: I
+     PI=4.0*atan(1.0)
+
+     Z_STORE(1) = ZUP
+     Z_STORE(2) = ZDN
+     STOKES_STORE(:) = _ZERO_
+     STOKES_AVG = _ZERO_
+
+     if (u10 .gt. _ZERO_) then
+
+        ! surface Stokes drift
+        us = us_to_u10 * u10
+        !
+        ! significant wave height from Pierson-Moskowitz
+        ! spectrum (Bouws, 1998)
+        hm0 = 0.0246 * u10**2
+        !
+        ! peak frequency (PM, Bouws, 1998)
+        tmp = 2.0 *  PI * u19p5_to_u10 * u10
+        fp = 0.877 * Gravity/tmp
+        !
+        ! mean frequency
+        fm = fm_to_fp * fp
+        !
+        ! total Stokes transport (a factor r_loss is applied to account
+        !  for the effect of directional spreading, multidirectional waves
+        !  and the use of PM peak frequency and PM significant wave height
+        !  on estimating the Stokes transport)
+        vstokes = 0.125 * PI * r_loss * fm * hm0**2
+        !
+        ! the general peak wavenumber for Phillips' spectrum
+        ! (Breivik et al., 2016) with correction of directional spreading
+        kphil = 0.176 * us / vstokes
+        !
+        ! surface layer averaged Stokes dirft with Stokes drift profile
+        ! estimated from Phillips' spectrum (Breivik et al., 2016)
+        ! the directional spreading effect from Webb and Fox-Kemper, 2015
+        ! is also included
+        kstar = kphil * 2.56
+        ! Stokes integral to ZUP
+        do i=1,2
+           z0 = abs(Z_STORE(i))
+           if (z0>1.e-4) then
+              z0i = abs(_ONE_/z0)
+              ! term 1 to 4
+              r1 = (0.151 / kphil * z0i - 0.84) &
+                   *(_ONE_ - exp(-2.0 * kphil * z0))
+              r2 = -(0.84 + 0.0591 / kphil * z0i) &
+                   *sqrt(2.0 * PI * kphil * z0) &
+                   *erfc(sqrt(2.0 * kphil * z0))
+              r3 = (0.0632 / kstar * z0i + 0.125) &
+                   *(_ONE_ - exp(-2.0 * kstar * z0))
+              r4 = (0.125 + 0.0946 / kstar * z0i) &
+                   *sqrt(2.0 * PI * kstar * z0) &
+                   *erfc(sqrt(2.0 * kstar * z0))
+              STOKES_STORE(i) = us*(0.715 + r1 + r2 + r3 + r4)
+           else
+              STOKES_STORE(i)=_ZERO_
+           endif
+        enddo
+        STOKES_AVG = (STOKES_STORE(2)*Z_STORE(2) - STOKES_STORE(1)*Z_STORE(1) ) &
+             /(Z_STORE(2)-Z_STORE(1))
+     endif
+     !print*,Z_STORE(2),STOKES_STORE(2)
+     !print*,Z_STORE(1),STOKES_STORE(1)
+     !print*,STOKES_AVG
+     return
+   end subroutine stokes_drift_theory
 !EOC
 
 !-----------------------------------------------------------------------

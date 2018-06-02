@@ -1,3 +1,6 @@
+! BGR TODO
+!  Add Langmuir number/efactor relationships
+
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -198,6 +201,8 @@
   use observations, only: nfreq, wav_freq, wav_spec, wav_xcmp, wav_ycmp
   use observations, only: ustokes, vstokes, us_x, us_y, Hs
 
+  use stokes, only: Get_LaNum
+  use stokes, only: us, vs
 #ifdef EXTRA_OUTPUT
   use turbulence,   only: turb1,turb2,turb3,turb4,turb5
 #endif
@@ -343,11 +348,14 @@
    integer, parameter, public ::  KPP_LT_NOLANGMUIR = 0
    integer, parameter, public ::  KPP_LT_EFACTOR = 1
    integer, parameter, public ::  KPP_LT_ENTRAINMENT = 2
+   integer, parameter, public ::  KPP_LT_RWHGK16 = 3
+
 !  method of enhancement factor
    integer, parameter, public ::  KPP_LT_EFACTOR_MODEL = 1
    integer, parameter, public ::  KPP_LT_EFACTOR_READ = 2
    integer, parameter, public ::  KPP_LT_EFACTOR_SPEC = 3
    integer, parameter, public ::  KPP_LT_EFACTOR_USTOKES = 4
+   integer, parameter, public ::  KPP_LT_EFACTOR_HURR = 5
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
@@ -503,8 +511,24 @@
    integer                             :: rc
 
 !  Qing Li, 20180126
-   logical                             :: llangmuir_efactor
-   logical                             :: llangmuir_entr
+!  BGR Changing from logical to strings so more options can be added
+!------------------------------------------------------------------------
+!  Langmuir_Mixing_Method
+!  Scheme to enhance the velocity scale used in turbulent
+!   mixing coefficient calculation
+!  NONE - No enhancement
+!  L16 - Enhancement based on VanRoekel et al. 2012 and Li et al. 2016
+!  RWHGK16 - Enhancement based on Reichl et al. 2016
+   character(len=15) :: Langmuir_Mixing_method
+!------------------------------------------------------------------------
+!  Langmuir_Entrainment_Method
+!  Scheme to enhance the entrainment used in the mixing layer depth
+!   calculation
+!  NONE - No enhancement
+!  L16 - Enhancement based on Li et al. 2016
+!  LF17 - Enhancement based on Li and Fox-Kemper 2017
+!  RWHGK16 - Enhancement based on Reichl et al. 2016
+   character(len=15) :: langmuir_entrainment_method
 
    namelist /kpp/                      kpp_sbl, kpp_bbl, kpp_interior,  &
                                        clip_mld, Ric, lcvmix,           &
@@ -711,19 +735,24 @@
 !  Qing Li, 20180410
    select case(langmuir_method)
    case(KPP_LT_NOLANGMUIR)
-      llangmuir_efactor = .false.
-      llangmuir_entr = .false.
+      Langmuir_mixing_method = 'NONE' !.false.
+      Langmuir_entrainment_method = 'NONE' !.false.
       LEVEL3 'Langmuir turbulence parameterization   - not active -   '
    case(KPP_LT_EFACTOR)
-      llangmuir_efactor = .true.
-      llangmuir_entr = .false.
+      Langmuir_mixing_method = 'L16' !.true.
+      Langmuir_entrainment_method = 'L16' !.false.
       LEVEL3 'Langmuir turbulence parameterization       - active -   '
       LEVEL3 ' - Langmuir mixing (Li et al., 2016)'
    case(KPP_LT_ENTRAINMENT)
-      llangmuir_efactor = .true.
-      llangmuir_entr = .true.
+      Langmuir_mixing_method = 'L16' !.true.
+      Langmuir_entrainment_method = 'LF17' !.true.
       LEVEL3 'Langmuir turbulence parameterization       - active -   '
       LEVEL3 ' - Langmuir enhanced entrainment (Li and Fox-Kemper, 2017)'
+   case(KPP_LT_RWHGK16)
+      Langmuir_mixing_method = 'RWHGK16' !.true.
+      Langmuir_entrainment_method = 'RWHGK16' !.true.
+      LEVEL3 'Langmuir turbulence parameterization       - active -   '
+      LEVEL3 ' -  Reichl et al. 2016 (Hurricane LES tuning)'
    case default
       stop 'init_kpp: unsupported langmuir_method'
    end select
@@ -738,6 +767,8 @@
          LEVEL4 'Calculate enhancement factor from wave spectrum'
       case(KPP_LT_EFACTOR_USTOKES)
          LEVEL4 'Calculate enhancement factor from Stokes drift'
+      case (KPP_LT_EFACTOR_HURR)
+         LEVEL4 'Calculate enhancement factor from hurricane spectrum'
       case default
          stop 'init_kpp: unsupported efactor_method'
       end select
@@ -754,8 +785,10 @@
                           interp_type2=interp_type2,                  &
                           lEkman=clip_mld,                            &
                           lMonOb=clip_mld,                            &
-                          llangmuirEF=llangmuir_efactor,              &
-                          lenhanced_entr=llangmuir_entr,              &
+                          langmuir_mixing_str = &
+                                     langmuir_mixing_method,          &
+                          langmuir_entrainment_str = &
+                                        langmuir_entrainment_method,  &
                           MatchTechnique=MatchTechnique,              &
                           lnoDGat1=lnoDGat1,                          &
                           surf_layer_ext = epsilon)
@@ -1349,6 +1382,10 @@
 !  Update potential density and velocity components surface reference
 !  values.
 !-----------------------------------------------------------------------
+      if (langmuir_method==KPP_LT_RWHGK16) then
+         u=u+us
+         v=v+vs
+      endif
 ! Qing Li, 20171213
       ! determine which layer contains surface layer
       surfthick = epsilon*depth
@@ -1372,6 +1409,10 @@
          Uref = Uref/surfthick
          Vref = Vref/surfthick
       end if
+      if (langmuir_method==KPP_LT_RWHGK16) then
+         u=u-us
+         v=v-vs
+      endif
 #endif
 
 #ifdef KPP_TWOPOINT_REF
@@ -1857,6 +1898,10 @@
          end if
       end do
       ! update Rref, Uref and Vref
+      if (langmuir_method == KPP_LT_RWHGK16) then
+         u=u+us
+         v=v+vs
+      endif
       if (kref < nlev) then
          Rref = rho(kref)*(surfthick+z_w(kref))
          Uref =   u(kref)*(surfthick+z_w(kref))
@@ -1874,7 +1919,10 @@
       Rk = rho(kp1)
       Uk =   u(kp1)
       Vk =   v(kp1)
-
+      if (langmuir_method == KPP_LT_RWHGK16) then
+         u=u-us
+         v=v-vs
+      endif
       ! compute the Bulk Richardson number
       RiBulk(kp1:kp1) = cvmix_kpp_compute_bulk_Richardson(           &
                 zt_cntr = (/-depth/),                                &
@@ -2569,8 +2617,8 @@
    REALTYPE, intent(in)                :: u_taus, hbl
 !
 ! !OUTPUT PARAMETERS:
-   REALTYPE, intent(out), optional      :: efactor_out, efactor_entr_out
-   REALTYPE, intent(out), optional      :: lasl_out
+   REALTYPE, intent(out), optional     :: efactor_out, efactor_entr_out
+   REALTYPE, intent(out), optional     :: lasl_out
 !
 ! !REVISION HISTORY:
 !  Original author(s): Qing Li
@@ -2586,16 +2634,24 @@
 !-----------------------------------------------------------------------
 
    if (langmuir_method .eq. KPP_LT_EFACTOR &
-      .or. langmuir_method .eq. KPP_LT_ENTRAINMENT) then
+        .or. langmuir_method .eq. KPP_LT_ENTRAINMENT &
+        .or. langmuir_method .eq. KPP_LT_RWHGK16 ) then
       ! get enhancement factor
       select case(efactor_method)
       case(KPP_LT_EFACTOR_MODEL)
 #ifdef KPP_CVMIX
          ! 10-meter wind speed
          wind10m = sqrt(u10**2+v10**2)
+         ! This returns the Li et al. 2016 efactor and the SL averaged
+         !  Langmuir number.  The latter can be used to recompute the
+         !  efactor for other methods.  See below.
          efactor = cvmix_kpp_efactor_model(wind10m, u_taus, hbl, CVmix_params)
          ussl_model = cvmix_kpp_ustokes_SL_model(wind10m, hbl, CVmix_params)
          lasl = sqrt(u_taus/ussl_model)
+         if (Langmuir_Method.eq.KPP_LT_RWHGK16) then
+            !overwrite efactor if using KPP_LT_RWHGK16
+            call Get_Efactor( lasl, _ZERO_, _ZERO_, Langmuir_Method, efactor)
+         endif
 #else
          efactor = _ONE_
          efactor_entr = _ONE_
@@ -2611,6 +2667,10 @@
          call kpp_efactor_ustokes(nlev, z_r, z_w, ustokes, vstokes, &
                                   us_x, us_y, u10, v10, Hs, u_taus, hbl, &
                                   efactor, lasl)
+      case(KPP_LT_EFACTOR_HURR)
+         call Get_LaNum(hbl*0.2,u_taus,lasl)
+         call get_efactor(lasl,_ZERO_,_ZERO_,langmuir_method,efactor)
+         ! print*,lasl,efactor
       case default
          stop 'do_kpp: unsupported efactor_method'
       end select
@@ -2629,6 +2689,7 @@
    if (present(efactor_out)) efactor_out = efactor
    if (present(efactor_entr_out)) efactor_entr_out = efactor_entr
    if (present(lasl_out)) lasl_out = lasl
+
 
    end subroutine enhancement_factor
 !EOC
@@ -2728,10 +2789,12 @@
        thetaww = atan2(vssl,ussl)-atan2(v10,u10)
 !      angles between wind and LCs
        alphal = atan(sin(thetaww) &
-           /(ustar/us/kappa*log(max(abs(hbl/4./hs),_ONE_))+cos(thetaww)))
+            /(ustar/us/kappa*log(max(abs(hbl/4./hs),_ONE_))+cos(thetaww)))
+       ! tmp is LA
        tmp = ustar/sqrt(ussl**2.+vssl**2.)
 !      enhancement factor
        lasl_sqr_i = abs(cos(thetaww-alphal))/abs(cos(alphal))/tmp
+       call Get_Efactor( tmp, thetaww, alphal, Langmuir_Method, efactor)
        efactor = min(5.0, abs(cos(alphal))*sqrt(_ONE_ &
                  +_ONE_/1.5**2.*lasl_sqr_i &
                  +_ONE_/5.4**4.*lasl_sqr_i**2.))
@@ -2823,11 +2886,7 @@
        alphal = atan(sin(thetaww) &
            /(ustar/us0/kappa*log(max(abs(hbl/4./hs),_ONE_))+cos(thetaww)))
        tmp = ustar/sqrt(ussl**2.+vssl**2.)
-!      enhancement factor
-       lasl_sqr_i = abs(cos(thetaww-alphal))/abs(cos(alphal))/tmp
-       efactor = min(5.0, abs(cos(alphal))*sqrt(_ONE_ &
-                 +_ONE_/1.5**2.*lasl_sqr_i &
-                 +_ONE_/5.4**4.*lasl_sqr_i**2.))
+       call Get_Efactor( tmp, thetaww, alphal, Langmuir_Method, efactor)
 !      surface layer averaged Stokes drift
        lasl = sqrt(tmp)
    else
@@ -2837,10 +2896,42 @@
 
    end subroutine kpp_efactor_spec
 !EOC
+   subroutine Get_Efactor( Langmuir_Number, MA_Wind_Waves, MA_Wind_LangCell, &
+                           Langmuir_Method, Enhancement_Factor )
+     REALTYPE, intent(in) :: Langmuir_Number
+     REALTYPE, intent(in) :: MA_Wind_LangCell, MA_Wind_Waves
+     INTEGER, intent(in) :: Langmuir_Method
+     REALTYPE, intent(out) :: Enhancement_Factor
+
+     REALTYPE :: LA_inv
+
+     !      enhancement factor
+     LA_inv = _ONE_/Langmuir_Number
+
+     if (Langmuir_Method == KPP_LT_NOLANGMUIR) then
+        enhancement_factor = _ONE_
+     elseif (Langmuir_Method == KPP_LT_EFACTOR .or. &
+          Langmuir_Method == KPP_LT_ENTRAINMENT) then
+        ! Inverse Langmuir number multipled by
+        !
+        LA_inv = LA_inv * abs ( cos( MA_Wind_LangCell - &
+             MA_Wind_Waves)) / abs( cos( MA_Wind_LangCell))
+        enhancement_factor = min(5.0, &
+                      abs(cos(MA_Wind_LangCell))*&
+             sqrt( _ONE_ + _ONE_ / 1.5**2. * LA_inv &
+             + _ONE_ / 5.4**4. * LA_inv**2.) )
+     elseif (Langmuir_Method == KPP_LT_RWHGK16) then
+        LA_inv = LA_inv * max( 0.0, & ! In RWHGK this was 1.e-8, can be 0 here.
+             cos( MA_Wind_LangCell - MA_Wind_Waves))
+        enhancement_factor = min(2.25, _ONE_ + LA_inv)
+     endif
+
+     return
+
+   end subroutine Get_Efactor
 
  end module kpp
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
 !-----------------------------------------------------------------------
-

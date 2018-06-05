@@ -1329,7 +1329,7 @@
 !
 ! Qing Li, 20180130
 ! !USES:
-     use meanflow, only: gravity
+     !use meanflow, only: gravity
 ! !INPUT PARAMETERS:
 ! 10 meter wind (m/s)
     REALTYPE, intent(in)                   :: U10

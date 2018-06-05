@@ -201,7 +201,7 @@
   use observations, only: nfreq, wav_freq, wav_spec, wav_xcmp, wav_ycmp
   use observations, only: ustokes, vstokes, us_x, us_y, Hs
 
-  use stokes, only: Get_LaNum
+  use Langmuir, only: Get_LaNum
   use stokes, only: us, vs
 #ifdef EXTRA_OUTPUT
   use turbulence,   only: turb1,turb2,turb3,turb4,turb5

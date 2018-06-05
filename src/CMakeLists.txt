@@ -162,6 +162,7 @@ add_library(turbulence
             turbulence/kbalgebraic.F90
             turbulence/kbeq.F90
             turbulence/kpp.F90
+	    turbulence/Langmuir.F90
             turbulence/lengthscaleeq.F90
             turbulence/lengthscaleeq_kc04.F90
             turbulence/potentialml.F90

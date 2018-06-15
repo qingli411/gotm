@@ -202,7 +202,6 @@
   use observations, only: ustokes, vstokes, us_x, us_y, Hs
 
   use Langmuir, only: Get_LaNum
-  use stokes, only: us, vs
 #ifdef EXTRA_OUTPUT
   use turbulence,   only: turb1,turb2,turb3,turb4,turb5
 #endif
@@ -1382,10 +1381,6 @@
 !  Update potential density and velocity components surface reference
 !  values.
 !-----------------------------------------------------------------------
-      if (langmuir_method==KPP_LT_RWHGK16) then
-         u=u+us
-         v=v+vs
-      endif
 ! Qing Li, 20171213
       ! determine which layer contains surface layer
       surfthick = epsilon*depth
@@ -1409,10 +1404,6 @@
          Uref = Uref/surfthick
          Vref = Vref/surfthick
       end if
-      if (langmuir_method==KPP_LT_RWHGK16) then
-         u=u-us
-         v=v-vs
-      endif
 #endif
 
 #ifdef KPP_TWOPOINT_REF
@@ -1899,8 +1890,8 @@
       end do
       ! update Rref, Uref and Vref
       if (langmuir_method == KPP_LT_RWHGK16) then
-         u=u+us
-         v=v+vs
+         u=u+ustokes
+         v=v+vstokes
       endif
       if (kref < nlev) then
          Rref = rho(kref)*(surfthick+z_w(kref))
@@ -1920,8 +1911,8 @@
       Uk =   u(kp1)
       Vk =   v(kp1)
       if (langmuir_method == KPP_LT_RWHGK16) then
-         u=u-us
-         v=v-vs
+         u=u-ustokes
+         v=v-vstokes
       endif
       ! compute the Bulk Richardson number
       RiBulk(kp1:kp1) = cvmix_kpp_compute_bulk_Richardson(           &

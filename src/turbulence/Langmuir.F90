@@ -32,6 +32,16 @@
       ! NK   - numer of spectral wavenumbers
       ! NZ   - number of levels
       private
+
+      ! Right now these parameters are only used in KPP to set for output
+      ! they could be set here.
+      REALTYPE, public :: Mixing_Efactor !< Output enhancement to mixing
+                                         !! coefficient
+      REALTYPE, public :: Entrainment_Efactor !< Output enhancement to Vt2
+                                              !! if LF16
+      REALTYPE, public :: LA_to_Vt2 !< Output Langmuir number used to 
+                                    !! get Vt2 if RWHGK16 or LF17
+
       public Get_LaNum
 !/ ------------------------------------------------------------------- /
     CONTAINS

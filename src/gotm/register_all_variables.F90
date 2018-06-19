@@ -205,7 +205,6 @@
    call fm%register('u0_stokes', 'm/s', 'surface Stokes drift x-component', standard_name='', data0d=us_x, category='surface')
    call fm%register('v0_stokes', 'm/s', 'surface Stokes drift y-component', standard_name='', data0d=us_y, category='surface')
    call fm%register('delta', 'm', 'Stokes drift penetration depth', standard_name='', data0d=delta, category='surface')
-
    return
    end subroutine register_observation_variables
 !EOC
@@ -343,6 +342,8 @@
    use turbulence
    use epbl_gotm, only: epbl_osbl
    use kpp, only: zsbl
+   use Langmuir, only: LA_to_Vt2, Mixing_efactor, entrainment_efactor
+
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -370,6 +371,9 @@
    if (turb_method.eq.99) then
       call fm%register('KPP_OSBL','m','KPP boundary layer depth',standard_name='??',data0d=zsbl,category='turbulece')
    endif
+   call fm%register('Vt2_LA','non-dim','Langmuir number',standard_name='??',data0d=LA_to_Vt2,category='turbulece')
+   call fm%register('Enh_vt2','non-dim','Langmuir number',standard_name='??',data0d=Entrainment_Efactor,category='turbulece')
+   call fm%register('Enh_K','non-dim','Langmuir number',standard_name='??',data0d=Mixing_Efactor,category='turbulece')
 
    ! only define these variables if not using KPP or OSMOSIS or ePBL
    ! Qing Li, 20180405

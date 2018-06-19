@@ -202,6 +202,8 @@
   use observations, only: ustokes, vstokes, us_x, us_y, Hs
 
   use Langmuir, only: Get_LaNum
+  !> These are diagnostics for output right now
+  use Langmuir, only: Mixing_Efactor, LA_to_Vt2, Entrainment_efactor
 #ifdef EXTRA_OUTPUT
   use turbulence,   only: turb1,turb2,turb3,turb4,turb5
 #endif
@@ -1808,7 +1810,8 @@
    REALTYPE                     :: efactor, efactor_entr
 !  Surface layer averaged Langmuir number, for Langmuir enhanced
 !  entrainment according to Li and Fox-Kemper, 2017
-   REALTYPE                     :: lasl
+   REALTYPE                     :: LA_SL_to_CVMix
+
 !  Thickness of surface layer
    REALTYPE                     :: surfthick
 
@@ -1851,7 +1854,12 @@
 !-----------------------------------------------------------------------
 
    call enhancement_factor(nlev, u_taus, z_w(nlev)-zsbl, &
-                           efactor, efactor_entr, lasl)
+                           efactor_entr_out=efactor_entr,&
+                           lasl_out=LA_SL_to_CVMix)
+
+   !> Setting quantities for output
+   Entrainment_Efactor = efactor_entr
+   LA_to_Vt2 = LA_SL_to_CVMix
 
 !-----------------------------------------------------------------------
 !  Compute potential density and velocity components surface reference
@@ -1921,7 +1929,7 @@
                 delta_Vsqr_cntr = (/(Uref-Uk)**2+(Vref-Vk)**2/),     &
                 ws_cntr = (/ws/),                                    &
                 Nsqr_iface = (/NN(k), NN(kp1)/),                     &
-                LaSL = lasl,                                         &
+                LaSL = LA_SL_to_CVMix,                               &
                 bfsfc = Bflux(kp1),                                  &
                 ustar = u_taus)
 
@@ -1983,9 +1991,11 @@
 !-----------------------------------------------------------------------
 
    call enhancement_factor(nlev, u_taus, z_w(nlev)-zsbl, &
-                           efactor, efactor_entr, lasl)
-
+                           efactor_out=efactor)
    CVmix_vars%LangmuirEnhancementFactor = efactor
+
+   ! Set an output parameter
+   Mixing_Efactor = efactor
 
 !-----------------------------------------------------------------------
 !  Compute the mixing coefficients within the surface boundary layer
@@ -2619,6 +2629,7 @@
 ! !LOCAL VARIABLES:
    REALTYPE                            :: wind10m, ussl_model
    REALTYPE                            :: efactor, efactor_entr, lasl
+   REALTYPE                            :: inv_lasl_sqr
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -2638,10 +2649,10 @@
          !  efactor for other methods.  See below.
          efactor = cvmix_kpp_efactor_model(wind10m, u_taus, hbl, CVmix_params)
          ussl_model = cvmix_kpp_ustokes_SL_model(wind10m, hbl, CVmix_params)
-         lasl = sqrt(u_taus/ussl_model)
+         inv_lasl_sqr = ussl_model/u_taus
          if (Langmuir_Method.eq.KPP_LT_RWHGK16) then
             !overwrite efactor if using KPP_LT_RWHGK16
-            call Get_Efactor( lasl, _ZERO_, _ZERO_, Langmuir_Method, efactor)
+            call Get_Efactor( inv_lasl_sqr, _ZERO_, _ZERO_, Langmuir_Method, lasl, efactor)
          endif
 #else
          efactor = _ONE_
@@ -2660,8 +2671,10 @@
                                   efactor, lasl)
       case(KPP_LT_EFACTOR_HURR)
          call Get_LaNum(hbl*0.2,u_taus,lasl)
-         call get_efactor(lasl,_ZERO_,_ZERO_,langmuir_method,efactor)
-         ! print*,lasl,efactor
+         inv_lasl_sqr = (_ONE_/(lasl+1.e-8))**2
+         ! NOTE THAT LANGMUIR NUMBER ALREADY INCLUDES MISALIGNMENT
+         call get_efactor(inv_lasl_sqr,_ZERO_,_ZERO_,langmuir_method,lasl,efactor)
+
       case default
          stop 'do_kpp: unsupported efactor_method'
       end select
@@ -2784,13 +2797,14 @@
        ! tmp is LA
        tmp = ustar/sqrt(ussl**2.+vssl**2.)
 !      enhancement factor
-       lasl_sqr_i = abs(cos(thetaww-alphal))/abs(cos(alphal))/tmp
-       call Get_Efactor( tmp, thetaww, alphal, Langmuir_Method, efactor)
-       efactor = min(5.0, abs(cos(alphal))*sqrt(_ONE_ &
-                 +_ONE_/1.5**2.*lasl_sqr_i &
-                 +_ONE_/5.4**4.*lasl_sqr_i**2.))
-!      surface layer averaged Stokes drift
-       lasl = sqrt(tmp)
+       call Get_Efactor( _ONE_/tmp, thetaww, alphal, Langmuir_Method, &
+            lasl,efactor)
+       !lasl_sqr_i = abs(cos(thetaww-alphal))/abs(cos(alphal))/tmp
+       !efactor = min(5.0, abs(cos(alphal))*sqrt(_ONE_ &
+       !          +_ONE_/1.5**2.*lasl_sqr_i &
+       !          +_ONE_/5.4**4.*lasl_sqr_i**2.))
+       ! BGR- Note the above was confirmed identical and thus this
+       !      second call can be removed
    else
        efactor = _ONE_
        lasl = _ONE_/SMALL
@@ -2877,9 +2891,9 @@
        alphal = atan(sin(thetaww) &
            /(ustar/us0/kappa*log(max(abs(hbl/4./hs),_ONE_))+cos(thetaww)))
        tmp = ustar/sqrt(ussl**2.+vssl**2.)
-       call Get_Efactor( tmp, thetaww, alphal, Langmuir_Method, efactor)
+       call Get_Efactor( _ONE_/tmp, thetaww, alphal, Langmuir_Method, &
+            lasl, efactor)
 !      surface layer averaged Stokes drift
-       lasl = sqrt(tmp)
    else
        efactor = _ONE_
        lasl = _ONE_/SMALL
@@ -2887,40 +2901,90 @@
 
    end subroutine kpp_efactor_spec
 !EOC
-   subroutine Get_Efactor( Langmuir_Number, MA_Wind_Waves, MA_Wind_LangCell, &
-                           Langmuir_Method, Enhancement_Factor )
-     REALTYPE, intent(in) :: Langmuir_Number
-     REALTYPE, intent(in) :: MA_Wind_LangCell, MA_Wind_Waves
-     INTEGER, intent(in) :: Langmuir_Method
-     REALTYPE, intent(out) :: Enhancement_Factor
 
-     REALTYPE :: LA_inv
-
-     !      enhancement factor
-     LA_inv = _ONE_/Langmuir_Number
-
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Calculate the Langmuir enhancement factor and the Langmuir number
+!
+! !INTERFACE:
+   subroutine Get_Efactor( Inv_LangNum_Sqr, MA_Wind_Waves, MA_Wind_LangCell, &
+                           Langmuir_Method, LangNum_to_Vt2, Enhancement_Factor )
+!
+! !DESCRIPTION:
+!  Calculate the Langmuir enhancement factor from inverse Langmuir number squared
+!  and misalignment angle between wind and waves and mislaignment angle between
+!  wind and Langmuir cells
+!
+! TODO: More detailed description  <22-12-17, Qing Li> !
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+     REALTYPE, intent(in)  :: Inv_LangNum_Sqr    !< Inverse Langmuir number squared
+     REALTYPE, intent(in)  :: MA_Wind_LangCell   !< Misalignment angle bt wind and
+                                                 !! Langmuir cells (radians)
+     REALTYPE, intent(in)  :: MA_Wind_Waves      !< Misalignment angle bt wind and
+                                                 !! waves (radians)
+     INTEGER, intent(in)   :: Langmuir_Method    !< Integer for method to compute
+                                                 !! Langmuir turbulence modification
+! !OUTPUT PARAMETERS:
+     REALTYPE, intent(out) :: Enhancement_Factor !< Enhancement factor
+     REALTYPE, intent(out) :: LangNum_to_Vt2     !< Langmuir number supplied to Vt2
+                                                 !! calculation
+!
+! !REVISION HISTORY:
+!  Original author(s): Brandon Reichl
+!
+!EOP
+!-----------------------------------------------------------------------
+! !LOCAL VARIABLES:
+     REALTYPE :: Inv_ProjLangNum_Sqr !< Projected inverse Langmuir number squared
+!
+!-----------------------------------------------------------------------
+!BOC
+!-----------------------------------------------------------------------
      if (Langmuir_Method == KPP_LT_NOLANGMUIR) then
         enhancement_factor = _ONE_
-     elseif (Langmuir_Method == KPP_LT_EFACTOR .or. &
-          Langmuir_Method == KPP_LT_ENTRAINMENT) then
-        ! Inverse Langmuir number multipled by
-        !
-        LA_inv = LA_inv * abs ( cos( MA_Wind_LangCell - &
-             MA_Wind_Waves)) / abs( cos( MA_Wind_LangCell))
-        enhancement_factor = min(5.0, &
-                      abs(cos(MA_Wind_LangCell))*&
-             sqrt( _ONE_ + _ONE_ / 1.5**2. * LA_inv &
-             + _ONE_ / 5.4**4. * LA_inv**2.) )
-     elseif (Langmuir_Method == KPP_LT_RWHGK16) then
-        LA_inv = LA_inv * max( 0.0, & ! In RWHGK this was 1.e-8, can be 0 here.
-             cos( MA_Wind_LangCell - MA_Wind_Waves))
-        enhancement_factor = min(2.25, _ONE_ + LA_inv)
+        LangNum_to_Vt2 = _ONE_
+     else
+        ! Compute the projected inverse Langmuir number squared
+        Inv_ProjLangNum_Sqr = Inv_LangNum_Sqr&
+             *abs(cos(MA_Wind_LangCell-MA_Wind_Waves))&
+             /abs(cos(MA_Wind_LangCell))
+        if (Langmuir_Method == KPP_LT_EFACTOR ) then
+           ! In this method enhancement factor is passed explicitly to CVMix,
+           ! so the Langmuir number passed in should be set to 1.
+           LangNum_to_Vt2 = _ONE_ 
+           ! And in this method the Projected Langmuir number is used to get
+           ! the enhancement factor
+           enhancement_factor = min(5.0, &
+                abs(cos(MA_Wind_LangCell))&
+                *sqrt( _ONE_ + _ONE_/1.5**2.*Inv_ProjLangNum_Sqr &
+                + _ONE_/5.4**4.*Inv_ProjLangNum_Sqr**2. ) )
+        elseif (Langmuir_Method == KPP_LT_ENTRAINMENT) then
+           ! In this method the aligned Langmuir number is passed to CVMix
+           LangNum_to_Vt2 = _ONE_/(sqrt(Inv_ProjLangNum_Sqr)+SMALL)
+           ! But the enhancement factor for mixing is computed from the 
+           ! projected Langmuir number
+           enhancement_factor = min(5.0, &
+                abs(cos(MA_Wind_LangCell))&
+                *sqrt( _ONE_ + _ONE_/1.5**2.*Inv_ProjLangNum_Sqr &
+                + _ONE_/5.4**4.*Inv_ProjLangNum_Sqr**2. ) )
+        elseif (Langmuir_Method == KPP_LT_RWHGK16) then
+           ! In this method the projected Langmuir number is passed to CVMix
+           LangNum_to_Vt2 = _ONE_/(sqrt(Inv_ProjLangNum_Sqr)+SMALL)
+           ! And the projected Langmuir number also used to compute enhancement
+           ! factor for mixing.
+           enhancement_factor = min(2.25, _ONE_ + sqrt(LangNum_to_Vt2))
+        endif
      endif
 
      return
 
    end subroutine Get_Efactor
-
+!EOC
  end module kpp
 
 !-----------------------------------------------------------------------

@@ -2956,8 +2956,8 @@
              *abs(cos(MA_Wind_LangCell-MA_Wind_Waves))&
              /abs(cos(MA_Wind_LangCell))
         ! In this method enhancement factor is passed explicitly to CVMix,
-        ! so the Langmuir number passed in should be set to 1.
-        LangNum_to_Vt2 = _ONE_
+        ! so the Langmuir number passed in should be set large.
+        LangNum_to_Vt2 = _ONE_/small
         ! And in this method the Projected Langmuir number is used to get
         ! the enhancement factor
         enhancement_factor = min(5.0, &

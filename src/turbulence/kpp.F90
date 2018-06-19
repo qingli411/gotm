@@ -2803,8 +2803,10 @@
        !efactor = min(5.0, abs(cos(alphal))*sqrt(_ONE_ &
        !          +_ONE_/1.5**2.*lasl_sqr_i &
        !          +_ONE_/5.4**4.*lasl_sqr_i**2.))
+       ! lasl = sqrt(tmp)
        ! BGR- Note the above was confirmed identical and thus this
-       !      second call can be removed
+       !      second call can be removed.  There is a miniscule round
+       !      -off error in lasl from get_efactor.
    else
        efactor = _ONE_
        lasl = _ONE_/SMALL
@@ -2948,37 +2950,43 @@
      if (Langmuir_Method == KPP_LT_NOLANGMUIR) then
         enhancement_factor = _ONE_
         LangNum_to_Vt2 = _ONE_
-     else
+     elseif (Langmuir_Method == KPP_LT_EFACTOR ) then
         ! Compute the projected inverse Langmuir number squared
         Inv_ProjLangNum_Sqr = Inv_LangNum_Sqr&
              *abs(cos(MA_Wind_LangCell-MA_Wind_Waves))&
              /abs(cos(MA_Wind_LangCell))
-        if (Langmuir_Method == KPP_LT_EFACTOR ) then
-           ! In this method enhancement factor is passed explicitly to CVMix,
-           ! so the Langmuir number passed in should be set to 1.
-           LangNum_to_Vt2 = _ONE_ 
-           ! And in this method the Projected Langmuir number is used to get
-           ! the enhancement factor
-           enhancement_factor = min(5.0, &
-                abs(cos(MA_Wind_LangCell))&
-                *sqrt( _ONE_ + _ONE_/1.5**2.*Inv_ProjLangNum_Sqr &
-                + _ONE_/5.4**4.*Inv_ProjLangNum_Sqr**2. ) )
-        elseif (Langmuir_Method == KPP_LT_ENTRAINMENT) then
-           ! In this method the aligned Langmuir number is passed to CVMix
-           LangNum_to_Vt2 = _ONE_/(sqrt(Inv_ProjLangNum_Sqr)+SMALL)
-           ! But the enhancement factor for mixing is computed from the 
-           ! projected Langmuir number
-           enhancement_factor = min(5.0, &
-                abs(cos(MA_Wind_LangCell))&
-                *sqrt( _ONE_ + _ONE_/1.5**2.*Inv_ProjLangNum_Sqr &
-                + _ONE_/5.4**4.*Inv_ProjLangNum_Sqr**2. ) )
-        elseif (Langmuir_Method == KPP_LT_RWHGK16) then
-           ! In this method the projected Langmuir number is passed to CVMix
-           LangNum_to_Vt2 = _ONE_/(sqrt(Inv_ProjLangNum_Sqr)+SMALL)
-           ! And the projected Langmuir number also used to compute enhancement
-           ! factor for mixing.
-           enhancement_factor = min(2.25, _ONE_ + sqrt(LangNum_to_Vt2))
-        endif
+        ! In this method enhancement factor is passed explicitly to CVMix,
+        ! so the Langmuir number passed in should be set to 1.
+        LangNum_to_Vt2 = _ONE_
+        ! And in this method the Projected Langmuir number is used to get
+        ! the enhancement factor
+        enhancement_factor = min(5.0, &
+             abs(cos(MA_Wind_LangCell))&
+             *sqrt( _ONE_ + _ONE_/1.5**2.*Inv_ProjLangNum_Sqr &
+             + _ONE_/5.4**4.*Inv_ProjLangNum_Sqr**2. ) )
+     elseif (Langmuir_Method == KPP_LT_ENTRAINMENT) then
+        ! Compute the projected inverse Langmuir number squared
+        Inv_ProjLangNum_Sqr = Inv_LangNum_Sqr&
+             *abs(cos(MA_Wind_LangCell-MA_Wind_Waves))&
+             /abs(cos(MA_Wind_LangCell))
+        ! In this method the aligned Langmuir number is passed to CVMix
+        LangNum_to_Vt2 = _ONE_/(sqrt(Inv_LangNum_Sqr))
+        ! But the enhancement factor for mixing is computed from the
+        ! projected Langmuir number
+        enhancement_factor = min(5.0, &
+             abs(cos(MA_Wind_LangCell))&
+             *sqrt( _ONE_ + _ONE_/1.5**2.*Inv_ProjLangNum_Sqr &
+             + _ONE_/5.4**4.*Inv_ProjLangNum_Sqr**2. ) )
+     elseif (Langmuir_Method == KPP_LT_RWHGK16) then
+        ! Compute the projected inverse Langmuir number squared
+        ! * Note the different def'n
+        Inv_ProjLangNum_Sqr = Inv_LangNum_Sqr&
+             *abs(cos(MA_Wind_LangCell-MA_Wind_Waves))
+        ! In this method the projected Langmuir number is passed to CVMix
+        LangNum_to_Vt2 = _ONE_/(sqrt(Inv_ProjLangNum_Sqr)+SMALL)
+        ! And the projected Langmuir number also used to compute enhancement
+        ! factor for mixing.
+        enhancement_factor = min(2.25, _ONE_ + sqrt(LangNum_to_Vt2))
      endif
 
      return

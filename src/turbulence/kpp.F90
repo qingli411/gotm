@@ -517,7 +517,7 @@
 !  Scheme to enhance the velocity scale used in turbulent
 !   mixing coefficient calculation
 !  NONE - No enhancement
-!  L16 - Enhancement based on VanRoekel et al. 2012 and Li et al. 2016
+!  LWF16 - Enhancement based on VanRoekel et al. 2012 and Li et al. 2016
 !  RWHGK16 - Enhancement based on Reichl et al. 2016
    character(len=15) :: Langmuir_Mixing_method
 !------------------------------------------------------------------------
@@ -525,7 +525,7 @@
 !  Scheme to enhance the entrainment used in the mixing layer depth
 !   calculation
 !  NONE - No enhancement
-!  L16 - Enhancement based on Li et al. 2016
+!  LWF16 - Enhancement based on Li et al. 2016
 !  LF17 - Enhancement based on Li and Fox-Kemper 2017
 !  RWHGK16 - Enhancement based on Reichl et al. 2016
    character(len=15) :: langmuir_entrainment_method
@@ -738,13 +738,13 @@
       Langmuir_mixing_method = 'NONE' !.false.
       Langmuir_entrainment_method = 'NONE' !.false.
       LEVEL3 'Langmuir turbulence parameterization   - not active -   '
-   case(KPP_LT_LWF16)
-      Langmuir_mixing_method = 'L16' !.true.
-      Langmuir_entrainment_method = 'L16' !.false.
+   case(KPP_LT_EFACTOR)
+      Langmuir_mixing_method = 'LWF16' !.true.
+      Langmuir_entrainment_method = 'LWF16' !.false.
       LEVEL3 'Langmuir turbulence parameterization       - active -   '
       LEVEL3 ' - Langmuir mixing (Li et al., 2016)'
-   case(KPP_LT_LF17)
-      Langmuir_mixing_method = 'L16' !.true.
+   case(KPP_LT_ENTRAINMENT)
+      Langmuir_mixing_method = 'LWF16' !.true.
       Langmuir_entrainment_method = 'LF17' !.true.
       LEVEL3 'Langmuir turbulence parameterization       - active -   '
       LEVEL3 ' - Langmuir enhanced entrainment (Li and Fox-Kemper, 2017)'
@@ -1882,8 +1882,13 @@
       depth = z_w(nlev)-z_r(kp1)
       call cvmix_kpp_compute_turbulent_scales(_ONE_,       &
           depth,Bflux(kp1),u_taus,                         &
-          langmuir_Efactor=efactor_entr,                   &
+          ! langmuir_Efactor=efactor_entr,                   &
           w_s=ws,w_m=wm)
+      if (langmuir_method == KPP_LT_EFACTOR .or.  &
+          langmuir_method == KPP_LT_ENTRAINMENT) then
+          ws = ws * efactor_entr
+      end if
+
 
       ! update potential density and velocity components surface
       ! reference values with the surface layer averaged values
@@ -1928,7 +1933,8 @@
                 delta_Vsqr_cntr = (/(Uref-Uk)**2+(Vref-Vk)**2/),     &
                 ws_cntr = (/ws/),                                    &
                 Nsqr_iface = (/NN(k), NN(kp1)/),                     &
-                LaSL = LA_SL_to_CVMix,                               &
+                EFactor = efactor_entr, &
+                LaSL = lasl,                                         &
                 bfsfc = Bflux(kp1),                                  &
                 ustar = u_taus)
 

@@ -345,10 +345,9 @@
    REALTYPE, parameter :: zetas   = -1.0
 
 !  method of Langmuir turbulence parameterization
-!  Qing Li, 20180410
    integer, parameter, public ::  KPP_LT_NOLANGMUIR = 0
-   integer, parameter, public ::  KPP_LT_EFACTOR = 1
-   integer, parameter, public ::  KPP_LT_ENTRAINMENT = 2
+   integer, parameter, public ::  KPP_LT_LWF16 = 1
+   integer, parameter, public ::  KPP_LT_LF17 = 2
    integer, parameter, public ::  KPP_LT_RWHGK16 = 3
 
 !  method of enhancement factor
@@ -739,12 +738,12 @@
       Langmuir_mixing_method = 'NONE' !.false.
       Langmuir_entrainment_method = 'NONE' !.false.
       LEVEL3 'Langmuir turbulence parameterization   - not active -   '
-   case(KPP_LT_EFACTOR)
+   case(KPP_LT_LWF16)
       Langmuir_mixing_method = 'L16' !.true.
       Langmuir_entrainment_method = 'L16' !.false.
       LEVEL3 'Langmuir turbulence parameterization       - active -   '
       LEVEL3 ' - Langmuir mixing (Li et al., 2016)'
-   case(KPP_LT_ENTRAINMENT)
+   case(KPP_LT_LF17)
       Langmuir_mixing_method = 'L16' !.true.
       Langmuir_entrainment_method = 'LF17' !.true.
       LEVEL3 'Langmuir turbulence parameterization       - active -   '
@@ -757,8 +756,8 @@
    case default
       stop 'init_kpp: unsupported langmuir_method'
    end select
-   if (langmuir_method .eq. KPP_LT_EFACTOR .or. &
-       langmuir_method .eq. KPP_LT_ENTRAINMENT) then
+   if (langmuir_method .eq. KPP_LT_LWF16 .or. &
+       langmuir_method .eq. KPP_LT_LF17) then
       select case(efactor_method)
       case(KPP_LT_EFACTOR_MODEL)
          LEVEL4 'Approximate enhancement factor from simple model (Li et al., 2017)'
@@ -2635,8 +2634,8 @@
 !BOC
 !-----------------------------------------------------------------------
 
-   if (langmuir_method .eq. KPP_LT_EFACTOR &
-        .or. langmuir_method .eq. KPP_LT_ENTRAINMENT &
+   if (langmuir_method .eq. KPP_LT_LWF16 &
+        .or. langmuir_method .eq. KPP_LT_LF17 &
         .or. langmuir_method .eq. KPP_LT_RWHGK16 ) then
       ! get enhancement factor
       select case(efactor_method)
@@ -2678,7 +2677,7 @@
       case default
          stop 'do_kpp: unsupported efactor_method'
       end select
-      if (langmuir_method .eq. KPP_LT_EFACTOR) then
+      if (langmuir_method .eq. KPP_LT_LWF16) then
          efactor_entr = efactor
       else
          efactor_entr = _ONE_
@@ -2910,7 +2909,7 @@
 ! !IROUTINE: Calculate the Langmuir enhancement factor and the Langmuir number
 !
 ! !INTERFACE:
-   subroutine Get_Efactor( Inv_LangNum_Sqr, MA_Wind_Waves, MA_Wind_LangCell, &
+   subroutine get_efactor( inv_langnum_sqr, MA_Wind_Waves, MA_Wind_LangCell, &
                            Langmuir_Method, LangNum_to_Vt2, Enhancement_Factor )
 !
 ! !DESCRIPTION:
@@ -2924,16 +2923,16 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-     REALTYPE, intent(in)  :: Inv_LangNum_Sqr    !< Inverse Langmuir number squared
-     REALTYPE, intent(in)  :: MA_Wind_LangCell   !< Misalignment angle bt wind and
-                                                 !! Langmuir cells (radians)
-     REALTYPE, intent(in)  :: MA_Wind_Waves      !< Misalignment angle bt wind and
-                                                 !! waves (radians)
-     INTEGER, intent(in)   :: Langmuir_Method    !< Integer for method to compute
+   REALTYPE, intent(in)  :: Inv_LangNum_Sqr    !< Inverse Langmuir number squared
+   REALTYPE, intent(in)  :: MA_Wind_LangCell   !< Misalignment angle bt wind and
+                                               !! Langmuir cells (radians)
+   REALTYPE, intent(in)  :: MA_Wind_Waves      !< Misalignment angle bt wind and
+                                               !! waves (radians)
+   INTEGER, intent(in)   :: Langmuir_Method    !< Integer for method to compute
                                                  !! Langmuir turbulence modification
 ! !OUTPUT PARAMETERS:
-     REALTYPE, intent(out) :: Enhancement_Factor !< Enhancement factor
-     REALTYPE, intent(out) :: LangNum_to_Vt2     !< Langmuir number supplied to Vt2
+   REALTYPE, intent(out) :: Enhancement_Factor !< Enhancement factor
+   REALTYPE, intent(out) :: LangNum_to_Vt2     !< Langmuir number supplied to Vt2
                                                  !! calculation
 !
 ! !REVISION HISTORY:
@@ -2942,57 +2941,60 @@
 !EOP
 !-----------------------------------------------------------------------
 ! !LOCAL VARIABLES:
-     REALTYPE :: Inv_ProjLangNum_Sqr !< Projected inverse Langmuir number squared
+   REALTYPE :: Inv_ProjLangNum_Sqr !< Projected inverse Langmuir number squared
 !
 !-----------------------------------------------------------------------
 !BOC
 !-----------------------------------------------------------------------
-     if (Langmuir_Method == KPP_LT_NOLANGMUIR) then
-        enhancement_factor = _ONE_
-        LangNum_to_Vt2 = _ONE_
-     elseif (Langmuir_Method == KPP_LT_EFACTOR ) then
-        ! Compute the projected inverse Langmuir number squared
-        Inv_ProjLangNum_Sqr = Inv_LangNum_Sqr&
-             *abs(cos(MA_Wind_LangCell-MA_Wind_Waves))&
-             /abs(cos(MA_Wind_LangCell))
-        ! In this method enhancement factor is passed explicitly to CVMix,
-        ! so the Langmuir number passed in should be set large.
-        LangNum_to_Vt2 = _ONE_/small
-        ! And in this method the Projected Langmuir number is used to get
-        ! the enhancement factor
-        enhancement_factor = min(5.0, &
-             abs(cos(MA_Wind_LangCell))&
-             *sqrt( _ONE_ + _ONE_/1.5**2.*Inv_ProjLangNum_Sqr &
-             + _ONE_/5.4**4.*Inv_ProjLangNum_Sqr**2. ) )
-     elseif (Langmuir_Method == KPP_LT_ENTRAINMENT) then
-        ! Compute the projected inverse Langmuir number squared
-        Inv_ProjLangNum_Sqr = Inv_LangNum_Sqr&
-             *abs(cos(MA_Wind_LangCell-MA_Wind_Waves))&
-             /abs(cos(MA_Wind_LangCell))
-        ! In this method the aligned Langmuir number is passed to CVMix
-        LangNum_to_Vt2 = _ONE_/(sqrt(Inv_LangNum_Sqr))
-        ! But the enhancement factor for mixing is computed from the
-        ! projected Langmuir number
-        enhancement_factor = min(5.0, &
-             abs(cos(MA_Wind_LangCell))&
-             *sqrt( _ONE_ + _ONE_/1.5**2.*Inv_ProjLangNum_Sqr &
-             + _ONE_/5.4**4.*Inv_ProjLangNum_Sqr**2. ) )
-     elseif (Langmuir_Method == KPP_LT_RWHGK16) then
-        ! Compute the projected inverse Langmuir number squared
-        ! * Note the different def'n
-        Inv_ProjLangNum_Sqr = Inv_LangNum_Sqr&
-             *abs(cos(MA_Wind_LangCell-MA_Wind_Waves))
-        ! In this method the projected Langmuir number is passed to CVMix
-        LangNum_to_Vt2 = _ONE_/(sqrt(Inv_ProjLangNum_Sqr)+SMALL)
-        ! And the projected Langmuir number also used to compute enhancement
-        ! factor for mixing.
-        enhancement_factor = min(2.25, _ONE_ + sqrt(LangNum_to_Vt2))
-     endif
-
-     return
-
-   end subroutine Get_Efactor
+   select case (langmuir_method)
+   case (KPP_LT_NOLANGMUIR)
+      enhancement_factor = _ONE_
+      LangNum_to_Vt2 = _ONE_
+   case (KPP_LT_LWF16)
+      ! Compute the projected inverse Langmuir number squared
+      Inv_ProjLangNum_Sqr = Inv_LangNum_Sqr&
+           *abs(cos(MA_Wind_LangCell-MA_Wind_Waves))&
+           /abs(cos(MA_Wind_LangCell))
+      ! In this method enhancement factor is passed explicitly to CVMix,
+      ! so the Langmuir number passed in should be set large.
+      LangNum_to_Vt2 = _ONE_/small
+      ! And in this method the Projected Langmuir number is used to get
+      ! the enhancement factor
+      enhancement_factor = min(5.0, &
+           abs(cos(MA_Wind_LangCell))&
+           *sqrt( _ONE_ + _ONE_/1.5**2.*Inv_ProjLangNum_Sqr &
+           + _ONE_/5.4**4.*Inv_ProjLangNum_Sqr**2. ) )
+   case (KPP_LT_LF17)
+      ! Compute the projected inverse Langmuir number squared
+      Inv_ProjLangNum_Sqr = Inv_LangNum_Sqr&
+           *abs(cos(MA_Wind_LangCell-MA_Wind_Waves))&
+           /abs(cos(MA_Wind_LangCell))
+      ! In this method the aligned Langmuir number is passed to CVMix
+      LangNum_to_Vt2 = _ONE_/(sqrt(Inv_LangNum_Sqr))
+      ! But the enhancement factor for mixing is computed from the
+      ! projected Langmuir number
+      enhancement_factor = min(5.0, &
+           abs(cos(MA_Wind_LangCell))&
+           *sqrt( _ONE_ + _ONE_/1.5**2.*Inv_ProjLangNum_Sqr &
+           + _ONE_/5.4**4.*Inv_ProjLangNum_Sqr**2. ) )
+   case (KPP_LT_RWHGK16)
+      ! Compute the projected inverse Langmuir number squared
+      ! * Note the different def'n
+      Inv_ProjLangNum_Sqr = Inv_LangNum_Sqr&
+           *abs(cos(MA_Wind_LangCell-MA_Wind_Waves))
+      ! In this method the projected Langmuir number is passed to CVMix
+      LangNum_to_Vt2 = _ONE_/(sqrt(Inv_ProjLangNum_Sqr)+SMALL)
+      ! And the projected Langmuir number also used to compute enhancement
+      ! factor for mixing.
+      enhancement_factor = min(2.25, _ONE_ + sqrt(LangNum_to_Vt2))
+   case default
+      enhancement_factor = _ONE_
+      LangNum_to_Vt2 = _ONE_
+   end select
+   return
+   end subroutine get_efactor
 !EOC
+
  end module kpp
 
 !-----------------------------------------------------------------------

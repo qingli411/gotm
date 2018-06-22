@@ -763,6 +763,7 @@
             <condition type="or">
                 <condition type="eq" variable="./langmuir_method" value="1" />
                 <condition type="eq" variable="./langmuir_method" value="2" />
+                <condition type="eq" variable="./langmuir_method" value="3" />
             </condition>
             <options>
                <option value="1" label="approximated by a simple enhancement facator model based on empirical wave spectrum (Li et al., 2017)" />

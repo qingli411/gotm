@@ -1884,11 +1884,6 @@
           depth,Bflux(kp1),u_taus,                         &
           ! langmuir_Efactor=efactor_entr,                   &
           w_s=ws,w_m=wm)
-      if (langmuir_method == KPP_LT_EFACTOR .or.  &
-          langmuir_method == KPP_LT_ENTRAINMENT) then
-          ws = ws * efactor_entr
-      end if
-
 
       ! update potential density and velocity components surface
       ! reference values with the surface layer averaged values

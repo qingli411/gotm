@@ -2913,7 +2913,8 @@
       efactor = min(5.0, &
            abs(cos(theta_WL))*sqrt(_ONE_+(1.5*La_SLP1)**(-2.)+(5.4*La_SLP1)**(-4.)))
    case (KPP_LT_RWHGK16)
-      efactor = min(2.25, _ONE_ + _ONE_/La_SLP2)
+      ! efactor = min(2.25, _ONE_ + _ONE_/La_SLP2)
+      efactor = min(2.25, _ONE_ + sqrt(La_SLP2))
    case default
       stop "kpp_enhancement_factor: unsupported langmuir_method"
    end select

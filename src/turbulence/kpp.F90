@@ -2836,12 +2836,11 @@
    end do
    hs = 4.*sqrt(tmp)
 !  cutoff frequency
-   ! freqc = 1.5*freq(nfreq)-0.5*freq(nfreq-1)
-   freqc = freq(nfreq)
+   freqc = 1.5*freq(nfreq)-0.5*freq(nfreq-1)
    dfreqc = freq(nfreq)-freq(nfreq-1)
 !  add contribution from a f^-5 tails
    factor = 16.*pi**3.*freqc**4./gravity
-   ! us0 = us0 + factor*spec(nfreq)/dfreqc
+   us0 = us0 + factor*spec(nfreq)/dfreqc
    factor = 4.*pi**2.*freqc**2./3./hsl &
        *(_ONE_-(_ONE_-16.*pi**2.*freqc**2.*hsl/gravity) &
        *exp(-8.*pi**2.*freqc**2.*hsl/gravity))
@@ -2913,8 +2912,7 @@
       efactor = min(5.0, &
            abs(cos(theta_WL))*sqrt(_ONE_+(1.5*La_SLP1)**(-2.)+(5.4*La_SLP1)**(-4.)))
    case (KPP_LT_RWHGK16)
-      ! efactor = min(2.25, _ONE_ + _ONE_/La_SLP2)
-      efactor = min(2.25, _ONE_ + sqrt(La_SLP2))
+      efactor = min(2.25, _ONE_ + _ONE_/La_SLP2)
    case default
       stop "kpp_enhancement_factor: unsupported langmuir_method"
    end select

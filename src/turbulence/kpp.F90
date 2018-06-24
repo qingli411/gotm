@@ -191,19 +191,13 @@
   use turbulence,   only: gamu,gamv,gamh,gams
   use turbulence,   only: Rig
   use turbulence,   only: kappa
-! initialize tke in module turbulence
-! Qing Li, 20180404
   use turbulence,   only: tke
-! use variables in module airsea
-! Qing Li, 20171214
   use airsea,       only: u10, v10
   use meanflow,     only: pi, gravity
   use observations, only: nfreq, wav_freq, wav_spec, wav_xcmp, wav_ycmp
   use observations, only: ustokes, vstokes, us_x, us_y, Hs
 
   use Langmuir, only: Get_LaNum
-  !> These are diagnostics for output right now
-  use Langmuir, only: Mixing_Efactor, LA_to_Vt2, Entrainment_efactor
 #ifdef EXTRA_OUTPUT
   use turbulence,   only: turb1,turb2,turb3,turb4,turb5
 #endif
@@ -415,17 +409,14 @@
    REALTYPE                              ::    zsblOld
 
 !  method to parameterize the effects of Langmuir turbulence
-!  Qing Li, 20180410
    integer, public                       ::    langmuir_method
    integer, public                       ::    efactor_method
    character(len=PATH_MAX), public       ::    efactor_file
 
 !  use CVMix if true
-!  Qing Li, 20180126
    logical                               ::    lcvmix
 
 !  CVMix parameters
-!  Qing Li, 20180321
 !  G'(1) = 0 (shape function) if true, compute G'(1) as in LMD94 if false
    logical                               ::    lnoDGat1
 
@@ -524,8 +515,6 @@
    integer                             :: k
    integer                             :: rc
 
-!  Qing Li, 20180126
-!  BGR Changing from logical to strings so more options can be added
 !------------------------------------------------------------------------
 !  Langmuir_Mixing_Method
 !  Scheme to enhance the velocity scale used in turbulent
@@ -566,7 +555,6 @@
 
 #ifndef KPP_CVMIX
 !  force lcvmix to be false if CVMix library is not loaded
-!  Qing Li, 20180126
    lcvmix = .false.
 #endif
 
@@ -619,7 +607,6 @@
    h_r = _ZERO_
 
 !  allocate memory for tke in module turbulence
-!  Qing Li, 20171120
 
    LEVEL2 'allocation memory..'
    allocate(tke(0:nlev),stat=rc)
@@ -691,7 +678,6 @@
          LEVEL4 'Clipping at Ekman/Oboukhov scale   - not active -   '
       endif
 ! CVMix
-! Qing Li, 20180321
       if (lcvmix) then
          LEVEL4 'Use CVMix                              - active -   '
          LEVEL4 'Matching technique: ', trim(MatchTechnique)
@@ -746,7 +732,6 @@
    endif
 
 !  message of Langmuir turbulence parameterization
-!  Qing Li, 20180410
    select case(langmuir_method)
    case(KPP_LT_NOLANGMUIR)
       Langmuir_mixing_method = 'NONE' !.false.
@@ -793,16 +778,15 @@
    if (lcvmix) then
 #ifdef KPP_CVMIX
 !     CVMix: initialize parameter datatype
-!     Qing Li, 20180126
       call cvmix_init_kpp(ri_crit=Ric,                                &
                           interp_type=interp_type,                    &
                           interp_type2=interp_type2,                  &
                           lEkman=clip_mld,                            &
                           lMonOb=clip_mld,                            &
-                          langmuir_mixing_str = &
+                          langmuir_mixing_str =                       &
                                      langmuir_mixing_method,          &
-                          langmuir_entrainment_str = &
-                                        langmuir_entrainment_method,  &
+                          langmuir_entrainment_str =                  &
+                                     langmuir_entrainment_method,     &
                           MatchTechnique=MatchTechnique,              &
                           lnoDGat1=lnoDGat1,                          &
                           surf_layer_ext = epsilon)
@@ -1319,7 +1303,6 @@
    REALTYPE, dimension (0:nlev) :: FC
 
 !  Thickness of surface layer
-!  Qing Li, 20171213
    REALTYPE                     :: surfthick
 
 !-----------------------------------------------------------------------
@@ -1367,7 +1350,6 @@
 !  update the reference potential density and velocity below if the
 !  surface layer is thicker than the uppermost grid and if the tag
 !  KPP_AVGSLAYER_REF is defined in cppdefs.h
-!  Qing Li, 20171213
 !  simply use uppermost value
    Rref = rho(nlev)
    Uref =   u(nlev)
@@ -1396,7 +1378,6 @@
 !  Update potential density and velocity components surface reference
 !  values.
 !-----------------------------------------------------------------------
-! Qing Li, 20171213
       ! determine which layer contains surface layer
       surfthick = epsilon*depth
       do kk = nlev,k,-1
@@ -1793,7 +1774,7 @@
 
 !
 ! !REVISION HISTORY:
-!  Original author(s): Qing Li, 20180128
+!  Original author(s): Qing Li
 !
 !EOP
 !
@@ -1844,7 +1825,6 @@
 !  include effect of short wave radiation
 !  prepare non-local fluxes
 !  Bflux(k) is the total buoyancy flux above the level z_r(k)
-!  Qing Li, 20180321
 
    do k = 1,nlev
       bRad_cntr = 0.5*(bRad(k)+bRad(k-1))
@@ -1856,7 +1836,6 @@
 !-----------------------------------------------------------------------
 
 !  CVMix assumes that z indices increase with depth (surface to bottom)
-!  Qing Li, 20180126
    call cvmix_put(CVmix_vars, 'zw_iface', z_w(nlev:0:-1))
    call cvmix_put(CVmix_vars, 'zt_cntr',  z_r(nlev:1:-1))
 
@@ -1937,7 +1916,7 @@
                 ws_cntr = (/ws/),                                    &
                 Nsqr_iface = (/NN(k), NN(kp1)/),                     &
                 EFactor = EFactor,                                   &
-                LaSL = LaSL,                                           &
+                LaSL = LaSL,                                         &
                 bfsfc = Bflux(kp1),                                  &
                 ustar = u_taus)
 
@@ -2490,10 +2469,6 @@
 ! The different functional forms of $\Phi_\phi(\zeta)$ for unstable flows
 ! are discussed in \cite{Largeetal94}.
 
-! Qing Li, 20171213
-! pass in Langmuir enhancement factor
-! TODO: documentation <13-12-17, Qing Li> !
-
 ! !USES:
    IMPLICIT NONE
 !
@@ -2650,8 +2625,6 @@
    else
       select case(efactor_method)
       case(KPP_LT_EFACTOR_MODEL)
-         theta_WW = _ZERO_
-         theta_WL = _ZERO_
 #ifdef KPP_CVMIX
          ! 10-meter wind speed
          wind10m = sqrt(u10**2+v10**2)
@@ -2662,11 +2635,10 @@
          La_SL = sqrt(u_taus/ussl_model)
          La_SLP1  = La_SL
          La_SLP2  = La_SL
+         theta_WW = _ZERO_
+         theta_WL = _ZERO_
 #else
-         La_Turb  = _ONE_/SMALL
-         La_SL    = _ONE_/SMALL
-         La_SLP1  = _ONE_/SMALL
-         La_SLP2  = _ONE_/SMALL
+         stop "kpp_langmuir_number: compile with CVMix to use the efactor model"
 #endif
       case(KPP_LT_EFACTOR_READ)
          ! TODO: read from file <13-12-17, Qing Li> !
@@ -2688,7 +2660,7 @@
          ! TODO: Modify Get_LaNum to include the calculation of all La <22-06-18, Qing Li> !
          ! call kpp_langmuir_number_hurr()
       case default
-         stop 'do_kpp: unsupported efactor_method'
+         stop 'kpp_langmuir_number: unsupported efactor_method'
       end select
       if (langmuir_method .eq. KPP_LT_RWHGK16) then
          la = La_SLP2
@@ -2788,6 +2760,7 @@
       ! angles between wind and waves
       theta_WW = atan2(vssl,ussl)-atan2(v10,u10)
       ! angles between wind and LCs
+      ! (approximate from law of the wall, Van Roekel et al., 2012)
       theta_WL = atan(sin(theta_WW) &
             /(ustar/us0/kappa*log(max(abs(hbl/4./hs),_ONE_))+cos(theta_WW)))
       La_SLP1 = La_SL*sqrt(abs(cos(theta_WL))/abs(cos(theta_WW-theta_WL)))
@@ -2863,11 +2836,12 @@
    end do
    hs = 4.*sqrt(tmp)
 !  cutoff frequency
-   freqc = 1.5*freq(nfreq)-0.5*freq(nfreq-1)
+   ! freqc = 1.5*freq(nfreq)-0.5*freq(nfreq-1)
+   freqc = freq(nfreq)
    dfreqc = freq(nfreq)-freq(nfreq-1)
 !  add contribution from a f^-5 tails
    factor = 16.*pi**3.*freqc**4./gravity
-   us0 = us0 + factor*spec(nfreq)/dfreqc
+   ! us0 = us0 + factor*spec(nfreq)/dfreqc
    factor = 4.*pi**2.*freqc**2./3./hsl &
        *(_ONE_-(_ONE_-16.*pi**2.*freqc**2.*hsl/gravity) &
        *exp(-8.*pi**2.*freqc**2.*hsl/gravity))
@@ -2880,6 +2854,7 @@
       ! angles between wind and waves
       theta_WW = atan2(vssl,ussl)-atan2(v10,u10)
       ! angles between wind and LCs
+      ! (approximate from law of the wall, Van Roekel et al., 2012)
       theta_WL = atan(sin(theta_WW) &
             /(ustar/us0/kappa*log(max(abs(hbl/4./hs),_ONE_))+cos(theta_WW)))
       La_SLP1 = La_SL*sqrt(abs(cos(theta_WL))/abs(cos(theta_WW-theta_WL)))

@@ -69,7 +69,7 @@ use meanflow, only: rho_0
 
 !
 use kpp, only: efactor_method, Langmuir_method
-use kpp, only: KPP_LT_NOLANGMUIR, KPP_LT_EFACTOR, KPP_LT_ENTRAINMENT
+use kpp, only: KPP_LT_NOLANGMUIR, KPP_LT_LWF16, KPP_LT_LF17
 use KPP, only: KPP_LT_EFACTOR_MODEL, KPP_LT_EFACTOR_READ,&
                KPP_LT_EFACTOR_SPEC, KPP_LT_EFACTOR_USTOKES
 !-----------------------------------------------------------------------

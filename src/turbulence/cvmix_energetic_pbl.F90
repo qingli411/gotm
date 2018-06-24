@@ -1633,7 +1633,7 @@ subroutine get_LA_windsea(ustar, hbl, Rho0,g_Earth, LA)
 endsubroutine Get_LA_windsea
 
 subroutine Get_LA_external(nlev, ustar, hbl, LA)
-  use kpp, only: enhancement_factor
+  use kpp, only: kpp_langmuir_number
   !
   implicit none
   !
@@ -1645,7 +1645,7 @@ subroutine Get_LA_external(nlev, ustar, hbl, LA)
   !
   USTAR8 = ustar
   HBL8 = hbl
-  call enhancement_factor(nlev,ustar8,hbl8,lasl_out=lasl)
+  call kpp_langmuir_number(nlev,ustar8,hbl8,lasl)
   LA=LASL
 
 end subroutine Get_LA_external

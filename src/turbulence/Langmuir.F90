@@ -112,6 +112,8 @@
 !BOC
 !-----------------------------------------------------------------------
 
+   LEVEL1 'init_langmuir'
+
    ! default values
    langmuir_number_method = LANGMUIR_NUMBER_OPT_NONE
    langmuir_number_file = ''
@@ -148,6 +150,8 @@
    case default
       stop 'init_langmuir: unsupported langmuir_number_method'
    end select
+
+   return
 
 80 FATAL 'I could not open "langmuir.nml"'
    stop 'init_langmuir'

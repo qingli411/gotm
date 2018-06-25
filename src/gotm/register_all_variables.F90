@@ -342,7 +342,7 @@
    use turbulence
    use epbl_gotm, only: epbl_osbl
    use kpp, only: zsbl
-   use Langmuir, only: LA_to_Vt2, Mixing_efactor, entrainment_efactor
+   use langmuir, only: La_Turb, La_SL, La_SLP1, La_SLP2, theta_WW, theta_WL
 
    IMPLICIT NONE
 !
@@ -371,9 +371,12 @@
    if (turb_method.eq.99) then
       call fm%register('KPP_OSBL','m','KPP boundary layer depth',standard_name='??',data0d=zsbl,category='turbulece')
    endif
-   call fm%register('Vt2_LA','non-dim','Langmuir number',standard_name='??',data0d=LA_to_Vt2,category='turbulece')
-   call fm%register('Enh_vt2','non-dim','Langmuir number',standard_name='??',data0d=Entrainment_Efactor,category='turbulece')
-   call fm%register('Enh_K','non-dim','Langmuir number',standard_name='??',data0d=Mixing_Efactor,category='turbulece')
+   call fm%register('La_Turb','','Turbulent Langmuir number',standard_name='??',data0d=La_Turb,category='turbulece')
+   call fm%register('La_SL','','Surface layer averaged Langmuir number',standard_name='??',data0d=La_SL,category='turbulece')
+   call fm%register('La_SLP1','','Surface layer averaged, projected Langmuir number (VFSHH12)',standard_name='??',data0d=La_SLP2,category='turbulece')
+   call fm%register('La_SLP2','','Surface layer averaged, projected Langmuir number (RWHGK16)',standard_name='??',data0d=La_SLP2,category='turbulece')
+   call fm%register('theta_WW','radian','Angle between wind and waves',standard_name='??',data0d=theta_WW,category='turbulece')
+   call fm%register('theta_WL','radian','Angle between wind and Langmuir cells',standard_name='??',data0d=theta_WL,category='turbulece')
 
    ! only define these variables if not using KPP or OSMOSIS or ePBL
    ! Qing Li, 20180405

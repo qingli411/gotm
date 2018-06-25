@@ -740,6 +740,26 @@
          </element>
       </element>
    </element>
+   <element name="langmuir" label="Langmuir turbulence parameters">
+      <element name="langmuir_number_method" type="int" label="method to compute enhancement factor">
+         <options>
+            <option value="0" label="No Langmuir number is computed" />
+            <option value="1" label="approximated by a simple model based on empirical wave spectrum (Li et al., 2017)" />
+            <option value="2" label="read from file langmuir_number_file" />
+            <option value="3" label="compute from input wave spectrum" />
+            <option value="4" label="compute from Stokes drift" />
+            <option value="5" label="read from hurricane data" />
+         </options>
+      </element>
+      <element name="langmuir_number_file" type="gotmdatafile" label="input Langmuir number data for Langmuir mixing parameterization" description="file with Langmuir number">
+         <condition type="eq" variable="./langmuir_number_method" value="2" />
+         <fileinfo type="pointsintime">
+            <filevariables>
+               <filevariable name="la" label="Langmuir number" unit="1" />
+            </filevariables>
+         </fileinfo>
+      </element>
+   </element>
    <element name="kpp" label="KPP turbulence model">
       <condition type="eq" variable="/gotmturb/turbulence/turb_method" value="99" />
       <element name="kpp" label="KPP turbulence model">
@@ -758,30 +778,6 @@
                <option value="2" label="Langmuir mixing + Langmuir enhanced entrainment (Li and Fox-Kemper, 2017)" />
                <option value="3" label="Langmuir mixing + Langmuir enhanced Vt2 (Reichl et al., 2016)" />
             </options>
-         </element>
-         <element name="efactor_method" type="int" label="method to compute enhancement factor">
-            <condition type="or">
-                <condition type="eq" variable="./langmuir_method" value="1" />
-                <condition type="eq" variable="./langmuir_method" value="2" />
-                <condition type="eq" variable="./langmuir_method" value="3" />
-            </condition>
-            <options>
-               <option value="1" label="approximated by a simple enhancement facator model based on empirical wave spectrum (Li et al., 2017)" />
-               <option value="2" label="read from file efactor_file" />
-               <option value="3" label="compute from input wave spectrum" />
-               <option value="4" label="compute from Stokes drift" />
-            </options>
-         </element>
-         <element name="efactor_file" type="gotmdatafile" label="input enhancement factor data for Langmuir mixing parameterization" description="file with enhancement factor">
-            <condition type="and">
-                <condition type="eq" variable="./langmuir_method" value="1" />
-                <condition type="eq" variable="./efactor_method" value="2" />
-            </condition>
-            <fileinfo type="pointsintime">
-               <filevariables>
-                  <filevariable name="ef" label="enhancement factor" unit="1" />
-               </filevariables>
-            </fileinfo>
          </element>
          <element name="interp_type" type="string" label="interpolation method used to interpolate bulk Richardson number">
             <options>
@@ -829,7 +825,6 @@
         </options>
         </element>
         <element name="langmuir_method" type="int" label="1 to enable Langmuir turbulence in MOMturb methods."/>
-        <element name="efactor_method" type="int" label="1 to enable Langmuir turbulence in MOMturb methods from theory wave."/>
       </element>
    </element>
    <element name="epbl" label="ePBL turbulence model">

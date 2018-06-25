@@ -1,6 +1,3 @@
-!  BGR TODO
-!  Add Langmuir number/efactor relationships
-
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -192,12 +189,10 @@
   use turbulence,   only: Rig
   use turbulence,   only: kappa
   use turbulence,   only: tke
-  use airsea,       only: u10, v10
-  use meanflow,     only: pi, gravity
-  use observations, only: nfreq, wav_freq, wav_spec, wav_xcmp, wav_ycmp
-  use observations, only: ustokes, vstokes, us_x, us_y, Hs
+  use observations, only: ustokes, vstokes
+  use langmuir,     only: La_SL, La_SLP1, La_SLP2, theta_WL
+  use langmuir,     only: langmuir_number, langmuir_number_method
 
-  use Langmuir, only: Get_LaNum
 #ifdef EXTRA_OUTPUT
   use turbulence,   only: turb1,turb2,turb3,turb4,turb5
 #endif
@@ -206,10 +201,9 @@
 
 #ifdef KPP_CVMIX
 !  use CVMix
-   use cvmix_kinds_and_types, only : cvmix_data_type,          &
-                                     cvmix_global_params_type
+   use cvmix_kinds_and_types, only: cvmix_data_type
    use cvmix_kpp
-   use cvmix_put_get,         only : cvmix_put
+   use cvmix_put_get,         only: cvmix_put
 #endif
 
    IMPLICIT NONE
@@ -344,26 +338,6 @@
    integer, parameter, public ::  KPP_LT_LF17 = 2
    integer, parameter, public ::  KPP_LT_RWHGK16 = 3
 
-!  method of enhancement factor
-   integer, parameter, public ::  KPP_LT_EFACTOR_MODEL = 1
-   integer, parameter, public ::  KPP_LT_EFACTOR_READ = 2
-   integer, parameter, public ::  KPP_LT_EFACTOR_SPEC = 3
-   integer, parameter, public ::  KPP_LT_EFACTOR_USTOKES = 4
-   integer, parameter, public ::  KPP_LT_EFACTOR_HURR = 5
-   ! TODO: KPP_LT_EFACTOR -> KPP_LT_LA? <22-06-18, Qing Li> !
-
-!  turbulent Langmuir number
-   REALTYPE, public                      :: La_Turb
-!  surface layer averaged Langmuir number
-   REALTYPE, public                      :: La_SL
-!  surface layer averaged, projected Langmuir number (Van Roekel et al., 2012)
-   REALTYPE, public                      :: La_SLP1
-!  surface layer averaged, projected Langmuir number (Reichl et al., 2016)
-   REALTYPE, public                      :: La_SLP2
-!  angles between wind and waves (radian)
-   REALTYPE, public                      :: theta_WW
-!  angles between wind and Langmuir cells (radian)
-   REALTYPE, public                      :: theta_WL
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
@@ -410,8 +384,6 @@
 
 !  method to parameterize the effects of Langmuir turbulence
    integer, public                       ::    langmuir_method
-   integer, public                       ::    efactor_method
-   character(len=PATH_MAX), public       ::    efactor_file
 
 !  use CVMix if true
    logical                               ::    lcvmix
@@ -451,7 +423,6 @@
 #ifdef KPP_CVMIX
 !  CVMix datatypes
    type(cvmix_data_type)                 ::    CVmix_vars
-   type(cvmix_global_params_type)        ::    CVmix_params
 #endif
 !
 !
@@ -519,24 +490,23 @@
 !  Langmuir_Mixing_Method
 !  Scheme to enhance the velocity scale used in turbulent
 !   mixing coefficient calculation
-!  NONE - No enhancement
-!  LWF16 - Enhancement based on VanRoekel et al. 2012 and Li et al. 2016
-!  RWHGK16 - Enhancement based on Reichl et al. 2016
-   character(len=15) :: Langmuir_Mixing_method
+!  'NONE'    - No enhancement
+!  'LWF16'   - Enhancement based on Van Roekel et al. 2012 and Li et al. 2016
+!  'RWHGK16' - Enhancement based on Reichl et al. 2016
+   character(len=15) :: langmuir_mixing_method
 !------------------------------------------------------------------------
 !  Langmuir_Entrainment_Method
 !  Scheme to enhance the entrainment used in the mixing layer depth
 !   calculation
-!  NONE - No enhancement
-!  LWF16 - Enhancement based on Li et al. 2016
-!  LF17 - Enhancement based on Li and Fox-Kemper 2017
-!  RWHGK16 - Enhancement based on Reichl et al. 2016
+!  'NONE'    - No enhancement
+!  'LWF16'   - Enhancement based on Li et al. 2016
+!  'LF17'    - Enhancement based on Li and Fox-Kemper 2017
+!  'RWHGK16' - Enhancement based on Reichl et al. 2016
    character(len=15) :: langmuir_entrainment_method
 
    namelist /kpp/                      kpp_sbl, kpp_bbl, kpp_interior,  &
                                        clip_mld, Ric, lcvmix,           &
                                        langmuir_method,                 &
-                                       efactor_method, efactor_file,    &
                                        lnoDGat1, MatchTechnique,        &
                                        interp_type, interp_type2
 !
@@ -732,22 +702,22 @@
    endif
 
 !  message of Langmuir turbulence parameterization
-   select case(langmuir_method)
-   case(KPP_LT_NOLANGMUIR)
+   select case (langmuir_method)
+   case (KPP_LT_NOLANGMUIR)
       Langmuir_mixing_method = 'NONE' !.false.
       Langmuir_entrainment_method = 'NONE' !.false.
       LEVEL3 'Langmuir turbulence parameterization   - not active -   '
-   case(KPP_LT_EFACTOR)
+   case (KPP_LT_LWF16)
       Langmuir_mixing_method = 'LWF16' !.true.
       Langmuir_entrainment_method = 'LWF16' !.false.
       LEVEL3 'Langmuir turbulence parameterization       - active -   '
       LEVEL3 ' - Langmuir mixing (Li et al., 2016)'
-   case(KPP_LT_ENTRAINMENT)
+   case (KPP_LT_LF17)
       Langmuir_mixing_method = 'LWF16' !.true.
       Langmuir_entrainment_method = 'LF17' !.true.
       LEVEL3 'Langmuir turbulence parameterization       - active -   '
       LEVEL3 ' - Langmuir enhanced entrainment (Li and Fox-Kemper, 2017)'
-   case(KPP_LT_RWHGK16)
+   case (KPP_LT_RWHGK16)
       Langmuir_mixing_method = 'RWHGK16' !.true.
       Langmuir_entrainment_method = 'RWHGK16' !.true.
       LEVEL3 'Langmuir turbulence parameterization       - active -   '
@@ -755,23 +725,6 @@
    case default
       stop 'init_kpp: unsupported langmuir_method'
    end select
-   if (langmuir_method .eq. KPP_LT_LWF16 .or. &
-       langmuir_method .eq. KPP_LT_LF17) then
-      select case(efactor_method)
-      case(KPP_LT_EFACTOR_MODEL)
-         LEVEL4 'Approximate enhancement factor from simple model (Li et al., 2017)'
-      case(KPP_LT_EFACTOR_READ)
-         LEVEL4 'Read enhancement factor from file: ', trim(efactor_file)
-      case(KPP_LT_EFACTOR_SPEC)
-         LEVEL4 'Calculate enhancement factor from wave spectrum'
-      case(KPP_LT_EFACTOR_USTOKES)
-         LEVEL4 'Calculate enhancement factor from Stokes drift'
-      case (KPP_LT_EFACTOR_HURR)
-         LEVEL4 'Calculate enhancement factor from hurricane spectrum'
-      case default
-         stop 'init_kpp: unsupported efactor_method'
-      end select
-   end if
 
    LEVEL2 '--------------------------------------------------------'
 
@@ -801,7 +754,6 @@
       call cvmix_put(CVmix_vars, 'Mdiff', num)
       call cvmix_put(CVmix_vars, 'Tdiff', nuh)
       call cvmix_put(CVmix_vars, 'Sdiff', nus)
-      call cvmix_put(CVmix_params, 'Gravity', kpp_g)
 #endif
    else
 !     pre-compute coefficient for turbulent shear velocity
@@ -1502,7 +1454,6 @@
       endif
    endif
 
-
    zsbl = min(zsbl,z_w(nlev))
    zsbl = max(zsbl,z_w(0   ))
 
@@ -1844,7 +1795,9 @@
 !-----------------------------------------------------------------------
 
    ! update Langmuir number
-   call kpp_langmuir_number(nlev, u_taus, z_w(nlev)-zsbl, LaSL)
+   call langmuir_number(nlev, u_taus, z_w(nlev)-zsbl)
+   ! get Langmuir number for Langmuir-enhanced entrainment
+   call kpp_langmuir_number(LaSL)
    ! get Langmuir enhancement factor
    call kpp_enhancement_factor(EFactor)
 
@@ -1978,8 +1931,8 @@
 !-----------------------------------------------------------------------
 
    ! update Langmuir number
-   call kpp_langmuir_number(nlev, u_taus, z_w(nlev)-zsbl, LaSL)
-   ! get Langmuir enhancement factor
+   call langmuir_number(nlev, u_taus, z_w(nlev)-zsbl)
+   ! update Langmuir enhancement factor
    call kpp_enhancement_factor(EFactor)
 
 !-----------------------------------------------------------------------
@@ -2586,19 +2539,17 @@
 ! !IROUTINE: Compute Langmuir number
 !
 ! !INTERFACE:
-   subroutine kpp_langmuir_number(nlev, u_taus, hbl, la)
+   subroutine kpp_langmuir_number(la)
 ! !DESCRIPTION:
-!  This routine computes Langmuir number in various definition and
-!  returns the corresponding one according to the Langmuir turbulence
+!  This routine returns the appropriate Langmuir number for the
+!  Langmuir-enhanced entrainment according to the Langmuir turbulence
 !  parameterization option.
 !
 ! !USES:
+!
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)                 :: nlev
-   REALTYPE, intent(in)                :: u_taus, hbl
-!
 ! !OUTPUT PARAMETERS:
    REALTYPE, intent(out)               :: la
 !
@@ -2608,266 +2559,26 @@
 !EOP
 !-----------------------------------------------------------------------
 ! !LOCAL VARIABLES:
-   REALTYPE                            :: wind10m, ussl_model
 !
 !-----------------------------------------------------------------------
 !BOC
 !-----------------------------------------------------------------------
 
-   if (langmuir_method .eq. KPP_LT_NOLANGMUIR) then
-      La_Turb  = _ONE_/SMALL
-      La_SL    = _ONE_/SMALL
-      La_SLP1  = _ONE_/SMALL
-      La_SLP2  = _ONE_/SMALL
-      theta_WW = _ZERO_
-      theta_WL = _ZERO_
+   ! select Langmuir number
+   select case(langmuir_method)
+   case (KPP_LT_NOLANGMUIR)
       la = _ONE_/SMALL
-   else
-      select case(efactor_method)
-      case(KPP_LT_EFACTOR_MODEL)
-#ifdef KPP_CVMIX
-         ! 10-meter wind speed
-         wind10m = sqrt(u10**2+v10**2)
-         ! assume surface Stokes drift is proportional to U_10
-         La_Turb  = sqrt(u_taus/wind10m/0.0162)
-         ! this returns the Li et al. 2017 SL averaged Langmuir number
-         ussl_model = cvmix_kpp_ustokes_SL_model(wind10m, hbl, CVmix_params)
-         La_SL = sqrt(u_taus/ussl_model)
-         La_SLP1  = La_SL
-         La_SLP2  = La_SL
-         theta_WW = _ZERO_
-         theta_WL = _ZERO_
-#else
-         stop "kpp_langmuir_number: compile with CVMix to use the efactor model"
-#endif
-      case(KPP_LT_EFACTOR_READ)
-         ! TODO: read from file <13-12-17, Qing Li> !
-         La_Turb  = _ONE_/SMALL
-         La_SL    = _ONE_/SMALL
-         La_SLP1  = _ONE_/SMALL
-         La_SLP2  = _ONE_/SMALL
-         theta_WW = _ZERO_
-         theta_WL = _ZERO_
-      case(KPP_LT_EFACTOR_SPEC)
-         call kpp_langmuir_number_spec(wav_freq, wav_spec, wav_xcmp, wav_ycmp, &
-                               u10, v10, u_taus, hbl)
-      case(KPP_LT_EFACTOR_USTOKES)
-         call kpp_langmuir_number_ustokes(nlev, z_r, z_w, ustokes, vstokes, &
-                                  us_x, us_y, u10, v10, Hs, u_taus, hbl)
-      case(KPP_LT_EFACTOR_HURR)
-         call Get_LaNum(hbl*0.2,u_taus,la)
-         ! NOTE THAT LANGMUIR NUMBER ALREADY INCLUDES MISALIGNMENT
-         ! TODO: Modify Get_LaNum to include the calculation of all La <22-06-18, Qing Li> !
-         ! call kpp_langmuir_number_hurr()
-      case default
-         stop 'kpp_langmuir_number: unsupported efactor_method'
-      end select
-      if (langmuir_method .eq. KPP_LT_RWHGK16) then
-         la = La_SLP2
-      else
-         la = La_SL
-      end if
-   end if
+   case (KPP_LT_LWF16)
+      la = La_SL
+   case (KPP_LT_LF17)
+      la = La_SL
+   case (KPP_LT_RWHGK16)
+      la = La_SLP2
+   case default
+      stop "kpp_langmuir_number: unsupported langmuir_method"
+   end select
 
    end subroutine kpp_langmuir_number
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Compute the Langmuir number from Stokes drift profile
-!
-! !INTERFACE:
-   subroutine kpp_langmuir_number_ustokes(nlev,z,zi,                       &
-                           ustokes,vstokes,uus0,vus0,u10,v10,hs,ustar,hbl)
-!
-! !DESCRIPTION:
-!  This routine computes different definitions of Langmuir number
-!  from Stokes drift profile.
-!
-! TODO: More detailed description <09-04-18, Qing Li> !
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   ! number of grid
-   integer, intent(in)                 :: nlev
-   ! depth at the grid center and at the grid interface
-   REALTYPE, intent(in)                :: z(0:nlev), zi(0:nlev)
-   ! Stokes drift profile (m/s)
-   REALTYPE, intent(in)                :: ustokes(0:nlev), vstokes(0:nlev)
-   ! surface Stokes drift (m/s)
-   REALTYPE, intent(in)                :: uus0, vus0
-   ! surface wind at 10 meter (m/s)
-   REALTYPE, intent(in)                :: u10, v10
-   ! significant wave height (m)
-   REALTYPE, intent(in)                :: hs
-   ! friction velocity (m/s)
-   REALTYPE, intent(in)                :: ustar
-   ! boundary layer depth (m)
-   REALTYPE, intent(in)                :: hbl
-!
-! !OUTPUT PARAMETERS:
-!
-! !REVISION HISTORY:
-!  Original author(s): Qing Li
-!
-!EOP
-!-----------------------------------------------------------------------
-! !LOCAL VARIABLES:
-   integer                             :: k, kk, kref
-   REALTYPE                            :: ussl, vssl, us0
-   REALTYPE                            :: hsl, dz
-!
-!-----------------------------------------------------------------------
-!BOC
-!-----------------------------------------------------------------------
-
-!  magnitude of surface Stokes drift
-   us0 = sqrt(uus0**2.+vus0**2.)
-
-!  surface layer
-   hsl = 0.2*abs(hbl)
-
-!  determine which layer contains surface layer
-   do kk = nlev,k,-1
-      if (zi(nlev)-zi(kk-1) .ge. hsl) then
-         kref = kk
-         exit
-      end if
-   end do
-
-!  calculate the surface layer averaged Stokes drift
-   if (kref < nlev) then
-      ussl =   ustokes(kref)*(hsl+zi(kref))
-      vssl =   vstokes(kref)*(hsl+zi(kref))
-      do kk = nlev,kref+1,-1
-         dz = zi(kk)-zi(kk-1)
-         ussl = ussl + ustokes(kk)*dz
-         vssl = vssl + vstokes(kk)*dz
-      end do
-      ussl = ussl/hsl
-      vssl = vssl/hsl
-   else
-      ussl = ustokes(nlev)
-      vssl = vstokes(nlev)
-   end if
-
-   if (us0 .gt. _ZERO_) then
-      La_Turb = sqrt(ustar/us0)
-      La_SL = sqrt(ustar/sqrt(ussl**2.+vssl**2.))
-      ! angles between wind and waves
-      theta_WW = atan2(vssl,ussl)-atan2(v10,u10)
-      ! angles between wind and LCs
-      ! (approximate from law of the wall, Van Roekel et al., 2012)
-      theta_WL = atan(sin(theta_WW) &
-            /(ustar/us0/kappa*log(max(abs(hbl/4./hs),_ONE_))+cos(theta_WW)))
-      La_SLP1 = La_SL*sqrt(abs(cos(theta_WL))/abs(cos(theta_WW-theta_WL)))
-      La_SLP2 = La_SL*sqrt(_ONE_/max(abs(cos(theta_WW-theta_WL)),SMALL))
-   else
-      La_Turb = _ONE_/SMALL
-      La_SL = _ONE_/SMALL
-      La_SLP1 = _ONE_/SMALL
-      La_SLP2 = _ONE_/SMALL
-      theta_WW = _ZERO_
-      theta_WL = _ZERO_
-   end if
-
-   end subroutine kpp_langmuir_number_ustokes
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Compute the Langmuir number from wave spectrum
-!
-! !INTERFACE:
-   subroutine kpp_langmuir_number_spec(freq,spec,xcmp,ycmp,u10,v10,ustar,hbl)
-!
-! !DESCRIPTION:
-!  This routine computes different definitions of Langmuir number
-!  from wave spectrum.
-!
-! TODO: More detailed description  <22-12-17, Qing Li> !
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   REALTYPE, intent(in)                :: spec(:), xcmp(:), ycmp(:)
-   REALTYPE, intent(in)                :: freq(:)
-   REALTYPE, intent(in)                :: u10, v10, ustar, hbl
-!
-! !OUTPUT PARAMETERS:
-!
-! !REVISION HISTORY:
-!  Original author(s): Qing Li
-!
-!EOP
-!-----------------------------------------------------------------------
-! !LOCAL VARIABLES:
-   integer                             :: i
-   REALTYPE                            :: ussl, vssl, us0
-   REALTYPE                            :: hs, hsl
-   REALTYPE                            :: tmp, factor, factor2
-   REALTYPE                            :: dfreqc, freqc
-!
-!-----------------------------------------------------------------------
-!BOC
-!-----------------------------------------------------------------------
-!  initialization
-   ussl = _ZERO_
-   vssl = _ZERO_
-   us0  = _ZERO_
-   hs   = _ZERO_
-   tmp  = _ZERO_
-!  surface layer
-   hsl = 0.2*abs(hbl)
-!  calculate the significant wave height, surface Stokes drift and
-!  surface layer averaged Stokes drift
-   factor = 2.*pi/hsl
-   do i=1,nfreq
-      factor2 = 8.*pi**2.*freq(i)**2./gravity
-      tmp  = tmp + spec(i)
-      us0 = us0 + 2.*pi*freq(i)*factor2*spec(i)
-      ussl = ussl + factor*freq(i)*spec(i)*xcmp(i)*(_ONE_-exp(-factor2*hsl))
-      vssl = vssl + factor*freq(i)*spec(i)*ycmp(i)*(_ONE_-exp(-factor2*hsl))
-   end do
-   hs = 4.*sqrt(tmp)
-!  cutoff frequency
-   freqc = 1.5*freq(nfreq)-0.5*freq(nfreq-1)
-   dfreqc = freq(nfreq)-freq(nfreq-1)
-!  add contribution from a f^-5 tails
-   factor = 16.*pi**3.*freqc**4./gravity
-   us0 = us0 + factor*spec(nfreq)/dfreqc
-   factor = 4.*pi**2.*freqc**2./3./hsl &
-       *(_ONE_-(_ONE_-16.*pi**2.*freqc**2.*hsl/gravity) &
-       *exp(-8.*pi**2.*freqc**2.*hsl/gravity))
-   ussl = ussl + factor*xcmp(nfreq)*spec(nfreq)/dfreqc
-   vssl = vssl + factor*ycmp(nfreq)*spec(nfreq)/dfreqc
-
-   if (us0 .gt. _ZERO_) then
-      La_Turb = sqrt(ustar/us0)
-      La_SL = sqrt(ustar/sqrt(ussl**2.+vssl**2.))
-      ! angles between wind and waves
-      theta_WW = atan2(vssl,ussl)-atan2(v10,u10)
-      ! angles between wind and LCs
-      ! (approximate from law of the wall, Van Roekel et al., 2012)
-      theta_WL = atan(sin(theta_WW) &
-            /(ustar/us0/kappa*log(max(abs(hbl/4./hs),_ONE_))+cos(theta_WW)))
-      La_SLP1 = La_SL*sqrt(abs(cos(theta_WL))/abs(cos(theta_WW-theta_WL)))
-      La_SLP2 = La_SL*sqrt(_ONE_/max(abs(cos(theta_WW-theta_WL)),SMALL))
-   else
-      La_Turb = _ONE_/SMALL
-      La_SL = _ONE_/SMALL
-      La_SLP1 = _ONE_/SMALL
-      La_SLP2 = _ONE_/SMALL
-      theta_WW = _ZERO_
-      theta_WL = _ZERO_
-   end if
-
-   end subroutine kpp_langmuir_number_spec
 !EOC
 
 !-----------------------------------------------------------------------

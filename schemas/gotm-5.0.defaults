@@ -200,6 +200,12 @@
          <nuhiw>1e-005</nuhiw>
       </iw>
    </gotmturb>
+   <langmuir>
+      <langmuir>
+         <langmuir_number_method>0</langmuir_number_method>
+         <langmuir_number_file>langmuir_number.dat</langmuir_number_file>
+      </langmuir>
+   </langmuir>
    <kpp>
       <kpp>
          <kpp_sbl>True</kpp_sbl>
@@ -210,8 +216,6 @@
          <lnoDGat1>True</lnoDGat1>
          <Ric>0.3</Ric>
          <langmuir_method>0</langmuir_method>
-         <efactor_method>1</efactor_method>
-         <efactor_file>efactor_file.dat</efactor_file>
          <interp_type>quadratic</interp_type>
          <interp_type2>LMD94</interp_type2>
          <MatchTechnique>SimpleShapes</MatchTechnique>
@@ -229,7 +233,6 @@
      <momturb>
        <mode>2</mode>
        <langmuir_method>0</langmuir_method>
-       <efactor_method>0</efactor_method>
      </momturb>
    </MOMturb>
    <epbl>

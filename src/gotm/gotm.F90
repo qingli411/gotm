@@ -59,11 +59,11 @@
    use turbulence,  only: kappa
    use turbulence,  only: clean_turbulence
 
+   use langmuir,    only: init_langmuir
    use kpp,         only: init_kpp,do_kpp,clean_kpp
-   ! Qing Li, 20180402
    use zdfosm,         only: init_osm,do_osm,clean_osm
    use EPBL_gotm, only: epbl_gotm_init, epbl_gotm_interface
-   
+
    use mtridiagonal,only: init_tridiagonal,clean_tridiagonal
    use eqstate,     only: init_eqstate
 
@@ -232,23 +232,19 @@
 !  Call do_input to make sure observed profiles are up-to-date.
    call do_input(julianday,secondsofday,nlev,z)
 !  read wave spectrum
-!  Qing Li, 20171219
    call do_input_spec(julianday,secondsofday,nfreq,wav_freq)
 
    !  Update the grid based on true initial zeta (possibly read from file by do_input).
    call updategrid(nlev,dt,zeta)
 
 !  calculate Stokes drift
-!  Qing Li, 20171220
 !  should be after update grid
-!  Qing Li, 20180410
    call stokes_drift(wav_freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,zi,us_x,us_y,delta,ustokes,vstokes,dusdz,dvsdz)
-   ! DEBUG QL
-   ! do k=0,nlev
-   !    LEVEL2 'z = ', z(k), ' zi = ', zi(k), ' us = ', ustokes(k), ' vs = ', vstokes(k)
-   ! end do
 
    call init_turbulence(namlst,'gotmturb.nml',nlev)
+
+!  initialize Langmuir
+   call init_langmuir(namlst,'langmuir.nml')
 
 !  initialise mean fields
    s = sprof
@@ -257,7 +253,6 @@
    v = vprof
 
 !  initialize OSMOSIS model
-!  Qing Li, 20180402
    if (turb_method.eq.98) then
       call init_osm(namlst,'osm.nml',nlev,depth,h)
    endif
@@ -271,7 +266,7 @@
    if (turb_method.eq.100) then
       call epbl_gotm_init(nlev,namlst)
    endif
-   
+
    call init_air_sea(namlst,latitude,longitude)
 
    call do_register_all_variables(latitude,longitude,nlev)
@@ -418,7 +413,6 @@
       call get_all_obs(julianday,secondsofday,nlev,z)
 
 !     update wave spectrum
-!     Qing Li, 20171219
       call do_input_spec(julianday,secondsofday,nfreq,wav_freq)
 
 !     external forcing
@@ -438,9 +432,7 @@
       call updategrid(nlev,dt,zeta)
 
 !     update Stokes drift
-!     Qing Li, 20171220
 !     should be after updategrid
-!     Qing Li, 20180410
       call stokes_drift(wav_freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,zi,us_x,us_y,delta,ustokes,vstokes,dusdz,dvsdz)
 
       call wequation(nlev,dt)
@@ -489,7 +481,6 @@
                                    buoy_method,gravity,rho_0)
       case (98)
 !        update OSMOSIS model
-!        Qing Li, 20180402
          call convert_fluxes(nlev,gravity,cp,rho_0,heat,precip+evap,    &
                              rad,T,S,tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
          call do_osm(nlev,depth,h,dt)
@@ -508,7 +499,7 @@
          call epbl_gotm_interface(nlev,h,u,v,T,S,&
               u_taus,u_taub,tFlux,btFlux,sFlux,&
               bsFlux,tRad,bRad,cori, dt)
-         
+
       case default
 !        update one-point models
 # ifdef SEAGRASS
@@ -562,7 +553,6 @@
 
    call clean_meanflow()
 
-   ! Qing Li, 20180402
    if (turb_method.eq.98) call clean_osm()
 
    if (turb_method.eq.99) call clean_kpp()

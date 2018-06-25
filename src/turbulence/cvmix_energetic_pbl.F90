@@ -1634,6 +1634,7 @@ endsubroutine Get_LA_windsea
 
 subroutine Get_LA_external(nlev, ustar, hbl, LA)
   use kpp, only: kpp_langmuir_number
+  use langmuir, only: langmuir_number
   !
   implicit none
   !
@@ -1645,7 +1646,8 @@ subroutine Get_LA_external(nlev, ustar, hbl, LA)
   !
   USTAR8 = ustar
   HBL8 = hbl
-  call kpp_langmuir_number(nlev,ustar8,hbl8,lasl)
+  call langmuir_number(nlev, ustar8, hbl8)
+  call kpp_langmuir_number(lasl)
   LA=LASL
 
 end subroutine Get_LA_external

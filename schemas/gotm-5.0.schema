@@ -1403,7 +1403,7 @@
                <option value="2" label="calculated from the frequency bin width weighted wave spectrum" />
                <option value="3" label="calculated from the partitioned surface Stokes drift" />
                <option value="4" label="calculated from the surface Stokes drift and penetration depth assumingexponential profile" />
-              <option value="5" label="calculated from the theory wave approach of Li et al., 2016."/>
+              <option value="5" label="calculated from the theory wave approach of Li et al., 2017"/>
             </options>
          </element>
          <element name="nfreq" type="int" label="number of frequency bands">

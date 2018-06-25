@@ -191,7 +191,7 @@
   use turbulence,   only: tke
   use observations, only: ustokes, vstokes
   use langmuir,     only: La_SL, La_SLP1, La_SLP2, theta_WL
-  use langmuir,     only: langmuir_number, langmuir_number_method
+  use langmuir,     only: langmuir_number
 
 #ifdef EXTRA_OUTPUT
   use turbulence,   only: turb1,turb2,turb3,turb4,turb5

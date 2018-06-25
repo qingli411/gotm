@@ -266,7 +266,7 @@
 ! !INPUT PARAMETERS:
    ! number of grid
    integer, intent(in)                 :: nlev
-   ! depth at the grid center and at the grid interface
+   ! depth at the grid interface
    REALTYPE, intent(in)                :: z_w(0:nlev)
    ! Stokes drift profile (m/s)
    REALTYPE, intent(in)                :: uus(0:nlev), vus(0:nlev)

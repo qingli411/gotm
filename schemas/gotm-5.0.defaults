@@ -209,7 +209,7 @@
    <kpp>
       <kpp>
          <kpp_sbl>True</kpp_sbl>
-         <kpp_bbl>True</kpp_bbl>
+         <kpp_bbl>False</kpp_bbl>
          <kpp_interior>True</kpp_interior>
          <clip_mld>False</clip_mld>
          <lcvmix>False</lcvmix>
@@ -224,7 +224,7 @@
    <osm>
       <osm>
          <osm_sbl>True</osm_sbl>
-         <osm_bbl>True</osm_bbl>
+         <osm_bbl>False</osm_bbl>
          <osm_interior>True</osm_interior>
          <h_i>50</h_i>
       </osm>

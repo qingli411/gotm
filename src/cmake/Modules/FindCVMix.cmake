@@ -1,8 +1,7 @@
 # Try to locate CVMix's installation prefix.
 find_path(CVMix_PREFIX
     NAMES src/cvmix_driver.F90
-    HINTS "$ENV{CVMix_PREFIX}"
-    PATHS "$ENV{HOME}/CVMix-src" "$ENV{HOME}/local/CVMix-src"
+    HINTS "$ENV{CVMIX_ROOT}"
     DOC "Installation prefix for the Community Vertical Mixing Project - cvmix.github.io"
 )
 

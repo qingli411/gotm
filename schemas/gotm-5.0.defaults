@@ -248,7 +248,7 @@
          <nstar>0.065</nstar>
          <mstar_mode>2</mstar_mode>
          <mstar>1.0</mstar>
-         <tke_decay>2.5</tke_decay>
+         <tke_decay>0.01</tke_decay>
          <ekman_scale_coef>1.0</ekman_scale_coef>
          <mstar_slope>0.85</mstar_slope>
          <mstar_xint>-0.3</mstar_xint>
@@ -261,34 +261,34 @@
          <wstar_ustar_coef>1.0</wstar_ustar_coef>
          <vstar_scale_fac>1.0</vstar_scale_fac>
          <cnv_mst_fac>0.667</cnv_mst_fac>
-         <translay_scale>0.1</translay_scale>
+         <translay_scale>0.01</translay_scale>
          <mld_tol>1.0</mld_tol>
          <min_mix_len>-1.0</min_mix_len>
          <n2_dissipation_scale_neg>0.0</n2_dissipation_scale_neg>
          <n2_dissipation_scale_pos>0.0</n2_dissipation_scale_pos>
          <mstar_cap>10.0</mstar_cap>
          <lt_enhance_form>0</lt_enhance_form>
-         <lt_enhance_coef>0.447</lt_enhance_coef>
-         <lt_enhance_exp>-1.33</lt_enhance_exp>
-         <lac_mldoek>-0.87</lac_mldoek>
+         <lt_enhance_coef>0.137</lt_enhance_coef>
+         <lt_enhance_exp>-1.</lt_enhance_exp>
+         <lac_mldoek>0.0</lac_mldoek>
          <lac_mldoob_stab>0.0</lac_mldoob_stab>
-         <lac_ekoob_stab>0.95</lac_ekoob_stab>
+         <lac_ekoob_stab>0.8</lac_ekoob_stab>
          <lac_mldoob_un>0.0</lac_mldoob_un>
-         <lac_ekoob_un>0.95</lac_ekoob_un>
-         <laDepthRatio>0.04</laDepthRatio>
+         <lac_ekoob_un>0.8</lac_ekoob_un>
+         <ladepthratio>0.2</ladepthratio>
          <max_enhance_m>5.0</max_enhance_m>
       </epbl>
    </epbl>
    <jhl>
       <jhl>
          <rino_crit>0.25</rino_crit>
-         <shearmix_rate>0.087</shearmix_rate>
+         <shearmix_rate>0.089</shearmix_rate>
          <fri_curvature>-0.97</fri_curvature>
          <c_n>0.24</c_n>
          <c_s>0.14</c_s>
          <lambda>0.82</lambda>
          <lambda2_n_s>0.0</lambda2_n_s>
-         <tke_bg>0.24</tke_bg>
+         <tke_bg>0.0</tke_bg>
          <kappa_0>1.0e-7</kappa_0>
          <kappa_tol_err>0.1</kappa_tol_err>
          <prandtl_turb>1.0</prandtl_turb>

@@ -822,7 +822,7 @@
         <options>
           <option value="0" label="Max of ePBL and JHL."/>
           <option value="1" label="ePBL."/>
-          <option value="2" label="JHLL."/>
+          <option value="2" label="JHL."/>
           <option value="3" label="ePBL + JHL."/>
         </options>
         </element>

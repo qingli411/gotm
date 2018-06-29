@@ -520,7 +520,6 @@ subroutine cvmix_epbl_column(NZ, Kd, &
 
   do OBL_IT=1,MAX_OBL_IT ;
      if (.not. OBL_CONVERGED) then
-
         ! Reset ML_depth
         CS%ML_depth = h(1)*H_to_m
         !CS%ML_depth2(ii,jj) = h(i,1)*H_to_m
@@ -1633,8 +1632,8 @@ subroutine get_LA_windsea(ustar, hbl, Rho0,g_Earth, LA)
 endsubroutine Get_LA_windsea
 
 subroutine Get_LA_external(nlev, ustar, hbl, LA)
-  use kpp, only: kpp_langmuir_number
   use langmuir, only: langmuir_number
+  use langmuir, only: la_sl
   !
   implicit none
   !
@@ -1647,9 +1646,8 @@ subroutine Get_LA_external(nlev, ustar, hbl, LA)
   USTAR8 = ustar
   HBL8 = hbl
   call langmuir_number(nlev, ustar8, hbl8)
-  call kpp_langmuir_number(lasl)
-  LA=LASL
-
+  LA = LA_SL
+  return
 end subroutine Get_LA_external
 
 subroutine Get_Mstar(CS, NLEV, Bflux, u_star, u_star_mean,&
@@ -1758,7 +1756,7 @@ subroutine Get_Mstar(CS, NLEV, Bflux, u_star, u_star_mean,&
          ( (-Bflux_Unstable+1.e-10)+                 &
          2. *MSTAR_MIX *U_STAR**3 / BLD )
 
-    if (CS%Use_LA_windsea) then
+    if (CS%LT_ENHANCE_FORM>0) then
       ! 1. Get LA
       if (CS%LA_LF17) then
          call get_LA_windsea( u_star_mean, BLD*CS%LaDepthRatio, Rho0, g_Earth, LA)
@@ -1794,7 +1792,6 @@ subroutine Get_Mstar(CS, NLEV, Bflux, u_star, u_star_mean,&
       endif
     endif
     CS%Enhance_M = Enhance_M
-
     CS%MLD_Obukhov = (BLD*iL_Obukhov)
     CS%MLD_Ekman = (BLD*iL_Ekman)
     CS%Ekman_Obukhov = (iL_Obukhov/(iL_Ekman+1.e-10))
@@ -1820,4 +1817,3 @@ subroutine cvmix_epbl_end(CS)
   if (allocated(CS%Velocity_Scale))      deallocate(CS%Velocity_Scale)
 end subroutine cvmix_epbl_end
 end module cvmix_energetic_pbl
-

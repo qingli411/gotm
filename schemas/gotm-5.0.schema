@@ -740,6 +740,28 @@
          </element>
       </element>
    </element>
+   <element name="langmuir" label="Langmuir turbulence parameters">
+      <element name="langmuir" label="Langmuir turbulence parameters">
+         <element name="langmuir_number_method" type="int" label="method to compute enhancement factor">
+            <options>
+               <option value="0" label="No Langmuir number is computed" />
+               <option value="1" label="approximated by a simple model based on empirical wave spectrum (Li et al., 2017)" />
+               <option value="2" label="read from file langmuir_number_file" />
+               <option value="3" label="compute from input wave spectrum" />
+               <option value="4" label="compute from Stokes drift" />
+               <option value="5" label="read from hurricane data" />
+            </options>
+         </element>
+         <element name="langmuir_number_file" type="gotmdatafile" label="input Langmuir number data for Langmuir mixing parameterization" description="file with Langmuir number">
+            <condition type="eq" variable="./langmuir_number_method" value="2" />
+            <fileinfo type="pointsintime">
+               <filevariables>
+                  <filevariable name="la" label="Langmuir number" unit="1" />
+               </filevariables>
+            </fileinfo>
+         </element>
+      </element>
+   </element>
    <element name="kpp" label="KPP turbulence model">
       <condition type="eq" variable="/gotmturb/turbulence/turb_method" value="99" />
       <element name="kpp" label="KPP turbulence model">
@@ -758,29 +780,6 @@
                <option value="2" label="Langmuir mixing + Langmuir enhanced entrainment (Li and Fox-Kemper, 2017)" />
                <option value="3" label="Langmuir mixing + Langmuir enhanced Vt2 (Reichl et al., 2016)" />
             </options>
-         </element>
-         <element name="efactor_method" type="int" label="method to compute enhancement factor">
-            <condition type="or">
-                <condition type="eq" variable="./langmuir_method" value="1" />
-                <condition type="eq" variable="./langmuir_method" value="2" />
-            </condition>
-            <options>
-               <option value="1" label="approximated by a simple enhancement facator model based on empirical wave spectrum (Li et al., 2017)" />
-               <option value="2" label="read from file efactor_file" />
-               <option value="3" label="compute from input wave spectrum" />
-               <option value="4" label="compute from Stokes drift" />
-            </options>
-         </element>
-         <element name="efactor_file" type="gotmdatafile" label="input enhancement factor data for Langmuir mixing parameterization" description="file with enhancement factor">
-            <condition type="and">
-                <condition type="eq" variable="./langmuir_method" value="1" />
-                <condition type="eq" variable="./efactor_method" value="2" />
-            </condition>
-            <fileinfo type="pointsintime">
-               <filevariables>
-                  <filevariable name="ef" label="enhancement factor" unit="1" />
-               </filevariables>
-            </fileinfo>
          </element>
          <element name="interp_type" type="string" label="interpolation method used to interpolate bulk Richardson number">
             <options>
@@ -823,12 +822,11 @@
         <options>
           <option value="0" label="Max of ePBL and JHL."/>
           <option value="1" label="ePBL."/>
-          <option value="2" label="JHLL."/>
+          <option value="2" label="JHL."/>
           <option value="3" label="ePBL + JHL."/>
         </options>
         </element>
         <element name="langmuir_method" type="int" label="1 to enable Langmuir turbulence in MOMturb methods."/>
-        <element name="efactor_method" type="int" label="1 to enable Langmuir turbulence in MOMturb methods from theory wave."/>
       </element>
    </element>
    <element name="epbl" label="ePBL turbulence model">
@@ -911,8 +909,7 @@
         <element name="shearmix_rate" type="float" label="Non-dimensional rate scale for shear-driven entrainment.  Range in paper is 0.085-0.089."/>
         <element name="fri_curvature" type="float" label="Curvature of the Richardson number function relating shear sources in the Kappa equation.  Range in paper is -0.97 to -0.89."/>
         <element name="c_n" type="float" label="Coefficient for decay of TKE due to stratification.  Range in paper is 0.24 to 0.28."/>
-        <element name="c_s" type="float" label=""/>
-        <element name="c_n" type="float" label="Coefficient for decay of TKE due to shear.  Range in paper is 0.12 to 0.14"/>
+        <element name="c_s" type="float" label="Coefficient for decay of TKE due to shear.  Range in paper is 0.12 to 0.14"/>
         <element name="lambda" type="float" label="Coefficient for the buoyancy length scale.  Range in paper is 0.81 to 0.82."/>
         <element name="lambda2_n_s" type="float" label="Square of buoyancy and shear scale equation.  Set to 0 to eliminate shear scale."/>
         <element name="tke_bg" type="float" label="Background level of TKE in m2/s2"/>
@@ -1405,7 +1402,8 @@
                <option value="2" label="calculated from the frequency bin width weighted wave spectrum" />
                <option value="3" label="calculated from the partitioned surface Stokes drift" />
                <option value="4" label="calculated from the surface Stokes drift and penetration depth assumingexponential profile" />
-              <option value="5" label="calculated from the theory wave approach of Li et al., 2016."/>
+              <option value="5" label="calculated from the theory wave approach of Li et al., 2017"/>
+              <option value="6" label="calculated from the hurricane spectrum"/>
             </options>
          </element>
          <element name="nfreq" type="int" label="number of frequency bands">

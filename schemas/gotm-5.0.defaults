@@ -8,15 +8,23 @@
          <cnpar>1.0</cnpar>
          <buoy_method>1</buoy_method>
       </model_setup>
-      <station></station>
+      <station>
+          <name>gotm_test</name>
+          <latitude>0.0</latitude>
+          <longitude>0.0</longitude>
+          <depth>200.0</depth>
+      </station>
       <time>
          <timefmt>2</timefmt>
+         <MaxN>800</MaxN>
+         <start>2013-12-25 00:00:00</start>
+         <stop>2014-01-01 00:00:00</stop>
       </time>
       <output>
          <list_fields>False</list_fields>
          <out_fmt>2</out_fmt>
          <out_dir>.</out_dir>
-         <out_fn>gotland</out_fn>
+         <out_fn>gotm_out</out_fn>
          <nfirst>0</nfirst>
          <nsave>144</nsave>
          <sync_out>1</sync_out>
@@ -85,8 +93,8 @@
          <const_albedo>0.</const_albedo>
          <const_swr>0.0</const_swr>
          <swr_file>swr_file.dat</swr_file>
-         <shf_factor>1.0</shf_factor>
          <swr_factor>1.0</swr_factor>
+         <shf_factor>1.0</shf_factor>
          <momentum_method>0</momentum_method>
          <const_tx>0.0</const_tx>
          <const_ty>0.0</const_ty>
@@ -166,7 +174,7 @@
          <e1>1.8</e1>
          <e2>1.33</e2>
          <e3>1.8</e3>
-         <e6>4.0</e6>
+         <e6>6.0</e6>
          <sq>0.2</sq>
          <sl>0.2</sl>
          <my_length>3</my_length>
@@ -200,18 +208,22 @@
          <nuhiw>1e-005</nuhiw>
       </iw>
    </gotmturb>
+   <langmuir>
+      <langmuir>
+         <langmuir_number_method>0</langmuir_number_method>
+         <langmuir_number_file>langmuir_number.dat</langmuir_number_file>
+      </langmuir>
+   </langmuir>
    <kpp>
       <kpp>
          <kpp_sbl>True</kpp_sbl>
-         <kpp_bbl>True</kpp_bbl>
+         <kpp_bbl>False</kpp_bbl>
          <kpp_interior>True</kpp_interior>
          <clip_mld>False</clip_mld>
          <lcvmix>False</lcvmix>
          <lnoDGat1>True</lnoDGat1>
          <Ric>0.3</Ric>
          <langmuir_method>0</langmuir_method>
-         <efactor_method>1</efactor_method>
-         <efactor_file>efactor_file.dat</efactor_file>
          <interp_type>quadratic</interp_type>
          <interp_type2>LMD94</interp_type2>
          <MatchTechnique>SimpleShapes</MatchTechnique>
@@ -220,7 +232,7 @@
    <osm>
       <osm>
          <osm_sbl>True</osm_sbl>
-         <osm_bbl>True</osm_bbl>
+         <osm_bbl>False</osm_bbl>
          <osm_interior>True</osm_interior>
          <h_i>50</h_i>
       </osm>
@@ -229,54 +241,54 @@
      <momturb>
        <mode>2</mode>
        <langmuir_method>0</langmuir_method>
-       <efactor_method>0</efactor_method>
      </momturb>
    </MOMturb>
    <epbl>
       <epbl>
          <nstar>0.065</nstar>
          <mstar_mode>2</mstar_mode>
-         <lt_enhance_form>0</lt_enhance_form>
          <mstar>1.0</mstar>
-         <tke_decay>2.5</tke_decay>
-         <mixlenexponent>2.0</mixlenexponent>
-         <mke_to_tke_effic>0.0</mke_to_tke_effic>
-         <wstar_ustar_coef>1.0</wstar_ustar_coef>
-         <vstar_scale_fac>1.0</vstar_scale_fac>
+         <tke_decay>0.01</tke_decay>
          <ekman_scale_coef>1.0</ekman_scale_coef>
-         <translay_scale>0.1</translay_scale>
-         <mld_tol>1.0</mld_tol>
-         <min_mix_len>-1.0</min_mix_len>
-         <n2_dissipation_scale_neg>0.0</n2_dissipation_scale_neg>
-         <n2_dissipation_scale_pos>0.0</n2_dissipation_scale_pos>
          <mstar_slope>0.85</mstar_slope>
          <mstar_xint>-0.3</mstar_xint>
          <mstar_at_xint>0.095</mstar_at_xint>
          <mstar_n>-2.0</mstar_n>
          <c_ek>0.17</c_ek>
          <mstar_coef>0.3</mstar_coef>
+         <mixlenexponent>2.0</mixlenexponent>
+         <mke_to_tke_effic>0.0</mke_to_tke_effic>
+         <wstar_ustar_coef>1.0</wstar_ustar_coef>
+         <vstar_scale_fac>1.0</vstar_scale_fac>
          <cnv_mst_fac>0.667</cnv_mst_fac>
+         <translay_scale>0.01</translay_scale>
+         <mld_tol>1.0</mld_tol>
+         <min_mix_len>-1.0</min_mix_len>
+         <n2_dissipation_scale_neg>0.0</n2_dissipation_scale_neg>
+         <n2_dissipation_scale_pos>0.0</n2_dissipation_scale_pos>
          <mstar_cap>10.0</mstar_cap>
-         <lt_enhance_coef>0.447</lt_enhance_coef>
-         <lt_enhance_exp>-1.33</lt_enhance_exp>
-         <lac_mldoek>-0.87</lac_mldoek>
+         <lt_enhance_form>0</lt_enhance_form>
+         <lt_enhance_coef>0.137</lt_enhance_coef>
+         <lt_enhance_exp>-1.</lt_enhance_exp>
+         <lac_mldoek>0.0</lac_mldoek>
          <lac_mldoob_stab>0.0</lac_mldoob_stab>
-         <lac_ekoob_stab>0.95</lac_ekoob_stab>
+         <lac_ekoob_stab>0.8</lac_ekoob_stab>
          <lac_mldoob_un>0.0</lac_mldoob_un>
-         <lac_ekoob_un>0.95</lac_ekoob_un>
-         <laDepthRatio>0.04</laDepthRatio>
-         <Max_Enhance_M>5.0</Max_Enhance_M>
+         <lac_ekoob_un>0.8</lac_ekoob_un>
+         <ladepthratio>0.2</ladepthratio>
+         <max_enhance_m>5.0</max_enhance_m>
       </epbl>
    </epbl>
    <jhl>
       <jhl>
          <rino_crit>0.25</rino_crit>
+         <shearmix_rate>0.089</shearmix_rate>
          <fri_curvature>-0.97</fri_curvature>
          <c_n>0.24</c_n>
          <c_s>0.14</c_s>
          <lambda>0.82</lambda>
          <lambda2_n_s>0.0</lambda2_n_s>
-         <tke_bg>0.24</tke_bg>
+         <tke_bg>0.0</tke_bg>
          <kappa_0>1.0e-7</kappa_0>
          <kappa_tol_err>0.1</kappa_tol_err>
          <prandtl_turb>1.0</prandtl_turb>

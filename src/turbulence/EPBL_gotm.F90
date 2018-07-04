@@ -68,10 +68,8 @@ use meanflow, only: gravity
 use meanflow, only: rho_0
 
 !
-use kpp, only: efactor_method, Langmuir_method
-use kpp, only: KPP_LT_NOLANGMUIR, KPP_LT_EFACTOR, KPP_LT_ENTRAINMENT
-use KPP, only: KPP_LT_EFACTOR_MODEL, KPP_LT_EFACTOR_READ,&
-               KPP_LT_EFACTOR_SPEC, KPP_LT_EFACTOR_USTOKES
+use kpp, only: langmuir_method
+use kpp, only: KPP_LT_NOLANGMUIR, KPP_LT_LWF16, KPP_LT_LF17
 !-----------------------------------------------------------------------
 implicit none
 !-----------------------------------------------------------------------
@@ -104,7 +102,7 @@ subroutine epbl_gotm_init(nlev,namlst)
   integer :: rc
   real :: rho0_4, grav_4 ! Used for converting from real(8) to real(4)
 !
-  namelist /momturb/ mode, langmuir_method, efactor_method
+  namelist /momturb/ mode, langmuir_method
 !
   allocate(num(0:nlev),stat=rc)
   if (rc /= 0) stop 'init_turbulence: Error allocating (num)'

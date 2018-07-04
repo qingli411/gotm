@@ -205,7 +205,6 @@
    call fm%register('u0_stokes', 'm/s', 'surface Stokes drift x-component', standard_name='', data0d=us_x, category='surface')
    call fm%register('v0_stokes', 'm/s', 'surface Stokes drift y-component', standard_name='', data0d=us_y, category='surface')
    call fm%register('delta', 'm', 'Stokes drift penetration depth', standard_name='', data0d=delta, category='surface')
-
    return
    end subroutine register_observation_variables
 !EOC
@@ -343,6 +342,8 @@
    use turbulence
    use epbl_gotm, only: epbl_osbl
    use kpp, only: zsbl
+   use langmuir, only: La_Turb, La_SL, La_SLP1, La_SLP2, theta_WW, theta_WL
+
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -370,6 +371,12 @@
    if (turb_method.eq.99) then
       call fm%register('KPP_OSBL','m','KPP boundary layer depth',standard_name='??',data0d=zsbl,category='turbulece')
    endif
+   call fm%register('La_Turb','','Turbulent Langmuir number',standard_name='??',data0d=La_Turb,category='turbulece')
+   call fm%register('La_SL','','Surface layer averaged Langmuir number',standard_name='??',data0d=La_SL,category='turbulece')
+   call fm%register('La_SLP1','','Surface layer averaged, projected Langmuir number (VFSHH12)',standard_name='??',data0d=La_SLP2,category='turbulece')
+   call fm%register('La_SLP2','','Surface layer averaged, projected Langmuir number (RWHGK16)',standard_name='??',data0d=La_SLP2,category='turbulece')
+   call fm%register('theta_WW','radian','Angle between wind and waves',standard_name='??',data0d=theta_WW,category='turbulece')
+   call fm%register('theta_WL','radian','Angle between wind and Langmuir cells',standard_name='??',data0d=theta_WL,category='turbulece')
 
    ! only define these variables if not using KPP or OSMOSIS or ePBL
    ! Qing Li, 20180405

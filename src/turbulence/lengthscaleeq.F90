@@ -135,8 +135,13 @@
 !  some quantities in Mellor-Yamada notation
    do i=1,nlev-1
       q2l(i)=2.*tkeo(i)*L(i)
-      q3 (i)=sqrt(8.*tke(i)*tke(i)*tke(i))
+!RRH:vvv
+!     q3(i)=sqrt(8.*tke(i)*tke(i)*tke(i))
+!     use old tke to compute q^3
+      q3(i)=sqrt(8.*tkeo(i)*tkeo(i)*tkeo(i))
+!RRH:^^^
    end do
+
 
 !  diagnostic length scale for wall function
    db=_ZERO_
@@ -152,11 +157,16 @@
       if (MY_length.eq.3) Lz(i)=kappa*(ds+z0s)
    end do
 
+
 ! prepare the production terms
    do i=1,nlev-1
 
 !     compute diffusivity
-      avh(i)      =  sl*sqrt(2.*tke(i))*L(i)
+!Qing:vvv
+!     avh(i)      =  sl*sqrt(2.*tke(i))*L(i)
+!     use old tke to compute diffusivity
+      avh(i)      =  sl*sqrt(2.*tkeo(i))*L(i)
+!Qing:^^^
 
 !     compute production terms in q^2 l - equation
       prod        =  e1*L(i)*P(i)
@@ -171,7 +181,6 @@
          Qsour(i) =  prod
          Lsour(i) = -(diss-buoyan)/q2l(i)
       end if
-
    end do
 
 !  TKE and position for upper BC
@@ -222,8 +231,6 @@
    q2l(nlev)  = q2l_bc(Dirichlet,ubc_type,z0s,tke(nlev),z0s,u_taus)
    q2l(0   )  = q2l_bc(Dirichlet,lbc_type,z0b,tke(0   ),z0b,u_taub)
 
-
-
 ! compute L and epsilon
   do i=0,nlev
      L(i)=q2l(i)/(2.*tke(i))
@@ -234,19 +241,23 @@
         if (L(i).gt.Lcrit) L(i)=Lcrit
      end if
 
-!    compute dissipation rate
-     eps(i) = cde*sqrt(tke(i)*tke(i)*tke(i))/L(i)
+!ZZ:vvv
+!    compute dissipation rate, original position
+!    eps(i) = cde*sqrt(tke(i)*tke(i)*tke(i))/L(i)
 
-!    check for very small lengh scale
+!    check for very small length scale
      if (L(i).lt.l_min) L(i)=l_min
+
+!    compute dissipation rate, after l_min check
+     eps(i) = cde*sqrt(tke(i)*tke(i)*tke(i))/L(i)
+!ZZ:^^^
 
 !    substitute minimum value
      if (eps(i).lt.eps_min) then
         eps(i) = eps_min
-          L(i) = cde*sqrt(tke(i)*tke(i)*tke(i))/eps_min
-     endif
+           L(i) = cde*sqrt(tke(i)*tke(i)*tke(i))/eps_min
+     end if
   end do
-
 
   return
   end subroutine lengthscaleeq

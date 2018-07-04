@@ -151,7 +151,11 @@
 !  some quantities in Mellor-Yamada notation
    do i=1,nlev-1
       q2l(i)=2.*tkeo(i)*L(i)
-      q3 (i)=sqrt(8.*tke(i)*tke(i)*tke(i))
+!RRH:vvv
+!     q3(i)=sqrt(8.*tke(i)*tke(i)*tke(i))
+!     use old tke to compute q^3
+      q3(i)=sqrt(8.*tkeo(i)*tkeo(i)*tkeo(i))
+!RRH:^^^
    end do
 
 !  diagnostic length scale for wall function
@@ -175,7 +179,11 @@
       sl = sqrt(0.04+(0.41*cmue2(i)/sqrt(2.0))**2.)
 
 !     compute diffusivity
-      avh(i)      =  sl*sqrt(2.*tke(i))*L(i)
+!Qing:vvv
+!     avh(i)      =  sl*sqrt(2.*tke(i))*L(i)
+!     use old tke to compute diffusivity
+      avh(i)      =  sl*sqrt(2.*tkeo(i))*L(i)
+!Qing:^^^
 
 !     compute production terms in q^2 l - equation
       prod        =  e1*L(i)*P(i)+e6*L(i)*PS(i)
@@ -242,7 +250,6 @@
    q2l(0   )  = q2l_bc(Dirichlet,lbc_type,z0b,tke(0   ),z0b,u_taub)
 
 
-
 ! compute L and epsilon
   do i=0,nlev
      L(i)=q2l(i)/(2.*tke(i))
@@ -253,11 +260,16 @@
         if (L(i).gt.Lcrit) L(i)=Lcrit
      end if
 
-!    compute dissipation rate
-     eps(i) = cde*sqrt(tke(i)*tke(i)*tke(i))/L(i)
+!ZZ:vvv
+!    compute dissipation rate, original position
+!     eps(i) = cde*sqrt(tke(i)*tke(i)*tke(i))/L(i)
 
 !    check for very small lengh scale
      if (L(i).lt.l_min) L(i)=l_min
+
+!    compute dissipation rate, after l_min check
+     eps(i) = cde*sqrt(tke(i)*tke(i)*tke(i))/L(i)
+!ZZ:^^^
 
 !    substitute minimum value
      if (eps(i).lt.eps_min) then
@@ -265,7 +277,6 @@
           L(i) = cde*sqrt(tke(i)*tke(i)*tke(i))/eps_min
      endif
   end do
-
 
   return
   end subroutine lengthscaleeq_kc04

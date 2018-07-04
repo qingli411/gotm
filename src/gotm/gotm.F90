@@ -54,6 +54,9 @@
    use turbulence,  only: turb_method
    use turbulence,  only: init_turbulence,do_turbulence
    use turbulence,  only: num,nuh,nus
+!RRH: vvv
+   use turbulence,  only: nucl
+!RRH: ^^^
    use turbulence,  only: const_num,const_nuh
    use turbulence,  only: gamu,gamv,gamh,gams
    use turbulence,  only: kappa
@@ -447,8 +450,17 @@
       call coriolis(nlev,dt)
 
 !     update velocity
+!RRH: vvv
+!     call uequation(nlev,dt,cnpar,tx,num,gamu,ext_press_mode)
+!     call vequation(nlev,dt,cnpar,ty,num,gamv,ext_press_mode)
+#if defined(STOKESFLUX)
+      call uequation_stokesflux(nlev,dt,cnpar,tx,num,nucl,dusdz,gamu,ext_press_mode)
+      call vequation_stokesflux(nlev,dt,cnpar,ty,num,nucl,dvsdz,gamv,ext_press_mode)
+#else
       call uequation(nlev,dt,cnpar,tx,num,gamu,ext_press_mode)
       call vequation(nlev,dt,cnpar,ty,num,gamv,ext_press_mode)
+#endif
+!RRH: ^^^
       call extpressure(ext_press_mode,nlev)
       call intpressure(nlev)
       call friction(kappa,avmolu,tx,ty)

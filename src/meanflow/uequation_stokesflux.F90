@@ -5,7 +5,10 @@
 ! !ROUTINE: The U-momentum equation\label{sec:uequation}
 !
 ! !INTERFACE:
-   subroutine uequation(nlev,dt,cnpar,tx,num,gamu,Method)
+!RRH: vvv
+!  subroutine uequation(nlev,dt,cnpar,tx,num,gamu,Method)
+   subroutine uequation_stokesflux(nlev,dt,cnpar,tx,num,nucl,dusdz,gamu,Method)
+!RRH: ^^^
 !
 ! !DESCRIPTION:
 !  This subroutine computes the transport of momentum in
@@ -94,6 +97,14 @@
 !  diffusivity of momentum (m^2/s)
    REALTYPE, intent(in)                :: num(0:nlev)
 
+!RRH:vvv
+!  eddy coefficient of momentum flux down the Stokes gradient (m^2/s)
+   REALTYPE, intent(in)                :: nucl(0:nlev)
+
+!  vertical gradient of Stokes drift in the x-direction (s^-1)
+   REALTYPE, intent(in)                :: dusdz(0:nlev)
+
+!RRH:^^^
 !  non-local flux of momentum (m^2/s^2)
    REALTYPE, intent(in)                :: gamu(0:nlev)
 
@@ -178,6 +189,12 @@
       Qsour(i) = Qsour(i) - ( gamu(i) - gamu(i-1) )/h(i)
 #endif
 
+!RRH: vvv
+!     add down Stokes gradient fluxes
+      Qsour(i) = Qsour(i) + ( nucl(i)*dusdz(i) -                        &
+                              nucl(i-1)*dusdz(i-1) )/h(i)
+!RRH: ^^^
+
    end do
 
 !  implement bottom friction as source term
@@ -204,7 +221,7 @@
    endif
 
    return
-   end subroutine uequation
+   end subroutine uequation_stokesflux
 !EOC
 
 !-----------------------------------------------------------------------

@@ -66,6 +66,11 @@ use meanflow, only: gravity
 !  8. meanflow/rho_0
 !    Reference density [kg/m3]
 use meanflow, only: rho_0
+!  9. turbulence/nucl
+!  turbulent eddy coefficient for momentum flux down Stokes gradient
+!  in second moment closures with Craik-Leibovich vortex force in the
+!  algebraic Reynolds stress and flux models.
+use turbulence, only: nucl
 
 !
 use kpp, only: efactor_method, Langmuir_method
@@ -115,6 +120,9 @@ subroutine epbl_gotm_init(nlev,namlst)
   allocate(nus(0:nlev),stat=rc)
   if (rc /= 0) stop 'init_turbulence: Error allocating (nus)'
   nus = _ZERO_
+  allocate(nucl(0:nlev),stat=rc)
+  if (rc /= 0) stop 'init_turbulence: Error allocating (nucl)'
+  nucl = _ZERO_
   allocate(gamu(0:nlev),stat=rc)
   if (rc /= 0) stop 'init_turbulence: Error allocating (gamu)'
   gamu = _ZERO_

@@ -67,8 +67,8 @@
    REALTYPE, public, dimension(:), allocatable, target :: nuh
    REALTYPE, public, dimension(:), allocatable         :: nus
 !RRH: vvv
-!  turbulent eddy coefficient for momentum flux down Stokes gradient 
-!  in second moment closures with Craik-Leibovich vortex force in the 
+!  turbulent eddy coefficient for momentum flux down Stokes gradient
+!  in second moment closures with Craik-Leibovich vortex force in the
 !  algebraic Reynolds stress and flux models.
    REALTYPE, public, dimension(:), allocatable         :: nucl
 !RRH: ^^^
@@ -84,7 +84,7 @@
    REALTYPE, public, dimension(:), allocatable   :: cmue1,cmue2
 !RRH: vvv
    REALTYPE, public, dimension(:), allocatable   :: cmue3
-!RRH: ^^^ 
+!RRH: ^^^
 
 !  non-dimensional counter-gradient term
    REALTYPE, public, dimension(:), allocatable   :: gam
@@ -623,8 +623,8 @@
    allocate(cmue3(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (cmue3)'
    cmue3 = _ZERO_
-   
-!RRH: ^^^ 
+
+!RRH: ^^^
    allocate(gam(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (gam)'
    gam = _ZERO_
@@ -2604,7 +2604,7 @@
 !     momentum down Stokes gradient
       nucl(i)   =  cmue3(i)*x
 #endif
-!RRH: ^^^ 
+!RRH: ^^^
 !     heat
       nuh(i)   =  cmue2(i)*x
 !     salinity
@@ -3609,7 +3609,7 @@
    if (allocated(nus)) deallocate(nus)
 !RRH: vvv
    if (allocated(nucl)) deallocate(nucl)
-!RRH: ^^^ 
+!RRH: ^^^
    if (allocated(gamu)) deallocate(gamu)
    if (allocated(gamv)) deallocate(gamv)
    if (allocated(gamb)) deallocate(gamb)
@@ -3682,7 +3682,7 @@
    LEVEL2 'num,nuh,nus',num,nuh,nus
 !RRH: vvv
    LEVEL2 'nucl',nucl
-!RRH: ^^^ 
+!RRH: ^^^
    LEVEL2 'gamu,gamv',gamu,gamv
    LEVEL2 'gamb,gamh,gams',gamb,gamh,gams
    LEVEL2 'cmue1,cmue2',cmue1,cmue2

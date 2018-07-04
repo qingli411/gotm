@@ -187,7 +187,7 @@
 ! TODO: Documentation of Langmuir turbulence parameterization in KPP <14-12-17, Qing Li> !
 ! !USES:
 
-  use turbulence,   only: num,nuh,nus
+  use turbulence,   only: num,nuh,nus,nucl
   use turbulence,   only: gamu,gamv,gamh,gams
   use turbulence,   only: Rig
   use turbulence,   only: kappa
@@ -570,6 +570,10 @@
    allocate(nus(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (nus)'
    nus = _ZERO_
+
+   allocate(nucl(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (nucl)'
+   nucl = _ZERO_
 
    allocate(gamu(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (gamu)'
@@ -2564,6 +2568,7 @@
    if (allocated(num)) deallocate(num)
    if (allocated(nuh)) deallocate(nuh)
    if (allocated(nus)) deallocate(nus)
+   if (allocated(nucl)) deallocate(nucl)
    if (allocated(gamu)) deallocate(gamu)
    if (allocated(gamv)) deallocate(gamv)
    if (allocated(gamh)) deallocate(gamh)

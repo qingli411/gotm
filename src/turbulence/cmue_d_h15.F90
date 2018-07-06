@@ -101,7 +101,10 @@
                -2.D0*my_A1*(1-6.D0*my_A1/my_B1+3.D0*my_C1))
      h15_Shdah=-9.D0*my_A1*my_A2
      h15_Shdav=-36.D0*my_A1*my_A1
-     h15_Shdbh=-3.D0*my_A2*(6.D0*my_A1+my_B2)
+!RRH vvv
+     !h15_Shdbh=-3.D0*my_A2*(6.D0*my_A1+my_B2)
+     h15_Shdbh=-3.D0*my_A2*(6.D0*my_A1+my_B2*(1-my_C3))
+!RRH ^^^   
      h15_Shdv=-9.D0*my_A2*my_A2
      h15_Shdvh=-324.D0*my_A1*my_A1*my_A2*(my_A1+my_A2)
      h15_Shdvv=648.D0*my_A1*my_A1*my_A2*my_A2
@@ -120,7 +123,7 @@
 !RRH: ^^^
      do i=1,nlev-1
 ! convert nondimensional forcing functions to q2-q2l formulation,
-! at leastuntil this is rederived in k-epsilon formulation
+! at least until this is rederived in k-epsilon formulation
         Gh = -tmp0*an(i)
 !RRH: vvv
 !       Gv =  tmp0*av(i)
@@ -133,7 +136,10 @@
         Gh=max(Gh,h15_Ghmin)
         Gv=max(Gv,h15_Ghmin)
         Gh=min(Gh,h15_Ghmax)
-        Gv=min(Gv,h15_Gvmax)
+!RRH vvv
+        !Gv=min(Gv,h15_Gvmax)
+        Gv=min(Gv,h15_Gvmax-0.8*Gh)
+!RRH ^^^
         Gs=min(Gs,h15_Gsmax)
 
         Sh=(h15_Shn0+h15_Shnh*Gh+h15_Shns*Gs+h15_Shnv*Gv)/                              &

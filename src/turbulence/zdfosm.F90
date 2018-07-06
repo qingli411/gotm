@@ -39,7 +39,7 @@ MODULE zdfosm
    use meanflow,         only: ff => cori            ! Coriolis parameter
    use meanflow,         only: NN,NNT,NNS,SS         ! stratification and shear.
    use meanflow,         only: cp                    ! specific heat of sea water
-   use turbulence,       only: num,nuh,nus           ! eddy viscosity and diffusivities
+   use turbulence,       only: num,nuh,nus,nucl      ! eddy viscosity and diffusivities
    use turbulence,       only: gamu,gamv,gamh,gams   ! non-gradient terms in flux-gradient
 ! initialize tke in module turbulence
 ! Qing Li, 20180404
@@ -529,6 +529,10 @@ write(*,*) fn
    allocate(nus(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (nus)'
    nus = 1.0D-6
+
+   allocate(nucl(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (nucl)'
+   nucl = _ZERO_
 
    allocate(gamu(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (gamu)'
@@ -1988,6 +1992,7 @@ CONTAINS
    if (allocated(nuh)) deallocate(nuh)
    if (allocated(nus)) deallocate(nus)
    if (allocated(num)) deallocate(num)
+   if (allocated(nucl)) deallocate(nucl)
    if (allocated(gamh)) deallocate(gamh)
    if (allocated(gams)) deallocate(gams)
    if (allocated(gamu)) deallocate(gamu)

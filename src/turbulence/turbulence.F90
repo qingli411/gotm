@@ -66,6 +66,12 @@
    REALTYPE, public, dimension(:), allocatable         :: num
    REALTYPE, public, dimension(:), allocatable, target :: nuh
    REALTYPE, public, dimension(:), allocatable         :: nus
+!RRH: vvv
+!  turbulent eddy coefficient for momentum flux down Stokes gradient
+!  in second moment closures with Craik-Leibovich vortex force in the
+!  algebraic Reynolds stress and flux models.
+   REALTYPE, public, dimension(:), allocatable         :: nucl
+!RRH: ^^^
 
 !  non-local fluxes of momentum
    REALTYPE, public, dimension(:), allocatable   :: gamu,gamv
@@ -76,6 +82,9 @@
 
 !  non-dimensional  stability functions
    REALTYPE, public, dimension(:), allocatable   :: cmue1,cmue2
+!RRH: vvv
+   REALTYPE, public, dimension(:), allocatable   :: cmue3
+!RRH: ^^^
 
 !  non-dimensional counter-gradient term
    REALTYPE, public, dimension(:), allocatable   :: gam
@@ -576,6 +585,12 @@
    if (rc /= 0) stop 'init_turbulence: Error allocating (nus)'
    nus = 1.0D-6
 
+!RRH: vvv
+   allocate(nucl(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (nucl)'
+   nucl = 1.0D-6
+
+!RRH: ^^^
    allocate(gamu(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (gamu)'
    gamu = _ZERO_
@@ -604,6 +619,12 @@
    if (rc /= 0) stop 'init_turbulence: Error allocating (cmue2)'
    cmue2 = _ZERO_
 
+!RRH: vvv
+   allocate(cmue3(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_turbulence: Error allocating (cmue3)'
+   cmue3 = _ZERO_
+
+!RRH: ^^^
    allocate(gam(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (gam)'
    gam = _ZERO_
@@ -2109,10 +2130,11 @@
    IMPLICIT NONE
 
    interface
-      subroutine production(nlev,NN,SS,CSSTK,xP)
+      subroutine production(nlev,NN,SS,SSSTK,CSSTK,xP)
         integer,  intent(in)                :: nlev
         REALTYPE, intent(in)                :: NN(0:nlev)
         REALTYPE, intent(in)                :: SS(0:nlev)
+        REALTYPE, intent(in)                :: SSSTK(0:nlev)
         REALTYPE, intent(in)                :: CSSTK(0:nlev)
         REALTYPE, intent(in), optional      :: xP(0:nlev)
       end subroutine production
@@ -2188,10 +2210,16 @@
 
       if ( PRESENT(xP) ) then
 !        with seagrass turbulence
-         call production(nlev,NN,SS,CSSTK,xP)
+!RRH:vvv
+!        call production(nlev,NN,SS,CSSTK,xP)
+         call production(nlev,NN,SS,SSSTK,CSSTK,xP)
+!RRH:^^^
       else
 !        without
-         call production(nlev,NN,SS,CSSTK)
+!RRH:vvv
+!        call production(nlev,NN,SS,CSSTK)
+         call production(nlev,NN,SS,SSSTK,CSSTK)
+!RRH:^^^
       end if
 
       call alpha_mnb(nlev,NN,SS)
@@ -2209,10 +2237,16 @@
 
       if ( PRESENT(xP) ) then
 !        with seagrass turbulence
-         call production(nlev,NN,SS,CSSTK,xP)
+!RRH:vvv
+!        call production(nlev,NN,SS,CSSTK,xP)
+         call production(nlev,NN,SS,SSSTK,CSSTK,xP)
+!RRH:^^^
       else
 !        without
-         call production(nlev,NN,SS,CSSTK)
+!RRH:vvv
+!        call production(nlev,NN,SS,CSSTK)
+         call production(nlev,NN,SS,SSSTK,CSSTK)
+!RRH:^^^
       end if
 
       select case(scnd_method)
@@ -2565,6 +2599,12 @@
       x        =  sqrt(tke(i))*L(i)
 !     momentum
       num(i)   =  cmue1(i)*x
+!RRH: vvv
+#if defined(STOKESFLUX)
+!     momentum down Stokes gradient
+      nucl(i)   =  cmue3(i)*x
+#endif
+!RRH: ^^^
 !     heat
       nuh(i)   =  cmue2(i)*x
 !     salinity
@@ -3567,6 +3607,9 @@
    if (allocated(num)) deallocate(num)
    if (allocated(nuh)) deallocate(nuh)
    if (allocated(nus)) deallocate(nus)
+!RRH: vvv
+   if (allocated(nucl)) deallocate(nucl)
+!RRH: ^^^
    if (allocated(gamu)) deallocate(gamu)
    if (allocated(gamv)) deallocate(gamv)
    if (allocated(gamb)) deallocate(gamb)
@@ -3574,6 +3617,9 @@
    if (allocated(gams)) deallocate(gams)
    if (allocated(cmue1)) deallocate(cmue1)
    if (allocated(cmue2)) deallocate(cmue2)
+!RRH: vvv
+   if (allocated(cmue3)) deallocate(cmue3)
+!RRH: ^^^
    if (allocated(gam)) deallocate(gam)
    if (allocated(an)) deallocate(an)
    if (allocated(as)) deallocate(as)
@@ -3634,9 +3680,15 @@
    ! Qing Li, 20180418
    LEVEL2 'P,B,Pb,PS',P,B,Pb,PS
    LEVEL2 'num,nuh,nus',num,nuh,nus
+!RRH: vvv
+   LEVEL2 'nucl',nucl
+!RRH: ^^^
    LEVEL2 'gamu,gamv',gamu,gamv
    LEVEL2 'gamb,gamh,gams',gamb,gamh,gams
    LEVEL2 'cmue1,cmue2',cmue1,cmue2
+!RRH: vvv
+   LEVEL2 'cmue3',cmue3
+!RRH: ^^^
    LEVEL2 'gam',gam
    LEVEL2 'as,an,at',as,an,at
    ! av, aw, SPF

@@ -40,13 +40,9 @@
    use turbulence, only: av, aw, SPF
    use turbulence, only: tke, L
    use turbulence, only: cmue1,cmue2
-! Using 'nonlocal' fluxes to carry flux down the Stokes gradient.
-! This is not a nonlocal flux, so don't call it that outside of the code!
-! Any additional nonlocal fluxes in future models will simply add to these,
-! which all get zeroed out in turbulence.F90 before calls to cmue_XX
-  use turbulence,   only: gamu,gamv,gamh,gams
-  ! Qing Li, 20180419
-  use observations, only: dusdz,dvsdz
+!RRH:vvv
+   use turbulence, only: cmue3
+!RRH:^^^
 
    IMPLICIT NONE
 !
@@ -105,7 +101,10 @@
                -2.D0*my_A1*(1-6.D0*my_A1/my_B1+3.D0*my_C1))
      h15_Shdah=-9.D0*my_A1*my_A2
      h15_Shdav=-36.D0*my_A1*my_A1
-     h15_Shdbh=-3.D0*my_A2*(6.D0*my_A1+my_B2)
+!RRH vvv
+     !h15_Shdbh=-3.D0*my_A2*(6.D0*my_A1+my_B2)
+     h15_Shdbh=-3.D0*my_A2*(6.D0*my_A1+my_B2*(1-my_C3))
+!RRH ^^^   
      h15_Shdv=-9.D0*my_A2*my_A2
      h15_Shdvh=-324.D0*my_A1*my_A1*my_A2*(my_A1+my_A2)
      h15_Shdvv=648.D0*my_A1*my_A1*my_A2*my_A2
@@ -118,19 +117,29 @@
      h15_Smdh = -9.D0*my_A1*my_A2
      h15_Smdv = -36.D0*my_A1*my_A1
 
-     tmp0 = 4.D0/my_B1
+!RRH: vvv
+!    tmp0 = 4.D0/my_B1
+     tmp0 = 4.D0/my_B1**2.
+!RRH: ^^^
      do i=1,nlev-1
 ! convert nondimensional forcing functions to q2-q2l formulation,
-! at leastuntil this is rederived in k-epsilon formulation
+! at least until this is rederived in k-epsilon formulation
         Gh = -tmp0*an(i)
-        Gv =  tmp0*av(i)
-        Gs =  tmp0*aw(i)
+!RRH: vvv
+!       Gv =  tmp0*av(i)
+!       Gs =  tmp0*aw(i)
+        Gv =  tmp0*av(i)*SPF(i)
+        Gs =  tmp0*aw(i)*SPF(i)**2.
+!RRH: ^^^
 
 ! crude Harcourt(2015) limits.
         Gh=max(Gh,h15_Ghmin)
         Gv=max(Gv,h15_Ghmin)
         Gh=min(Gh,h15_Ghmax)
-        Gv=min(Gv,h15_Gvmax)
+!RRH vvv
+        !Gv=min(Gv,h15_Gvmax)
+        Gv=min(Gv,h15_Gvmax-0.8*Gh)
+!RRH ^^^
         Gs=min(Gs,h15_Gsmax)
 
         Sh=(h15_Shn0+h15_Shnh*Gh+h15_Shns*Gs+h15_Shnv*Gv)/                              &
@@ -149,9 +158,12 @@
         cmue1(i) =  sqrt(2.D0)*Sm
         cmue2(i) =  sqrt(2.D0)*Sh
 
-        tmp1 = sqrt(2.D0*tke(i))*L(i)*Ss
-        gamu(i) = - tmp1*dusdz(i)
-        gamv(i) = - tmp1*dvsdz(i)
+!RRH: vvv
+!       tmp1 = sqrt(2.D0*tke(i))*L(i)*Ss
+!       gamu(i) = - tmp1*dusdz(i)
+!       gamv(i) = - tmp1*dvsdz(i)
+        cmue3(i) =  sqrt(2.D0)*Ss
+!RRH: ^^^
 
      end do
 

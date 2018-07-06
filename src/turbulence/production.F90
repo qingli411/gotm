@@ -5,7 +5,10 @@
 ! !ROUTINE: Update turbulence production\label{sec:production}
 !
 ! !INTERFACE:
-   subroutine production(nlev,NN,SS,CSSTK,xP)
+!RRH:vvv
+!  subroutine production(nlev,NN,SS,CSSTK,xP)
+   subroutine production(nlev,NN,SS,SSSTK,CSSTK,xP)
+!RRH:^^^
 !
 ! !DESCRIPTION:
 !  This subroutine calculates the production terms of turbulent kinetic
@@ -54,6 +57,9 @@
    use turbulence, only: P,B,Pb
    use turbulence, only: PS
    use turbulence, only: num,nuh
+!RRH:vvv
+   use turbulence, only: nucl
+!RRH:^^^
    use turbulence, only: alpha,iw_model
    IMPLICIT NONE
 !
@@ -68,6 +74,11 @@
 !  shear-frequency squared (1/s^2)
    REALTYPE, intent(in)                :: SS(0:nlev)
 
+!RRH:vvv
+!  Stokes shear squared (1/s^2)
+   REALTYPE, intent(in)                :: SSSTK(0:nlev)
+
+!RRH:^^^
 !  Stokes-Eulerian cross-shear (1/s^2)
    REALTYPE, intent(in)                :: CSSTK(0:nlev)
 
@@ -94,16 +105,36 @@
    if ( PRESENT(xP) ) then
       do i=0,nlev
          P(i)    =  num(i)*( SS(i)+alpha_eff*NN(i) ) + xP(i)
+!RRH:vvv
+#if defined(STOKESFLUX)
+         P(i)    =  P(i) + nucl(i)*CSSTK(i)
+#endif
+!RRH:^^^
          B(i)    = -nuh(i)*NN(i)
          Pb(i)   = -  B(i)*NN(i)
          PS(i)   =  num(i)*CSSTK(i)
+!RRH:vvv
+#if defined(STOKESFLUX)
+         PS(i)    =  PS(i) + nucl(i)*SSSTK(i)
+#endif
+!RRH:^^^
       enddo
    else
       do i=0,nlev
          P(i)    =  num(i)*( SS(i)+alpha_eff*NN(i) )
+!RRH:vvv
+#if defined(STOKESFLUX)
+         P(i)    =  P(i) + nucl(i)*CSSTK(i)
+#endif
+!RRH:^^^
          B(i)    = -nuh(i)*NN(i)
          Pb(i)   = -  B(i)*NN(i)
          PS(i)   =  num(i)*CSSTK(i)
+!RRH:vvv
+#if defined(STOKESFLUX)
+         PS(i)    =  PS(i) + nucl(i)*SSSTK(i)
+#endif
+!RRH:^^^
       enddo
    endif
 

@@ -5,7 +5,10 @@
 ! !ROUTINE: The V-momentum equation\label{sec:vequation}
 !
 ! !INTERFACE:
-   subroutine vequation(nlev,dt,cnpar,ty,num,gamv,Method)
+!RRH: vvv
+!  subroutine vequation(nlev,dt,cnpar,ty,num,gamv,Method)
+   subroutine vequation_stokesflux(nlev,dt,cnpar,ty,num,nucl,dvsdz,gamv,Method)
+!RRH: ^^^
 !
 ! !DESCRIPTION:
 !  This subroutine computes the transport of momentum in
@@ -73,6 +76,14 @@
 !  diffusivity of momentum (m^2/s)
    REALTYPE, intent(in)                :: num(0:nlev)
 
+!RRH:vvv
+!  eddy coefficient of momentum flux down the Stokes gradient (m^2/s)
+   REALTYPE, intent(in)                :: nucl(0:nlev)
+
+!  vertical gradient of Stokes drift in the y-direction (s^-1)
+   REALTYPE, intent(in)                :: dvsdz(0:nlev)
+
+!RRH:^^^
 !  non-local flux of momentum (m^2/s^2)
    REALTYPE, intent(in)                :: gamv(0:nlev)
 
@@ -155,6 +166,12 @@
       Qsour(i) = Qsour(i) - ( gamv(i) - gamv(i-1) )/h(i)
 #endif
 
+!RRH: vvv
+!     add down Stokes gradient fluxes
+      Qsour(i) = Qsour(i) + ( nucl(i)*dvsdz(i) -                        &
+                              nucl(i-1)*dvsdz(i-1) )/h(i)
+!RRH: ^^^
+
    end do
 
 !  implement bottom friction as source term
@@ -181,7 +198,7 @@
    endif
 
    return
-   end subroutine vequation
+   end subroutine vequation_stokesflux
 !EOC
 
 !-----------------------------------------------------------------------

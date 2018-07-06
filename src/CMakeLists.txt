@@ -282,8 +282,10 @@ add_library(meanflow
             meanflow/stratification.F90
             meanflow/temperature.F90
             meanflow/uequation.F90
+            meanflow/uequation_stokesflux.F90
             meanflow/updategrid.F90
             meanflow/vequation.F90
+            meanflow/vequation_stokesflux.F90
             meanflow/wequation.F90
            )
 target_link_libraries(meanflow util observations airsea)

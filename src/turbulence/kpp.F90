@@ -1967,8 +1967,8 @@
    ! include the effect of penetrating solar radiation
    tRadSrf   =   tRad(nlev)
    do k = 0,nlev
-      gamh(k)   =  gamh(k)*(tFlux+tRadSrf-tRad(k))
-      gams(k)   =  gams(k)*sFlux
+      gamh(k)   = -gamh(k)*(tFlux+tRadSrf-tRad(k))
+      gams(k)   = -gams(k)*sFlux
    enddo
 
 !  no non-local fluxes at top and bottom

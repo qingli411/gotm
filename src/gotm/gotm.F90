@@ -305,6 +305,10 @@
 ! TODO: Why call do_input again? <19-12-17, Qing Li> !
    call do_input(julianday,secondsofday,nlev,z)
 
+!  reset some quantities, added by Peng Wang, UCLA
+   tx = tx/rho_0
+   ty = ty/rho_0
+
 !  Call stratification to make sure density has sensible value.
 !  This is needed to ensure the initial density is saved correctly, and also for FABM.
    call stratification(nlev,buoy_method,dt,cnpar,nuh,gamh)

@@ -220,13 +220,13 @@
          <kpp_bbl>False</kpp_bbl>
          <kpp_interior>True</kpp_interior>
          <clip_mld>False</clip_mld>
-         <lcvmix>False</lcvmix>
-         <lnoDGat1>True</lnoDGat1>
          <Ric>0.3</Ric>
-         <langmuir_method>0</langmuir_method>
+         <kpp_opt>0</kpp_opt>
+         <lnoDGat1>True</lnoDGat1>
          <interp_type>quadratic</interp_type>
          <interp_type2>LMD94</interp_type2>
          <MatchTechnique>SimpleShapes</MatchTechnique>
+         <langmuir_method>0</langmuir_method>
       </kpp>
    </kpp>
    <osm>

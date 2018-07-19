@@ -770,16 +770,15 @@
          <element name="kpp_interior" type="bool" label=".true. for active interior mixing" />
          <element name="clip_mld" type="bool" label=".true. for clipping of MLD at MO or Ekman scale" />
          <element name="Ric" type="float" label="critical value of bulk Richardson number" />
-         <element name="lcvmix" type="bool" label=".true. for using CVMix" />
-         <element name="lnoDGat1" type="bool" label=".true. for setting G'(0) = 0" />
-         <element name="langmuir_method" type="int" label="method to include Langmuir turbulence">
-            <condition type="eq" variable="./lcvmix" value="True" />
+         <element name="kpp_opt" type="int" label="KPP options" >
             <options>
-               <option value="0" label="none"/>
-               <option value="1" label="Langmuir mixing from an enhancement factor (Li et al., 2016)" />
-               <option value="2" label="Langmuir mixing + Langmuir enhanced entrainment (Li and Fox-Kemper, 2017)" />
-               <option value="3" label="Langmuir mixing + Langmuir enhanced Vt2 (Reichl et al., 2016)" />
+               <option value="0" label="Default formulation in GOTM" />
+               <option value="1" label="CVMix" />
+               <option value="2" label="ROMS-UCLA" />
             </options>
+         </element>
+         <element name="lnoDGat1" type="bool" label=".true. for setting G'(0) = 0" >
+            <condition type="eq" variable="./kpp_opt" value="1" />
          </element>
          <element name="interp_type" type="string" label="interpolation method used to interpolate bulk Richardson number">
             <options>
@@ -787,6 +786,7 @@
                <option value="quadratic" label="Quadratic interpolation (default if not set)" />
                <option value="cubic" label="Cubic spline interpolation" />
             </options>
+            <condition type="eq" variable="./kpp_opt" value="1" />
          </element>
          <element name="interp_type2" type="string" label="interpolation method used to interpolate diff and visc at OBL depth">
             <options>
@@ -795,6 +795,7 @@
                <option value="cubic" label="Cubic spline interpolation" />
                <option value="cubic" label="Following LMD94 (default if not set)" />
             </options>
+            <condition type="eq" variable="./kpp_opt" value="1" />
          </element>
          <element name="MatchTechnique" type="string" label="interpolation method used to interpolate diff and visc at OBL depth">
             <options>
@@ -802,6 +803,16 @@
                <option value="MatchGradient" label="Shape function for nonlocal term vanishes at interface, but gradient term matches interior values" />
                <option value="MatchBoth" label="Shape functions for both the gradient and nonlocal term match interior values at interface" />
                <option value="ParabolicNonLocal" label="Shape function for the nonlocal term is (1-sigma)^2, gradient term is sigma*(1-sigma)^2" />
+            </options>
+            <condition type="eq" variable="./kpp_opt" value="1" />
+         </element>
+         <element name="langmuir_method" type="int" label="method to include Langmuir turbulence">
+            <condition type="eq" variable="./kpp_opt" value="1" />
+            <options>
+               <option value="0" label="none"/>
+               <option value="1" label="Langmuir mixing from an enhancement factor (Li et al., 2016)" />
+               <option value="2" label="Langmuir mixing + Langmuir enhanced entrainment (Li and Fox-Kemper, 2017)" />
+               <option value="3" label="Langmuir mixing + Langmuir enhanced Vt2 (Reichl et al., 2016)" />
             </options>
          </element>
       </element>

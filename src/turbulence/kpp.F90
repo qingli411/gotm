@@ -2217,7 +2217,6 @@
 
    do k = nlev-1,ksbl,-1
      zscale = z_w(nlev) - z_w(k)
-     Bfsfc = Bo + ( bRad(nlev)-bRad(k) )
      if (Bfsfc .lt. _ZERO_) zscale = min(zscale, epsilon*hbl)
 
      call wscale(Bfsfc,ustar,zscale,wm,ws)

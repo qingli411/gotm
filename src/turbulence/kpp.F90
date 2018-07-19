@@ -338,6 +338,10 @@
    integer, parameter, public ::  KPP_LT_LF17 = 2
    integer, parameter, public ::  KPP_LT_RWHGK16 = 3
 
+!  kpp options
+   integer, parameter         ::  KPP_OPT_GOTM  = 0 ! KPP-GOTM
+   integer, parameter         ::  KPP_OPT_CVMIX = 1 ! KPP-CVMix
+   integer, parameter         ::  KPP_OPT_ROMS  = 2 ! KPP-ROMS-UCLA
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
@@ -385,8 +389,8 @@
 !  method to parameterize the effects of Langmuir turbulence
    integer, public                       ::    langmuir_method
 
-!  use CVMix if true
-   logical                               ::    lcvmix
+!  KPP option
+   integer                               ::    kpp_opt
 
 !  CVMix parameters
 !  G'(1) = 0 (shape function) if true, compute G'(1) as in LMD94 if false
@@ -505,7 +509,7 @@
    character(len=15) :: langmuir_entrainment_method
 
    namelist /kpp/                      kpp_sbl, kpp_bbl, kpp_interior,  &
-                                       clip_mld, Ric, lcvmix,           &
+                                       clip_mld, Ric, kpp_opt,           &
                                        langmuir_method,                 &
                                        lnoDGat1, MatchTechnique,        &
                                        interp_type, interp_type2
@@ -524,8 +528,10 @@
    close (namlst)
 
 #ifndef KPP_CVMIX
-!  force lcvmix to be false if CVMix library is not loaded
-   lcvmix = .false.
+!  stop if KPP_CVMIX is not defined and CVMix is chosen
+   if (kpp_opt .eq. KPP_OPT_CVMIX) then
+      stop 'init_kpp: Recompile with KPP_CVMIX to use CVMix'
+   end if
 #endif
 
    LEVEL2 'done.'
@@ -652,8 +658,18 @@
          LEVEL4 'Clipping at Ekman/Oboukhov scale   - not active -   '
       endif
 ! CVMix
-      if (lcvmix) then
-         LEVEL4 'Use CVMix                              - active -   '
+      select case (kpp_opt)
+      case (KPP_OPT_CVMIX)
+         LEVEL4 'KPP Option: CVMix '
+      case (KPP_OPT_GOTM)
+         LEVEL4 'KPP Option: GOTM default '
+      case (KPP_OPT_ROMS)
+         LEVEL4 'KPP Option: ROMS-UCLA '
+      case default
+         stop 'init_kpp: unsupported kpp_opt'
+      end select
+
+      if (kpp_opt .eq. KPP_OPT_CVMIX) then
          LEVEL4 'Matching technique: ', trim(MatchTechnique)
          LEVEL4 'Interpolation type for Ri: ', trim(interp_type)
          LEVEL4 'Interpolation type for diff and visc: ', trim(interp_type2)
@@ -663,7 +679,6 @@
             LEVEL4 "Set shape function G'(1) = 0    - not active -   "
          endif
       else
-         LEVEL4 'Use CVMix                          - not active -   '
 # ifdef KPP_SALINITY
          LEVEL4 'Compute salinity fluxes                - active -   '
 # else
@@ -690,9 +705,7 @@
          LEVEL4 'Clipping G''(sigma) for matching    - not active -   '
 # endif
       endif
-
       LEVEL4 'Ri_c  = ', Ric
-
    else
       LEVEL3 'Surface layer mixing algorithm         - not active -   '
    endif
@@ -732,7 +745,14 @@
 
    LEVEL2 '--------------------------------------------------------'
 
-   if (lcvmix) then
+   select case (kpp_opt)
+   case (KPP_OPT_GOTM)
+!     pre-compute coefficient for turbulent shear velocity
+      Vtc=Cv*sqrt(-betaT)/(sqrt(kpp_cs*epsilon)*Ric*kappa*kappa)
+!     pre-compute proportionality coefficient for
+!     boundary layer non-local transport
+      Cg=Cstar*kappa*(kpp_cs*kappa*epsilon)**(1.0/3.0)
+   case (KPP_OPT_CVMIX)
 #ifdef KPP_CVMIX
 !     CVMix: initialize parameter datatype
       call cvmix_init_kpp(ri_crit=Ric,                                &
@@ -759,16 +779,15 @@
       call cvmix_put(CVmix_vars, 'Tdiff', nuh)
       call cvmix_put(CVmix_vars, 'Sdiff', nus)
 #endif
-   else
+   case (KPP_OPT_ROMS)
 !     pre-compute coefficient for turbulent shear velocity
       Vtc=Cv*sqrt(-betaT)/(sqrt(kpp_cs*epsilon)*Ric*kappa*kappa)
-
-
 !     pre-compute proportionality coefficient for
 !     boundary layer non-local transport
       Cg=Cstar*kappa*(kpp_cs*kappa*epsilon)**(1.0/3.0)
-
-   end if
+   case default
+      stop 'init_kpp: unsupported kpp_opt'
+   end select
 !  set acceleration of gravity and reference density
    g        = kpp_g
    rho_0    = kpp_rho_0
@@ -940,15 +959,21 @@
 !-----------------------------------------------------------------------
 
    if (kpp_sbl) then
-      if (lcvmix) then
+      select case (kpp_opt)
+      case (KPP_OPT_GOTM)
+         call surface_layer(nlev,h,rho,u,v,NN,u_taus,u_taub,         &
+                         tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f)
 #ifdef KPP_CVMIX
+      case (KPP_OPT_CVMIX)
          call surface_layer_cvmix(nlev,h,rho,u,v,NN,u_taus,u_taub,   &
                          tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f)
 #endif
-      else
-         call surface_layer(nlev,h,rho,u,v,NN,u_taus,u_taub,         &
+      case (KPP_OPT_ROMS)
+         call surface_layer_roms(nlev,h,u,v,NN,u_taus,               &
                          tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f)
-      end if
+      case default
+         stop 'do_kpp: unsupported kpp_opt'
+      end select
    endif
 
 !-----------------------------------------------------------------------
@@ -1242,7 +1267,6 @@
    REALTYPE                     :: dGs1dS
    REALTYPE                     :: f1
    REALTYPE                     :: sl_dpth,sl_z
-   REALTYPE                     :: swdk
    REALTYPE                     :: wm
    REALTYPE                     :: ws
    REALTYPE                     :: depth
@@ -1986,6 +2010,271 @@
 !-----------------------------------------------------------------------
 !BOP
 !
+! !IROUTINE: Compute turbulence in the surface layer using the ROMS-UCLA
+!            formulation \label{sec:kppSurface}
+!
+! !INTERFACE:
+   subroutine surface_layer_roms(nlev,h,u,v,NN,ustar,                      &
+                                 tFlux,btFlux,sFlux,bsFlux,tRad,bRad,f)
+!
+! !DESCRIPTION:
+! In this routine all computations related to turbulence in the surface layer
+! are performed. The algorithms are described in \sect{sec:kpp}. Note that these
+! algorithms are affected by some pre-processor macros defined in {\tt cppdefs.inp},
+! and by the parameters set in {\tt kpp.nml}, see \sect{sec:kpp}.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+!  number of grid cells
+   integer                             :: nlev
+
+!  thickness of grid cells (m)
+   REALTYPE, intent(in)                :: h(0:nlev)
+
+!  velocity components at grid centers (m/s)
+   REALTYPE, intent(in)                :: u(0:nlev),v(0:nlev)
+
+!  square of buoyancy frequency (1/s^2)
+   REALTYPE, intent(in)                :: NN(0:nlev)
+
+!  surface friction velocities (m/s)
+   REALTYPE, intent(in)                :: ustar
+
+!  surface temperature flux (K m/s) and
+!  salinity flux (psu m/s) (negative for loss)
+   REALTYPE, intent(in)                :: tFlux,sFlux
+
+!  surface buoyancy fluxes (m^2/s^3) due to
+!  heat and salinity fluxes
+   REALTYPE, intent(in)                :: btFlux,bsFlux
+
+!  radiative flux [ I(z)/(rho Cp) ] (K m/s)
+!  and associated buoyancy flux (m^2/s^3)
+   REALTYPE, intent(in)                :: tRad(0:nlev),bRad(0:nlev)
+
+   REALTYPE, intent(in)                :: f
+
+!  Local variables:
+!  constant for computation of Ekman scale (C_EK = 258.)
+   REALTYPE, parameter                 :: C_Ek = 258.
+
+!  constant for computation of Monin-Obukhov scale (C_MO = 1.)
+   REALTYPE, parameter                 :: C_MO = _ONE_
+   REALTYPE, parameter                 :: eps  = 1.0E-10
+
+   integer                             :: k,ksbl,kmo
+   REALTYPE                            :: Bo, Bfsfc
+   REALTYPE                            :: Gm1,Gt1,Gs1
+   REALTYPE                            :: dGm1dS,dGt1dS,dGs1dS
+   REALTYPE                            :: Kern
+   REALTYPE                            :: C_h_MO,h_MO
+   REALTYPE                            :: Gm, Gt, Gs, K_bl, Ribot, Ritop
+   REALTYPE                            :: a1, a2, a3
+   REALTYPE                            :: cff,cff_up,cff_dn
+   REALTYPE                            :: c1,c2,c3
+   REALTYPE                            :: dK_bl, sigma, z_up
+   REALTYPE                            :: Vtsq,f1
+   REALTYPE                            :: hbl
+   REALTYPE                            :: wm,ws,zscale
+   REALTYPE, dimension (0:nlev)        :: FC, Cr, ghat
+   REALTYPE, dimension (0:nlev)        :: bRad_r
+
+!  limit surface boundary layer depth
+!  with respect to Ekman depth and Monin-Obukov depth
+   logical                             :: lekman, lmonob
+
+   lekman = clip_mld
+   lmonob = clip_mld
+
+!  surface buoyancy flux (negative for buoyancy loss)
+   Bo = btFlux + bsFlux
+
+   ksbl      = 0
+   Cr(nlev)  = _ZERO_
+   Cr(0)     = _ZERO_
+   FC(nlev)  = _ZERO_
+   bRad_r(0) = _ZERO_
+
+   if (lmonob) then
+     kmo = 0
+     C_h_MO = C_MO*ustar**3/kappa
+   end if
+
+! boundary layer depth from previous time step
+   hbl = z_w(nlev) - zsbl
+
+!#ifdef INT_AT_RHO_POINTS
+   do k = nlev-1,1,-1
+     zscale = z_w(nlev) - z_r(k)
+     Kern = zscale/(zscale + epsilon*hbl)
+
+     if (lekman) then
+       FC(k) = FC(k+1) + Kern*(            &
+             2. *((u(k+1)-u(k))**2 + (v(k+1)-v(k))**2)/(h(k)+h(k+1))  &
+            -0.5*(h(k)+h(k+1))*( NN(k)/Ric+C_Ek*f**2    )           )
+     else
+       FC(k) = FC(k+1) + Kern*(            &
+             2. *((u(k+1)-u(k))**2 + (v(k+1)-v(k))**2)/(h(k)+h(k+1))  &
+            -0.5*(h(k)+h(k+1))*NN(k)/Ric)
+     endif
+   enddo
+
+! search surface mixed layer depth
+   do k = nlev,1,-1
+     bRad_r(k) = sqrt(bRad(k)*bRad(k-1))
+     zscale = z_w(nlev) - z_r(k)
+     Bfsfc = Bo + ( bRad(nlev)-bRad_r(k) )
+
+     if (Bfsfc .lt. _ZERO_) zscale = min(zscale, epsilon*hbl)
+
+     call wscale(Bfsfc,ustar,zscale,wm,ws)
+
+     Vtsq = Vtc*ws*sqrt(max(0.,NN(k-1)))
+     Cr(k) = FC(k) + Vtsq
+
+     if (ksbl.eq.0 .and. Cr(k).lt.0.) ksbl = k
+     if (lmonob) then
+       if (kmo.eq.0 .and. Bfsfc*(z_w(nlev)-z_r(k)).gt.C_h_MO) kmo=k
+     endif
+   enddo
+
+   hbl = z_w(nlev) - z_w(0)
+   if (ksbl.gt.0) then
+     k = ksbl
+     if (k.eq.nlev) then
+       hbl = z_w(nlev) - z_r(nlev)
+     else
+       hbl = z_w(nlev) - (z_r(k)*Cr(k+1) - z_r(k+1)*Cr(k))   &
+                     /(Cr(k+1)-Cr(k))
+     endif
+   endif   !--> discard Cr and ksbl
+
+   if (lmonob) then
+     if (kmo.gt.0) then
+       k = kmo
+       if (k.eq.nlev) then
+         z_up = z_w(nlev)
+         cff_up = max(0., Bo)
+       else
+         z_up = z_r(k+1)
+         cff_up = max(0., Bo+(bRad(nlev)-bRad_r(k+1)))
+       endif
+       cff_dn = max(0., Bo+(bRad(nlev)-bRad_r(k)))
+       h_MO = z_w(nlev) + C_h_MO*(cff_up*z_up - cff_dn*z_r(k))      &
+                             /( cff_up*cff_dn*(z_up - z_r(k))       &
+                                   +C_h_MO*(cff_dn-cff_up)       )
+       hbl = min(hbl, max(h_MO,0.))
+     endif
+   endif
+!#endif /* INT_AT_RHO_POINTS */
+
+   ksbl = nlev
+   do k = nlev-1,1,-1
+     if (z_w(k) .gt. z_w(nlev)-hbl)   ksbl = k
+   enddo
+
+   k = ksbl
+   zsbl = z_w(nlev) - hbl
+   zscale = hbl
+
+   if (bRad(k-1) .gt. _ZERO_) then
+     Bfsfc = Bo + (bRad(nlev)-bRad(k-1)*bRad(k)*(z_w(k)-z_w(k-1))   &
+                            /(bRad(k  )*(z_w(k) - zsbl    )         &
+                             +bRad(k-1)*(zsbl   - z_w(k-1))))
+   else
+     Bfsfc = Bo + bRad(nlev)
+   endif
+
+   if (Bfsfc .lt. _ZERO_) zscale = min(zscale, epsilon*hbl)
+
+   call wscale(Bfsfc,ustar,zscale,wm,ws)
+
+   ! TODO: remove kappa? <17-07-18, Qing Li> !
+   f1 = 5.*max(0.,Bfsfc)*kappa/(ustar**4+eps)
+
+   cff=_ONE_/(z_w(ksbl)-z_w(ksbl-1))
+   cff_up=cff*(zsbl-z_w(ksbl-1))
+   cff_dn=cff*(z_w(ksbl) -zsbl)
+
+   K_bl=cff_up*num(ksbl)+cff_dn*num(ksbl-1)
+   dK_bl=cff * (num(ksbl)   -    num(ksbl-1))
+   Gm1=K_bl/(hbl*wm+eps)
+   dGm1dS=min(0., K_bl*f1-dK_bl/(wm+eps))
+
+   K_bl=cff_up*nuh(ksbl)+cff_dn*nuh(ksbl-1)
+   dK_bl=cff * (nuh(ksbl)   -    nuh(ksbl-1))
+   Gt1=K_bl/(hbl*ws+eps)
+   dGt1dS=min(0., K_bl*f1-dK_bl/(ws+eps))
+
+#ifdef KPP_SALINITY
+   K_bl=cff_up*nus(ksbl)+cff_dn*nus(ksbl-1)
+   dK_bl=cff * (nus(ksbl)   -    nus(ksbl-1))
+   Gs1=K_bl/(hbl*ws+eps)
+   dGs1dS=min(0., K_bl*f1-dK_bl/(ws+eps))
+#endif
+
+   do k = nlev-1,ksbl,-1
+     zscale = z_w(nlev) - z_w(k)
+     if (Bfsfc .lt. _ZERO_) zscale = min(zscale, epsilon*hbl)
+
+     call wscale(Bfsfc,ustar,zscale,wm,ws)
+
+! Compute vertical mixing coefficients
+     sigma = (z_w(nlev)-z_w(k))/max(hbl,eps)
+     a1 = sigma-2.
+     a2 = 3.-2.*sigma
+     a3 = sigma - _ONE_
+
+     if (sigma.lt.0.07) then
+       cff = 0.5*(sigma-0.07)**2/0.07
+     else
+       cff = _ZERO_
+     endif
+
+     num(k) = wm*hbl*(cff + sigma*(_ONE_+sigma*(a1+a2*Gm1+a3*dGm1dS)))
+     nuh(k) = ws*hbl*(cff + sigma*(_ONE_+sigma*(a1+a2*Gt1+a3*dGt1dS)))
+#ifdef KPP_SALINITY
+     nus(k) = ws*hbl*(cff + sigma*(_ONE_+sigma*(a1+a2*Gs1+a3*dGs1dS)))
+#endif
+
+#ifdef NONLOCAL
+     if (Bfsfc .lt. 0.) then
+       ghat(k) = Cg * sigma*(_ONE_-sigma)**2
+     else
+       ghat(k) = _ZERO_
+     endif
+#endif
+   enddo
+
+#ifdef NONLOCAL
+   do k = ksbl-1,1,-1   ! below surface boundary layer
+     ghat(k) = _ZERO_
+   enddo
+#endif
+
+#ifdef NONLOCAL
+   gamh(0) = _ZERO_
+   gams(0) = _ZERO_
+   gamh(nlev) = _ZERO_
+   gams(nlev) = _ZERO_
+
+   do k = 1,nlev-1
+     gamh(k) = -ghat(k)*(tFlux+tRad(nlev))
+# ifdef KPP_SALINITY
+     gams(k) = -ghat(k)*sFlux
+# endif
+   enddo
+#endif
+
+ end subroutine surface_layer_roms
+!EOC
+
+
+!-----------------------------------------------------------------------
+!BOP
+!
 ! !IROUTINE: Compute turbulence in the bottom layer \label{sec:kppBottom}
 !
 ! !INTERFACE:
@@ -2073,7 +2362,6 @@
    REALTYPE                     :: dGs1dS
    REALTYPE                     :: f1
    REALTYPE                     :: bl_dpth,bl_z
-   REALTYPE                     :: swdk
    REALTYPE                     :: wm
    REALTYPE                     :: ws
    REALTYPE                     :: depth

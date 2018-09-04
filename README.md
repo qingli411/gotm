@@ -8,10 +8,10 @@ This copy of GOTM code is used as a driver to setup simulations to compare diffe
 * [CVMix](https://github.com/CVMix/CVMix-src) support.
 * Langmuir mixing parameterization and Langmuir turbulence enhanced entrainment in KPP via CVMix ([Li et al., 2016](https://doi.org/10.1016%2Fj.ocemod.2015.07.020); [Li and Fox-Kemper, 2017](https://doi.org/10.1175%2FJPO-D-17-0085.1)).
 * Langmuir turbulence parameterization in tropical cyclone conditions via CVMix ([Reichl et al., 2016](https://doi.org/10.1175/JPO-D-15-0106.1)).
-* ePBL.
-* OSMOSIS scheme. _Testing._
-* Second moment closure models of Langmuir turbulence ([Harcourt 2013](https://doi.org/10.1175%2FJPO-D-12-0105.1), [2015](https://doi.org/10.1175%2FJPO-D-14-0046.1)). _Testing._
-* UCLA ROMS KPP. _To be included._
+* ePBL and ePBL-LT.
+* OSMOSIS scheme.
+* Second moment closure models of Langmuir turbulence ([Harcourt 2013](https://doi.org/10.1175%2FJPO-D-12-0105.1), [2015](https://doi.org/10.1175%2FJPO-D-14-0046.1)).
+* UCLA ROMS KPP ([McWilliams et al., 2009](https://doi.org/10.1175%2F2009JPO4130.1)).
 
 # Install
 
@@ -33,7 +33,7 @@ in the terminal. See `${GOTM_ROOT}/src/cmake/Modules/FindNetCDF.cmake` for more 
 
 ## CVMix
 
-To use [CVMix](https://github.com/CVMix/CVMix-src) in GOTM, CVMix needs to be compiled separately. See [here](https://github.com/CVMix/CVMix-src) for more details on how to compile CVMix.
+To use [CVMix](https://github.com/CVMix/CVMix-src) in GOTM, CVMix needs to be compiled separately. See [here](https://github.com/CVMix/CVMix-src) for more details on how to compile CVMix. Set the environment variable `CVMIX_ROOT` to the directory where precompiled CVMix is located. CMake uses it to locate the CVMix library. The rules are set in the file `${GOTM_ROOT}/src/cmake/Modules/FindCVMix.cmake`.
 
 To compile GOTM with CVMix, add the flag `-DGOTM_USE_CVMix=true` for `cmake`, i.e.,
 ```sh
@@ -42,6 +42,4 @@ make install
 ```
 where `${srcdir}` is the directory of the GOTM source code.
 
-The file `${GOTM_ROOT}/src/cmake/Modules/FindCVMix.cmake` sets the rules CMake uses to find the CVMix library. By default it assumes the compiled CVMix is located in either `${HOME}/CVMix-src` or `${HOME}/local/CVMix-src`. This file should be modified accordingly if CVMix is located in a different directory. Here is how it works. It tries to determine the root directory of CVMix (`CVMix_PREFIX`) by looking for `src/cvmix_driver.F90` in the above directories. Then it determines `CVMix_LIBRARIES` by looking for `libcvmix` in `${CVMix_PREFIX}/lib` and `CVMix_INCLUDE_DIRS` by looking for `cvmix_kpp.mod` in `${CVMix_PREFIX}/include`.
-
-Also make sure `#define KPP_CVMIX` is set in `${GOTM_ROOT}/include/cppdefs.h`. This allows compiling GOTM without CVMix by `#undef KPP_CVMIX`. Note that this option overrides `lcvmix` in `kpp.nml`.
+Also make sure `#define KPP_CVMIX` is set in `${GOTM_ROOT}/include/cppdefs.h`. This allows compiling GOTM without CVMix by `#undef KPP_CVMIX`.

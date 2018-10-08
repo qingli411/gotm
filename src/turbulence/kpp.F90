@@ -2858,15 +2858,17 @@
 !-----------------------------------------------------------------------
 
    ! select Langmuir number
+   ! impose a lower limit of 0.4 for La_SL to avoid too much entrainment
+   ! when La_SL is occasionally very small
    select case(langmuir_method)
    case (KPP_LT_NOLANGMUIR)
       la = _ONE_/SMALL
    case (KPP_LT_LWF16)
-      la = La_SL
+      la = max(0.4, La_SL)
    case (KPP_LT_LF17)
-      la = La_SL
+      la = max(0.4, La_SL)
    case (KPP_LT_RWHGK16)
-      la = La_SLP2
+      la = max(0.4, La_SLP2)
    case default
       stop "kpp_langmuir_number: unsupported langmuir_method"
    end select
@@ -2910,10 +2912,10 @@
    case (KPP_LT_NOLANGMUIR)
       efactor = _ONE_
    case (KPP_LT_LWF16)
-      efactor = min(5.0, &
+      efactor = min(2.0, &
            abs(cos(theta_WL))*sqrt(_ONE_+(1.5*La_SLP1)**(-2.)+(5.4*La_SLP1)**(-4.)))
    case (KPP_LT_LF17)
-      efactor = min(5.0, &
+      efactor = min(2.0, &
            abs(cos(theta_WL))*sqrt(_ONE_+(1.5*La_SLP1)**(-2.)+(5.4*La_SLP1)**(-4.)))
    case (KPP_LT_RWHGK16)
       efactor = min(2.25, _ONE_ + _ONE_/La_SLP2)

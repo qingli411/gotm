@@ -266,7 +266,7 @@ add_library(observations
             observations/observations.F90
             observations/stokes.F90
            )
-target_link_libraries(observations util input)
+target_link_libraries(observations util input airsea)
 set(GOTM_LIBS ${GOTM_LIBS} observations)
 
 add_library(meanflow

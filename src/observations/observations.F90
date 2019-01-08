@@ -1069,7 +1069,7 @@
          ustokes(:) = US(:)
          vstokes(:) = VS(:)
       case (DHH85SPEC)
-         call stokes_drift_dhh85(nlev,z,zi,u10,v10,wave_age,ustokes,vstokes)
+         call stokes_drift_dhh85(nlev,z,zi,u10,v10,wave_age,us_x,us_y,delta,ustokes,vstokes)
       case default
          LEVEL1 'A non-valid ustokes_method has been given ', ustokes_method
          stop 'stokes_drift()'
@@ -1439,7 +1439,8 @@
 ! !IROUTINE: stokes_drift_dhh85
 !
 ! !INTERFACE:
-   subroutine stokes_drift_dhh85(nlev,z,zi,u10,v10,wave_age,ustokes,vstokes)
+   subroutine stokes_drift_dhh85(nlev,z,zi,u10,v10,wave_age,           &
+                                 us_x,us_y,delta,ustokes,vstokes)
 !
 ! !DESCRIPTION:
 !  Compute grid cell-averaged Stokes drift profile from the empirical wave
@@ -1455,6 +1456,7 @@
    REALTYPE, intent(in)                :: u10, v10, wave_age
 !
 ! !OUTPUT PARAMETERS:
+   REALTYPE, intent(out)               :: us_x, us_y, delta
    REALTYPE, intent(out)               :: ustokes(0:nlev), vstokes(0:nlev)
 !
 ! !REVISION HISTORY:
@@ -1467,13 +1469,14 @@
 
    integer                 :: i, k
    REALTYPE                :: xcomp, ycomp, wind_speed
-   REALTYPE                :: domega, sd_omega, tmp, dz
+   REALTYPE                :: domega, sd_omega, tmp, dz, ustran
 !-----------------------------------------------------------------------
 !BOC
 
 !  initialization
    ustokes = _ZERO_
    vstokes = _ZERO_
+   ustran = _ZERO_
 
 !  wind direction
    wind_speed = sqrt(u10**2+v10**2)
@@ -1494,7 +1497,11 @@
       enddo
       ustokes(k) = xcomp * tmp
       vstokes(k) = ycomp * tmp
+      ustran = ustran + dz * tmp
    enddo
+   us_x = ustokes(nlev)
+   us_y = vstokes(nlev)
+   delta = ustran/max(SMALL, sqrt(us_x**2.+us_y**2.))
 
    end subroutine stokes_drift_dhh85
 !EOC

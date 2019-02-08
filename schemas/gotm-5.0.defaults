@@ -416,6 +416,7 @@
          <spec_file>spec_file.dat</spec_file>
          <usp_file>usp_file.dat</usp_file>
          <usdelta_file>usdelta_file.dat</usdelta_file>
+         <wave_age>1.2</wave_age>
       </stokes_drift>
    </obs>
    <seagrass>

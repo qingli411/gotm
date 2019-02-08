@@ -27,7 +27,7 @@
 !  http://www.coaps.fsu.edu/COARE/flux\_algor/flux.html.
 !
 ! !USES:
-   use airsea_variables, only: kelvin,const06,rgas,rho_0,g,rho_0,kappa
+   use airsea_variables, only: kelvin,const06,rgas,rho_0,g,kappa
    use airsea_variables, only: qs,qa,rhoa
    use airsea_variables, only: cpa,cpw
    use airsea, only: rain_impact,calc_evaporation

@@ -771,7 +771,6 @@
       call cvmix_put_kpp("a_s", kpp_as)
       call cvmix_put_kpp("c_m", kpp_cm)
       call cvmix_put_kpp("c_s", kpp_cs)
-      call cvmix_put_kpp("Cv", Cv)
       call cvmix_put(CVmix_vars, 'nlev', nlev)
       call cvmix_put(CVmix_vars, 'max_nlev', nlev)
       call cvmix_put(CVmix_vars, 'ocn_depth', h0)
@@ -1895,7 +1894,7 @@
                 delta_buoy_cntr = (/-gorho0*(Rref-Rk)/),             &
                 delta_Vsqr_cntr = (/(Uref-Uk)**2+(Vref-Vk)**2/),     &
                 ws_cntr = (/ws/),                                    &
-                Nsqr_iface = (/NN(k), NN(kp1)/),                     &
+                Nsqr_iface = (/NN(kp1), NN(k)/),                     &
                 EFactor = EFactor,                                   &
                 LaSL = LaSL,                                         &
                 bfsfc = Bflux(kp1),                                  &

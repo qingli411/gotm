@@ -881,6 +881,9 @@
          <element name="mixlenexponent" type="float" label="Exponent gamma used to set shape of mixing profile for 0&lt;|z|&lt;H in L=|z|(1-|z|/H)^gamma"/>
          <element name="mke_to_tke_effic" type="float" label="Efficiency (0 to 1) of conversion of MKE to TKE (experimental)."/>
          <element name="wstar_ustar_coef" type="float" label="Ratio (non-dim) multiplied by convectively released energy to convert to turbulent velocity (relative to mechanically forced TKE)"/>
+	 <element name="vstar_mode" type="integer" label="Option for vstar mode (0 for old, 1 for RH18)."/>
+	 <element name="vstar_scale_fac" type="float" label="Non-dim scaling factor for vstar.  Note that the Vstar conversion already includes von Karman coefficient."/>
+	 <element name="vstar_surf_fac" type="float" label="A coefficient multiplied by ustar for surface value of vstar if vstar_mode == 1" />
 	 <element name="vstar_scale_fac" type="float" label="Non-dim scaling factor for vstar.  Note that the Vstar conversion already includes von Karman coefficient."/>
          <element name="cnv_mst_fac" type="float" label="coefficient in reduction of mstar in destabilizing condition"/>
          <element name="translay_scale" type="float" label="Transition Layer Scale for the mixing length at the interface between the OSBL and the interior.  A positive, non-zero value accounts for mixing length not becoming zero at the interface."/>
@@ -889,6 +892,11 @@
          <element name="n2_dissipation_scale_neg" type="float" label="Dissipation scale for TKE (w/ N^2) in the vertical due to unstable stratification."/>
          <element name="n2_dissipation_scale_pos" type="float" label="Dissipation scale for TKE (w/ N^2) in the vertical due to stable stratification."/>
          <element name="mstar_cap" type="float" label="Maximum allowed value of mstar."/>
+	 <element name="rh18_cn1" type="flat" label="cn1 from RH18 mstar"/>
+	 <element name="rh18_cn2" type="flat" label="cn2 from RH18 mstar"/>
+	 <element name="rh18_cn3" type="flat" label="cn3 from RH18 mstar"/>
+	 <element name="rh18_cs1" type="flat" label="cs1 from RH18 mstar"/>
+	 <element name="rh18_cs2" type="flat" label="cs2 from RH18 mstar"/>
          <element name="lt_enhance_form" type="int" label="Choice for including Langmuir turbulence in ePBL">
          <options>
            <option value="0" label="No Langmuir turbulence"/>

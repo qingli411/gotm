@@ -89,7 +89,7 @@ subroutine cvmix_epbl_interface_init(namlst)
 !
 ! Local parameters: see the cvmix_energetic_pbl_CS for descriptions
 !
-  integer :: mstar_mode ,lt_enhance_form
+  integer :: mstar_mode ,lt_enhance_form, vstar_mode
   real :: mstar, nstar, mixlenexponent, tke_decay,mke_to_tke_effic,&
        wstar_ustar_coef,vstar_scale_fac,ekman_scale_coef,&
        translay_scale,mld_tol,min_mix_len,n2_dissipation_scale_neg,&
@@ -98,15 +98,17 @@ subroutine cvmix_epbl_interface_init(namlst)
        lt_enhance_coef, lt_enhance_exp, mstar_n, c_ek, mstar_coef,&
        lac_mldoek, lac_mldoob_stab, lac_ekoob_stab,&
        lac_mldoob_un, lac_ekoob_un, ladepthratio,&
-       max_enhance_m, cnv_mst_fac
+       max_enhance_m, cnv_mst_fac,&
+       vstar_surf_fac,RH18_CN1,RH18_CN2,RH18_CN3,RH18_CS1,RH18_CS2
   logical :: Use_LA_WindSea
 !
   namelist /epbl/ mstar_mode, mstar, nstar, mixlenexponent, &
        tke_decay, mke_to_tke_effic, wstar_ustar_coef, &
-       vstar_scale_fac, ekman_scale_coef, &
+       vstar_mode,vstar_surf_fac,vstar_scale_fac, ekman_scale_coef, &
        translay_scale, mld_tol, min_mix_len, &
        n2_dissipation_scale_neg, n2_dissipation_scale_pos, &
        mstar_cap, mstar_slope, mstar_xint, mstar_at_xint,&
+       rh18_cn1, rh18_cn2, rh18_cn3, rh18_cs1, rh18_cs2,&
        lt_enhance_coef, &
        lt_enhance_exp, mstar_n, c_ek, mstar_coef, &
        Use_LA_WindSea, lac_mldoek, lac_mldoob_stab, &
@@ -124,6 +126,7 @@ subroutine cvmix_epbl_interface_init(namlst)
 ! 2. Fill ePBL control structure from namelist input
 !
   CSepbl%mstar_mode = mstar_mode
+  CSepbl%vstar_mode = vstar_mode
   CSepbl%mstar = mstar
   CSepbl%nstar = nstar
   CSepbl%mixlenexponent=mixlenexponent
@@ -131,6 +134,7 @@ subroutine cvmix_epbl_interface_init(namlst)
   CSepbl%mke_to_tke_effic=mke_to_tke_effic
   CSepbl%wstar_ustar_coef=wstar_ustar_coef
   CSepbl%vstar_scale_fac=vstar_scale_fac
+  CSepbl%vstar_surf_fac=vstar_surf_fac
   CSepbl%ekman_scale_coef=ekman_scale_coef
   CSepbl%translay_scale=translay_scale
   CSepbl%mld_tol=mld_tol
@@ -141,6 +145,11 @@ subroutine cvmix_epbl_interface_init(namlst)
   CSepbl%mstar_slope=mstar_slope
   CSepbl%mstar_xint=mstar_xint
   CSepbl%mstar_at_xint=mstar_at_xint
+  CSepbl%RH18_CN1 = RH18_CN1
+  CSepbl%RH18_CN2 = RH18_CN2
+  CSepbl%RH18_CN3 = RH18_CN3
+  CSepbl%RH18_CS1 = RH18_CS1
+  CSepbl%RH18_CS2 = RH18_CS2
   CSepbl%lt_enhance_coef=lt_enhance_coef
   CSepbl%lt_enhance_exp=lt_enhance_exp
   CSepbl%mstar_n=mstar_n

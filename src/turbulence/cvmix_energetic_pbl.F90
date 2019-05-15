@@ -5,6 +5,8 @@
 ! 1. Add include cppdefs.h (so REALTYPE macro can be used)
 ! 2. Add dependency on GOTM's KPP (where Qing already processed Stokes
 !    drift data, therefore saving me lots of time).
+! 3. Adding updates to the ePBL code that occurred after this was
+!    extracted from MOM6.
 #include"cppdefs.h"
 
 module cvmix_energetic_pbl
@@ -94,9 +96,12 @@ type :: cvmix_energetic_PBL_CS
                                ! turbulent velocity, relative to mechanically
                                ! forced turbulent kinetic energy, nondim. Making
                                ! this larger increases the diffusivity.
+  integer :: vstar_mode = 0 !< An integer to determine which method is used to find vstar
   real    :: vstar_scale_fac=& !An overall nondimensional scaling factor
              1.0               ! for vstar.  Making this larger increases the
                                ! diffusivity.
+  real    :: vstar_surf_fac = 1.2 !< A coefficient multiplied by ustar for surface value of vstar
+                             !! if vstar_mode == 1
   real    :: Ekman_scale_coef=&!A nondimensional scaling factor controlling
              1.0               ! the inhibition of the diffusive length scale by
                                ! rotation.  Making this larger decreases the
@@ -163,8 +168,11 @@ type :: cvmix_energetic_PBL_CS
              0                 !
   integer :: MSTAR_MODE=&      ! An integer to determine which formula is used to
              2                 !  set mstar
-
-
+  real :: RH18_cn1=.275
+  real :: RH18_cn2=8.0
+  real :: RH18_cn3=-5.0
+  real :: RH18_cs1=0.2
+  real :: RH18_cs2=0.4
 
   real    :: MSTAR_XINT_UP ! Similar but for transition to asymptotic cap.
   real :: MSTAR_A,MSTAR_A2 ! MSTAR_A and MSTAR_B are coefficients in asymptote toward limits.
@@ -176,6 +184,7 @@ type :: cvmix_energetic_PBL_CS
   integer :: CONST_MSTAR=0
   integer :: MLD_o_OBUKHOV=1
   integer :: EKMAN_o_OBUKHOV=2
+  integer :: MSTAR_RH18=3
   logical :: MSTAR_FLATCAP=.true. !Set false to use asymptotic mstar cap.
   logical :: TKE_diagnostics = .false.
   logical :: Use_LA_windsea = .false.
@@ -344,6 +353,7 @@ subroutine cvmix_epbl_column(NZ, Kd, &
   real :: I_dtrho   ! 1.0 / (dt * Rho0) in m3 kg-1 s-1.  This is
                     ! used convert TKE back into ustar^3.
   real :: vstar     ! An in-situ turbulent velocity, in m s-1.
+  real :: Surface_Scale
   real :: hbs_here  ! The local minimum of hb_hs and MixLen_shape, times a
                     ! conversion factor from H to M, in m H-1.
   real :: nstar_FC  ! The fraction of conv_PErel that can be converted to mixing, nondim.
@@ -779,7 +789,14 @@ subroutine cvmix_epbl_column(NZ, Kd, &
               h_tt = htot + h_tt_min
               TKE_here = mech_TKE + CS%wstar_ustar_coef*conv_PErel
               if (TKE_here > 0.0) then
-                 vstar = CS%vstar_scale_fac * (I_dtrho*TKE_here)**C1_3
+                 if (CS%vstar_mode==0) then
+                   vstar = CS%vstar_scale_fac * (I_dtrho*TKE_here)**C1_3
+                 elseif (CS%vstar_mode==1) then
+                   Surface_Scale = max(0.05, 1.-htot/MLD_guess)
+                   vstar = CS%vstar_scale_fac * (CS%vstar_surf_fac*U_Star + &
+                         (CS%wstar_ustar_coef*conv_PErel*I_dtrho)**C1_3) *&
+                         Surface_Scale
+                 endif
                  hbs_here = H_to_m * min(hb_hs(K), MixLen_shape(K))
                  Mixing_Length_Used(k) = MAX(CS%min_mix_len,((h_tt*hbs_here)*vstar) / &
                       ((CS%Ekman_scale_coef * absf) * (h_tt*hbs_here) + vstar))
@@ -831,18 +848,25 @@ subroutine cvmix_epbl_column(NZ, Kd, &
                     ! Does MKE_src need to be included in the calculation of vstar here?
                     TKE_here = mech_TKE + CS%wstar_ustar_coef*(conv_PErel-PE_chg_max)
                     if (TKE_here > 0.0) then
-                       vstar = CS%vstar_scale_fac * (I_dtrho*TKE_here)**C1_3
-                       hbs_here = H_to_m * min(hb_hs(K), MixLen_shape(K))
-                       Mixing_Length_Used(k) = max(CS%min_mix_len,((h_tt*hbs_here)*vstar) / &
-                            ((CS%Ekman_scale_coef * absf) * (h_tt*hbs_here) + vstar))
-                       if (.not.CS%Use_MLD_Iteration) then
-                          ! Note again (as prev) that using Mixing_Length_Used here
-                          !  instead of redoing the computation will change answers...
-                          Kd(k) = vstar * vonKar *  ((h_tt*hbs_here)*vstar) / &
-                               ((CS%Ekman_scale_coef * absf) * (h_tt*hbs_here) + vstar)
-                       else
-                          Kd(k) = vstar * vonKar * Mixing_Length_Used(k)
-                       endif
+                      if (CS%vstar_mode==0) then
+                        vstar = CS%vstar_scale_fac * (I_dtrho*TKE_here)**C1_3
+                      elseif (CS%vstar_mode==1) then
+                         Surface_Scale = max(0.05,1.-htot/MLD_guess)
+                         vstar = cs%vstar_scale_fac * (CS%vstar_surf_fac*U_Star + &
+                              (CS%wstar_ustar_coef*conv_PErel*I_dtrho)**C1_3)*&
+                              Surface_Scale
+                      endif
+                      hbs_here = H_to_m * min(hb_hs(K), MixLen_shape(K))
+                      Mixing_Length_Used(k) = max(CS%min_mix_len,((h_tt*hbs_here)*vstar) / &
+                           ((CS%Ekman_scale_coef * absf) * (h_tt*hbs_here) + vstar))
+                      if (.not.CS%Use_MLD_Iteration) then
+                         ! Note again (as prev) that using Mixing_Length_Used here
+                         !  instead of redoing the computation will change answers...
+                         Kd(k) = vstar * vonKar *  ((h_tt*hbs_here)*vstar) / &
+                              ((CS%Ekman_scale_coef * absf) * (h_tt*hbs_here) + vstar)
+                      else
+                         Kd(k) = vstar * vonKar * Mixing_Length_Used(k)
+                      endif
                     else
                        vstar = 0.0 ; Kd(k) = 0.0
                     endif
@@ -1748,6 +1772,12 @@ subroutine Get_Mstar(CS, NLEV, Bflux, u_star, u_star_mean,&
              ! 3rd term for rotation (Ekman length) limited
              mstar_ROT)))
       endif!cap for mstar_mode==2
+    elseif (CS%MSTAR_MODE.eq.CS%MSTAR_RH18) then
+      MSTAR_rot = CS%RH18_cN1 * ( 1.0 - ( 1.+CS%RH18_cN2 * &
+           exp( CS%RH18_cN3 * BLD * absf / u_star) )**-1.0 )
+      MSTAR_stab = CS%RH18_cS1 * (bflux_stable**2*BLD &
+           / ( u_star**5 * absf ) ) **CS%RH18_cS2
+      MSTAR_MIX = MSTAR_rot + MSTAR_stab
     endif!mstar_mode==1 or ==2
     ! Adjustment for unstable buoyancy flux.
     !  Convection reduces mechanical mixing because there

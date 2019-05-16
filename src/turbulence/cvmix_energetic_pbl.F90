@@ -1774,7 +1774,7 @@ subroutine Get_Mstar(CS, NLEV, Bflux, u_star, u_star_mean,&
       endif!cap for mstar_mode==2
     elseif (CS%MSTAR_MODE.eq.CS%MSTAR_RH18) then
       MSTAR_rot = CS%RH18_cN1 * ( 1.0 - ( 1.+CS%RH18_cN2 * &
-           exp( CS%RH18_cN3 * BLD * absf / u_star) )**-1.0 )
+           exp( CS%RH18_cN3 * BLD * absf / u_star) )**(-1.0) )
       MSTAR_stab = CS%RH18_cS1 * (bflux_stable**2*BLD &
            / ( u_star**5 * absf ) ) **CS%RH18_cS2
       MSTAR_MIX = MSTAR_rot + MSTAR_stab

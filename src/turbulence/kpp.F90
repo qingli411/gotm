@@ -1770,6 +1770,7 @@
    REALTYPE                     :: Rk, Rref
    REALTYPE                     :: Uk, Uref, Vk, Vref
    REALTYPE                     :: bRad_cntr
+   REALTYPE                     :: NN_max
 
    REALTYPE, dimension (0:nlev) :: Bflux
    REALTYPE, dimension (0:nlev) :: RiBulk
@@ -1889,12 +1890,13 @@
          v=v-vstokes
       endif
       ! compute the Bulk Richardson number
+      NN_max = max(NN(kp1), NN(k))
       RiBulk(kp1:kp1) = cvmix_kpp_compute_bulk_Richardson(           &
                 zt_cntr = (/-depth/),                                &
                 delta_buoy_cntr = (/-gorho0*(Rref-Rk)/),             &
                 delta_Vsqr_cntr = (/(Uref-Uk)**2+(Vref-Vk)**2/),     &
                 ws_cntr = (/ws/),                                    &
-                Nsqr_iface = (/NN(kp1), NN(k)/),                     &
+                Nsqr_iface = (/NN_max, NN_max/),                     &
                 EFactor = EFactor,                                   &
                 LaSL = LaSL,                                         &
                 bfsfc = Bflux(kp1),                                  &

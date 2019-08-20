@@ -196,7 +196,8 @@
 
 !  Stokes drift - 'stokes_drift' namelist
 !  Qing Li, 20180311
-   integer, public           :: ustokes_method
+   integer, public           :: us_prof_method
+   CHARACTER(LEN=PATH_MAX)   :: us_prof_file
    integer, public           :: nfreq
    character(LEN=PATH_MAX)   :: spec_file
    character(LEN=PATH_MAX)   :: usp_file
@@ -231,12 +232,12 @@
    integer, parameter        :: TWO_LAYERS=2
    integer, parameter        :: CONST_NN=3
    ! For Stokes drift Qing Li, 20180311
-   integer, parameter        :: FROMSPEC=2
-   integer, parameter        :: FROMUSP=3
-   integer, parameter        :: EXPONENTIAL=4
-   integer, parameter        :: THEORYWAVE=5
-   integer, parameter        :: HURRSPEC=6
-   integer, parameter        :: DHH85SPEC=7
+   integer, parameter        :: FROMSPEC=3
+   integer, parameter        :: FROMUSP=4
+   integer, parameter        :: EXPONENTIAL=5
+   integer, parameter        :: THEORYWAVE=6
+   integer, parameter        :: HURRSPEC=7
+   integer, parameter        :: DHH85SPEC=8
 
    REALTYPE, parameter       :: gravity = 9.81
 !
@@ -330,7 +331,8 @@
 !  Stokes drift namelist
 !  Qing Li, 20180311
    namelist /stokes_drift/                                      &
-        ustokes_method,nfreq,spec_file,usp_file,usdelta_file,wave_age
+            us_prof_method,us_prof_file,nfreq,spec_file,        &
+            usp_file,usdelta_file,wave_age
 
    namelist /velprofile/ vel_prof_method,vel_prof_file,         &
             vel_relax_tau,vel_relax_ramp
@@ -450,8 +452,9 @@
 
 !  Stokes drift - 'stokes_drift' namelist
 !  Qing Li, 20180311
-   ustokes_method=0
+   us_prof_method=0
    nfreq=64
+   us_prof_file='us_prof_file.dat'
    spec_file='spec.dat'
    usp_file='usp.dat'
    usdelta_file='usdelta.dat'
@@ -818,13 +821,18 @@
 
 !  Stokes drift
 !  Qing Li, 20180311
-   select case (ustokes_method)
+   select case (us_prof_method)
       case (NOTHING)
          wav_spec = _ZERO_
          wav_xcmp = _ZERO_
          wav_ycmp = _ZERO_
       case (CONSTANT)
 !        Empirical spectrum
+      case (FROMFILE)
+         call register_input_1d(us_prof_file,1,ustokes,'Stokes drift profile: x-direction')
+         call register_input_1d(us_prof_file,2,vstokes,'Stokes drift profile: y-direction')
+         LEVEL2 'Reading Stokes drift profiles from:'
+         LEVEL3 trim(us_prof_file)
       case (FROMSPEC)
          call register_input_1d_spec(spec_file,1,wav_spec,'observed band wave energy spectrum')
          call register_input_1d_spec(spec_file,2,wav_xcmp,'observed band directional component: x-direction')
@@ -850,7 +858,7 @@
       case (DHH85SPEC)
          LEVEL2 'Using Stokes drift from DHH85 spectrum with wave age of',wave_age
       case default
-         LEVEL1 'A non-valid ustokes_method has been given ',ustokes_method
+         LEVEL1 'A non-valid us_prof_method has been given ',us_prof_method
          stop 'init_observations()'
    end select
 
@@ -1037,7 +1045,7 @@
 !-----------------------------------------------------------------------
 !BOC
 
-   select case (ustokes_method)
+   select case (us_prof_method)
       case (NOTHING)
          ustokes = _ZERO_
          vstokes = _ZERO_
@@ -1048,8 +1056,10 @@
          dvsdz = _ZERO_
       case (CONSTANT)
 !        Empirical spectrum
-         LEVEL1 'The following ustokes_method has yet been supported: ', ustokes_method
+         LEVEL1 'The following us_prof_method has yet been supported: ', us_prof_method
          stop 'stokes_drift()'
+      case (FROMFILE)
+         ! ustokes and vstokes already read from file, do nothing here
       case (FROMSPEC)
          call stokes_drift_spec(freq,spec,xcmp,ycmp,nlev,z,zi,us_x,us_y,delta,ustokes,vstokes)
       case (FROMUSP)
@@ -1081,11 +1091,11 @@
       case (DHH85SPEC)
          call stokes_drift_dhh85(nlev,z,zi,u10,v10,wave_age,us_x,us_y,delta,ustokes,vstokes)
       case default
-         LEVEL1 'A non-valid ustokes_method has been given ', ustokes_method
+         LEVEL1 'A non-valid us_prof_method has been given ', us_prof_method
          stop 'stokes_drift()'
    end select
 
-   if (ustokes_method .ne. NOTHING) then
+   if (us_prof_method .ne. NOTHING) then
       do i=1,nlev-1
          dusdz(i) = (ustokes(i+1)-ustokes(i))/(z(i+1)-z(i))
          dvsdz(i) = (vstokes(i+1)-vstokes(i))/(z(i+1)-z(i))
@@ -1707,8 +1717,9 @@
             wave_method,wave_file,Hs,Tz,phiw
 
 !  Qing Li, 20180311
-   LEVEL2 'stokes_drift namelist',                                  &
-            ustokes_method,nfreq,spec_file,usp_file,usdelta_file
+   LEVEL2 'stokes_drift namelist',                              &
+            us_prof_method,us_prof_file,nfreq,spec_file,        &
+            usp_file,usdelta_file
 
    LEVEL2 'observed velocity profiles namelist',                &
             vel_prof_method,vel_prof_file,                      &

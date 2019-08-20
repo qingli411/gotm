@@ -1414,26 +1414,27 @@
          </element>
       </element>
       <element name="stokes_drift" label="Stokes_drift" description="Stokes drift profile can be specified. Used to include the effects of Langmuir turbulence.">
-         <element name="ustokes_method" type="int" label="method to prescribe the Stokes drift">
+         <element name="us_prof_method" type="int" label="method to prescribe the Stokes drift">
             <options>
                <option value="0" label="nothing is done - all variables equal 0" />
                <option value="1" label="constant values" />
-               <option value="2" label="calculated from the frequency bin width weighted wave spectrum" />
-               <option value="3" label="calculated from the partitioned surface Stokes drift" />
-               <option value="4" label="calculated from the surface Stokes drift and penetration depth assumingexponential profile" />
-               <option value="5" label="calculated from the theory wave approach of Li et al., 2017"/>
-               <option value="6" label="calculated from the hurricane spectrum"/>
-               <option value="7" label="calculated from the Donelan et al., 1985 (DHH85) spectrum"/>
+               <option value="2" label="read profiles at different dates from &quot;us_prof_file&quot; and interpolate to GOTM timestep" />
+               <option value="3" label="calculated from the frequency bin width weighted wave spectrum" />
+               <option value="4" label="calculated from the partitioned surface Stokes drift" />
+               <option value="5" label="calculated from the surface Stokes drift and penetration depth assumingexponential profile" />
+               <option value="6" label="calculated from the theory wave approach of Li et al., 2017"/>
+               <option value="7" label="calculated from the hurricane spectrum"/>
+               <option value="8" label="calculated from the Donelan et al., 1985 (DHH85) spectrum"/>
             </options>
          </element>
          <element name="nfreq" type="int" label="number of frequency bands">
             <condition type="or">
-               <condition type="eq" variable="./ustokes_method" value="2" />
-               <condition type="eq" variable="./ustokes_method" value="3" />
+               <condition type="eq" variable="./us_prof_method" value="3" />
+               <condition type="eq" variable="./us_prof_method" value="4" />
             </condition>
          </element>
          <element name="spec_file" type="gotmdatafile" label="filename for wave spectrum file">
-            <condition type="eq" variable="./ustokes_method" value="2" />
+            <condition type="eq" variable="./us_prof_method" value="3" />
             <fileinfo type="profilesintime">
                <filevariables>
                   <filevariable name="wav_freq" label="band central wave frequency" unit="1/s" />
@@ -1444,7 +1445,7 @@
             </fileinfo>
          </element>
          <element name="usp_file" type="gotmdatafile" label="filename for partitioned surface Stokes drift file">
-            <condition type="eq" variable="./ustokes_method" value="3" />
+            <condition type="eq" variable="./us_prof_method" value="4" />
             <fileinfo type="profilesintime">
                <filevariables>
                   <filevariable name="wav_freq" label="wave frequency for each partition" unit="1/s" />
@@ -1454,7 +1455,7 @@
             </fileinfo>
          </element>
          <element name="usdelta_file" type="gotmdatafile" label="filename for surface Stokes drift and penetration depth file">
-            <condition type="eq" variable="./ustokes_method" value="4" />
+            <condition type="eq" variable="./us_prof_method" value="5" />
             <fileinfo type="pointsintime">
                <filevariables>
                   <filevariable name="us_x" label="surface Stokes drift: x-direction" unit="m/s" />
@@ -1464,7 +1465,7 @@
             </fileinfo>
          </element>
          <element name="wave_age" type="float" label="wave age" unit="unitless">
-            <condition type="eq" variable="./ustokes_method" value="7" />
+            <condition type="eq" variable="./us_prof_method" value="8" />
          </element>
       </element>
    </element>

@@ -1060,6 +1060,13 @@
          stop 'stokes_drift()'
       case (FROMFILE)
          ! ustokes and vstokes already read from file, do nothing here
+         us_x = ustokes(nlev)
+         us_y = vstokes(nlev)
+         ustran = _ZERO_
+         do i=1,nlev
+            ustran = ustran + sqrt(ustokes(i)**2+vstokes(i)**2)*(zi(i)-zi(i-1))
+         end do
+         delta = ustran/max(SMALL, sqrt(us_x**2.+us_y**2.))
       case (FROMSPEC)
          call stokes_drift_spec(freq,spec,xcmp,ycmp,nlev,z,zi,us_x,us_y,delta,ustokes,vstokes)
       case (FROMUSP)

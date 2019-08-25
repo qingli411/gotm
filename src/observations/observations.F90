@@ -1081,6 +1081,13 @@
             call stokes_drift_theory(u10,zi(i),zi(i-1),ustokes(i))
             call stokes_drift_theory(v10,zi(i),zi(i-1),vstokes(i))
          enddo
+         us_x = ustokes(nlev)
+         us_y = vstokes(nlev)
+         ustran = _ZERO_
+         do i=1,nlev
+            ustran = ustran + sqrt(ustokes(i)**2+vstokes(i)**2)*(zi(i)-zi(i-1))
+         end do
+         delta = ustran/max(SMALL, sqrt(us_x**2.+us_y**2.))
       case (HURRSPEC)
          ! TODO: wrap in a subroutine <20190116, Qing Li> !
          ustokes(:) = 0.0

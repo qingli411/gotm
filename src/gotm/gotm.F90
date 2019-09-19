@@ -42,6 +42,7 @@
    use meanflow
    use input
    use observations
+   use stokes_drift, only: do_stokes_drift
    use time
 
    use airsea,      only: init_air_sea,do_air_sea,clean_air_sea
@@ -242,7 +243,7 @@
 
 !  calculate Stokes drift
 !  should be after update grid
-   call stokes_drift(wav_freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,zi,us_x,us_y,delta,ustokes,vstokes,dusdz,dvsdz)
+   call do_stokes_drift(wav_freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,zi,us_x,us_y,delta,ustokes,vstokes,dusdz,dvsdz)
 
    call init_turbulence(namlst,'gotmturb.nml',nlev)
 
@@ -440,7 +441,7 @@
 
 !     update Stokes drift
 !     should be after updategrid
-      call stokes_drift(wav_freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,zi,us_x,us_y,delta,ustokes,vstokes,dusdz,dvsdz)
+      call do_stokes_drift(wav_freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,zi,us_x,us_y,delta,ustokes,vstokes,dusdz,dvsdz)
 
       call wequation(nlev,dt)
       call coriolis(nlev,dt)

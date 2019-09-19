@@ -162,7 +162,7 @@ add_library(turbulence
             turbulence/kbalgebraic.F90
             turbulence/kbeq.F90
             turbulence/kpp.F90
-	    turbulence/Langmuir.F90
+            turbulence/Langmuir.F90
             turbulence/lengthscaleeq.F90
             turbulence/lengthscaleeq_kc04.F90
             turbulence/potentialml.F90
@@ -264,6 +264,7 @@ add_library(observations
             observations/const_NNS.F90
             observations/const_NNT.F90
             observations/observations.F90
+            observations/stokes_drift.F90
             observations/stokes.F90
            )
 target_link_libraries(observations util input airsea)

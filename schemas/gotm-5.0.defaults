@@ -411,7 +411,8 @@
          <o2_prof_file>o2_prof_file.dat</o2_prof_file>
       </o2_profile>
       <stokes_drift>
-         <ustokes_method>0</ustokes_method>
+         <us_prof_method>0</us_prof_method>
+         <us_prof_file>us_prof_file.dat</us_prof_file>
          <nfreq>64</nfreq>
          <spec_file>spec_file.dat</spec_file>
          <usp_file>usp_file.dat</usp_file>

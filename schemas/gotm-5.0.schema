@@ -1421,7 +1421,7 @@
                <option value="2" label="read profiles at different dates from &quot;us_prof_file&quot; and interpolate to GOTM timestep" />
                <option value="3" label="calculated from the frequency bin width weighted wave spectrum" />
                <option value="4" label="calculated from the partitioned surface Stokes drift" />
-               <option value="5" label="calculated from the surface Stokes drift and penetration depth assumingexponential profile" />
+               <option value="5" label="calculated from the surface Stokes drift and penetration depth assuming exponential profile" />
                <option value="6" label="calculated from the theory wave approach of Li et al., 2017" />
                <option value="7" label="calculated from the hurricane spectrum" />
                <option value="8" label="calculated from the Donelan et al., 1985 (DHH85) spectrum" />

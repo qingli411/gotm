@@ -25,7 +25,6 @@
 !
 ! !USES:
    use input
-   use stokes, only: init_stokes
 
    IMPLICIT NONE
 
@@ -76,6 +75,7 @@
 
 !  Stokes drift
 !  Qing Li, 20171220
+! TODO: rename ustokes, vstokes to usprof and vsprof <20191027, Qing Li> !
    REALTYPE, public, dimension(:), allocatable         :: ustokes, vstokes
 
 !  vertical shear of Stokes drift at grid interface
@@ -84,6 +84,7 @@
 
 !  Surface Stokes drift and penetration depth
 !  Qing Li, 20180405
+! TODO: rename us_x, us_y to us0 and vs0, delta to ds?<20191027, Qing Li> !
    REALTYPE, public, target                            :: us_x, us_y, delta
 
 !  sea surface elevation, sea surface gradients and height of velocity obs.
@@ -231,8 +232,7 @@
    integer, parameter        :: FROMUSP=4
    integer, parameter        :: EXPONENTIAL=5
    integer, parameter        :: THEORYWAVE=6
-   integer, parameter        :: HURRSPEC=7
-   integer, parameter        :: DHH85SPEC=8
+   integer, parameter        :: DHH85SPEC=7
 
 !
 ! !REVISION HISTORY:
@@ -846,9 +846,6 @@
          LEVEL3 trim(usdelta_file)
       case (THEORYWAVE)
          LEVEL2 'Using Stokes drift from theory-wave.'
-      case (HURRSPEC)
-         LEVEL2 'Using Stokes drift from hurricane spectrum.'
-         call init_stokes(.true.,_ONE_)
       case (DHH85SPEC)
          LEVEL2 'Using Stokes drift from DHH85 spectrum with wave age of',wave_age
       case default

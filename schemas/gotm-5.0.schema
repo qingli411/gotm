@@ -740,28 +740,6 @@
          </element>
       </element>
    </element>
-   <element name="langmuir" label="Langmuir turbulence parameters">
-      <element name="langmuir" label="Langmuir turbulence parameters">
-         <element name="langmuir_number_method" type="int" label="method to compute enhancement factor">
-            <options>
-               <option value="0" label="No Langmuir number is computed" />
-               <option value="1" label="approximated by a simple model based on empirical wave spectrum (Li et al., 2017)" />
-               <option value="2" label="read from file langmuir_number_file" />
-               <option value="3" label="compute from input wave spectrum" />
-               <option value="4" label="compute from Stokes drift" />
-               <option value="5" label="read from hurricane data" />
-            </options>
-         </element>
-         <element name="langmuir_number_file" type="gotmdatafile" label="input Langmuir number data for Langmuir mixing parameterization" description="file with Langmuir number">
-            <condition type="eq" variable="./langmuir_number_method" value="2" />
-            <fileinfo type="pointsintime">
-               <filevariables>
-                  <filevariable name="la" label="Langmuir number" unit="1" />
-               </filevariables>
-            </fileinfo>
-         </element>
-      </element>
-   </element>
    <element name="kpp" label="KPP turbulence model">
       <condition type="eq" variable="/gotmturb/turbulence/turb_method" value="99" />
       <element name="kpp" label="KPP turbulence model">
@@ -1423,8 +1401,7 @@
                <option value="4" label="calculated from the partitioned surface Stokes drift" />
                <option value="5" label="calculated from the surface Stokes drift and penetration depth assuming exponential profile" />
                <option value="6" label="calculated from the theory wave approach of Li et al., 2017" />
-               <option value="7" label="calculated from the hurricane spectrum" />
-               <option value="8" label="calculated from the Donelan et al., 1985 (DHH85) spectrum" />
+               <option value="7" label="calculated from the Donelan et al., 1985 (DHH85) spectrum" />
             </options>
          </element>
          <element name="us_prof_file" type="gotmdatafile" label="filename of file with Stokes drift profiles if us_prof_method=2">

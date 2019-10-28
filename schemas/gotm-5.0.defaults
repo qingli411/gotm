@@ -208,12 +208,6 @@
          <nuhiw>1e-005</nuhiw>
       </iw>
    </gotmturb>
-   <langmuir>
-      <langmuir>
-         <langmuir_number_method>0</langmuir_number_method>
-         <langmuir_number_file>langmuir_number.dat</langmuir_number_file>
-      </langmuir>
-   </langmuir>
    <kpp>
       <kpp>
          <kpp_sbl>True</kpp_sbl>

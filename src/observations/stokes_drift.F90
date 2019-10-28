@@ -13,9 +13,6 @@
    use observations, only: us_prof_method, nfreq, wave_age, pi
    use airsea, only: u10, v10
 
-   use Stokes, only: init_stokes, InterpStokesProfile
-   use Stokes, only: US,VS
-
    IMPLICIT NONE
 
 !  default: all is private.
@@ -120,14 +117,6 @@
             call stokes_drift_theory(u10,zi(i),zi(i-1),ustokes(i))
             call stokes_drift_theory(v10,zi(i),zi(i-1),vstokes(i))
          enddo
-         call surface_stokes_drift(ustokes,vstokes,nlev,zi,us_x,us_y,delta)
-      case (HURRSPEC)
-         ! TODO: wrap in a subroutine <20190116, Qing Li> !
-         ustokes(:) = 0.0
-         vstokes(:) = 0.0
-         call interpstokesprofile()
-         ustokes(:) = US(:)
-         vstokes(:) = VS(:)
          call surface_stokes_drift(ustokes,vstokes,nlev,zi,us_x,us_y,delta)
       case (DHH85SPEC)
          call stokes_drift_dhh85(nlev,z,zi,u10,v10,wave_age,us_x,us_y,delta,ustokes,vstokes)

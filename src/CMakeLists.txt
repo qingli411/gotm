@@ -265,7 +265,6 @@ add_library(observations
             observations/const_NNT.F90
             observations/observations.F90
             observations/stokes_drift.F90
-            observations/stokes.F90
            )
 target_link_libraries(observations util input airsea)
 set(GOTM_LIBS ${GOTM_LIBS} observations)

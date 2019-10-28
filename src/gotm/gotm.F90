@@ -63,7 +63,6 @@
    use turbulence,  only: kappa
    use turbulence,  only: clean_turbulence
 
-   use langmuir,    only: init_langmuir
    use kpp,         only: init_kpp,do_kpp,clean_kpp
    use zdfosm,         only: init_osm,do_osm,clean_osm
    use EPBL_gotm, only: epbl_gotm_init, epbl_gotm_interface
@@ -246,9 +245,6 @@
    call do_stokes_drift(wav_freq,wav_spec,wav_xcmp,wav_ycmp,nlev,z,zi,us_x,us_y,delta,ustokes,vstokes,dusdz,dvsdz)
 
    call init_turbulence(namlst,'gotmturb.nml',nlev)
-
-!  initialize Langmuir
-   call init_langmuir(namlst,'langmuir.nml')
 
 !  initialise mean fields
    s = sprof

@@ -5,7 +5,7 @@
 ! !ROUTINE: Calculation of the stratification\label{sec:stratification}
 !
 ! !INTERFACE:
-   subroutine stratification(nlev,buoy_method,dt,cnpar,nub,gamB)
+   subroutine stratification(nlev,buoy_method,dt,depth,cnpar,nub,gamB)
 !
 ! !DESCRIPTION:
 ! This routine computes the mean potential density, $\mean{\rho}$, the mean
@@ -70,6 +70,9 @@
    use meanflow,   only: NN,NNT,NNS
    use meanflow,   only: gravity,rho_0
    use eqstate,    only: eqstate1
+! yucc Axell 2002 2021/1/5 15:10:18
+   use meanflow,   only: u,v,w,PIW,E0
+!    use gotm,       only: dt
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -82,6 +85,9 @@
 
 !   time step (s)
    REALTYPE, intent(in)                :: dt
+
+!   water depth (m)
+   REALTYPE, intent(in)                :: depth
 
 !  numerical "implicitness" parameter
    REALTYPE, intent(in)                :: cnpar
@@ -175,6 +181,8 @@
    ! update boundary values
    NN(0)    = _ZERO_
    NN(nlev) = _ZERO_
+
+
 
    return
    end subroutine stratification

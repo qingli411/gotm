@@ -51,6 +51,11 @@
 !  Stokes-Eulerian cross-shear and Stokes shear squared
    REALTYPE, public, dimension(:), allocatable  :: CSSTK,SSSTK
 
+! yucc
+   REALTYPE, public, dimension(:), allocatable  :: PIW
+   REALTYPE, public                             :: E0
+   REALTYPE, public                             :: E0o
+
 !  buoyancy, short-wave radiation,
 !  extra production of tke by see-grass etc
    REALTYPE, public, dimension(:), allocatable  :: buoy,rad,xP
@@ -104,6 +109,9 @@
 
 !  Lagrangian Mixing (BGR)
    logical, public                     :: lagrangian_mixing
+! yucc 2021/1/7 11:03:08
+
+   REALTYPE, public                    :: piw_production
 
 !  the roughness lengths
    REALTYPE, public                    :: z0b,z0s,za
@@ -208,7 +216,10 @@
    no_shear     = .false.
    stokes_coriolis = .false.
    lagrangian_mixing = .false.
-
+! yucc
+   piw_production=0.0
+   E0=0.0
+   E0o=0.0
 !  Read namelist from file.
    open(namlst,file=fn,status='old',action='read',err=80)
    LEVEL2 'reading meanflow namelists..'
@@ -339,6 +350,11 @@
    allocate(SSSTK(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (SSSTK)'
    SSSTK = _ZERO_
+   
+! yucc
+   allocate(PIW(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (PIW)'
+   PIW = _ZERO_
 
    allocate(xP(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (xP)'
@@ -447,6 +463,8 @@
    ! Qing Li, 20180419
    if (allocated(CSSTK)) deallocate(CSSTK)
    if (allocated(SSSTK)) deallocate(SSSTK)
+!  yucc
+   if (allocated(PIW)) deallocate(PIW)
    if (allocated(xP)) deallocate(xP)
    if (allocated(buoy)) deallocate(buoy)
    if (allocated(rad)) deallocate(rad)
@@ -511,6 +529,8 @@
    ! Qing Li, 20180419
    if (allocated(CSSTK)) LEVEL2 'CSSTK',CSSTK
    if (allocated(SSSTK)) LEVEL2 'SSSTK',SSSTK
+!  yucc
+   if (allocated(PIW)) LEVEL2 'PIW',PIW
    if (allocated(buoy)) LEVEL2 'buoy',buoy
    if (allocated(rad)) LEVEL2 'rad',rad
    if (allocated(xp))  LEVEL2 'xP',xP

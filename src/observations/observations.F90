@@ -237,6 +237,9 @@
    integer, parameter        :: THEORYWAVE=5
    integer, parameter        :: HURRSPEC=6
    integer, parameter        :: DHH85SPEC=7
+   ! yucc  For Stokes drift, 2021/1/8 15:23:38
+   integer, parameter        :: MONOWAVE=8
+   REALTYPE, public          :: sigma_wave,k_wave,a_wave
 
    REALTYPE, parameter       :: gravity = 9.81
 !
@@ -849,6 +852,8 @@
          call init_stokes(.true.,_ONE_)
       case (DHH85SPEC)
          LEVEL2 'Using Stokes drift from DHH85 spectrum with wave age of',wave_age
+      case (MONOWAVE)
+         LEVEL2 'Using Stokes drift from monochromatic wave.'
       case default
          LEVEL1 'A non-valid ustokes_method has been given ',ustokes_method
          stop 'init_observations()'
@@ -1063,6 +1068,17 @@
          do i=1,nlev
             call stokes_drift_theory(u10,zi(i),zi(i-1),ustokes(i))
             call stokes_drift_theory(v10,zi(i),zi(i-1),vstokes(i))
+         enddo
+      case (MONOWAVE)
+      	 k_wave=0.105
+      	 a_wave=0.8
+      	 sigma_wave=sqrt(k_wave*gravity)
+         ustokes(:) = 0.0
+         vstokes(:) = 0.0
+         do i=1,nlev
+            ustokes(i)=sigma_wave*k_wave*a_wave**2*exp(2*k_wave*z(i))
+!             ustokes(i)=0.0994*exp(z(i)/sigma_wave)
+            vstokes(i)=0
          enddo
       case (HURRSPEC)
          ! TODO: wrap in a subroutine <20190116, Qing Li> !

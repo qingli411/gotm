@@ -5,7 +5,7 @@
 ! !ROUTINE: The dynamic psi-equation  \label{sec:genericeq}
 !
 ! !INTERFACE:
-   subroutine genericeq(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
+   subroutine genericeq_lt(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
 
 ! !DESCRIPTION:
 ! This model has been formulated by \cite{UmlaufBurchard2003},
@@ -118,14 +118,15 @@
 ! implemented in GOTM and are described in \sect{sec:generate}.
 !
 ! !USES:
-   use turbulence, only: P,B,num
+   use turbulence, only: P,B,num,nucl,nuh
+   use turbulence, only: PS, cmue2
    use turbulence, only: tke,tkeo,k_min,eps,eps_min,L
-   use turbulence, only: cpsi1,cpsi2,cpsi3plus,cpsi3minus,sig_psi
+   use turbulence, only: cpsi1,cpsi2,cpsi3plus,cpsi3minus,sig_psi,e6
    use turbulence, only: gen_m,gen_n,gen_p
    use turbulence, only: cm0,cde,galp,length_lim
    use turbulence, only: psi_bc, psi_ubc, psi_lbc, ubc_type, lbc_type
    use util,       only: Dirichlet,Neumann
-!  yucc 2021/1/5 21:10:18 Axell 2002
+!  yucc 2021/1/5 21:10:18
    use meanflow,     only: PIW
    USE meanflow,     only: piw_production
 
@@ -172,6 +173,8 @@
    REALTYPE                  :: Lsour(0:nlev),Qsour(0:nlev)
    REALTYPE                  :: cpsi3
 
+   REALTYPE                  :: sl
+
    integer                   :: i
 !
 !------------------------------------------------------------------------
@@ -190,6 +193,12 @@
 !  compute RHS
    do i=1,nlev-1
 
+! !Qing:vvv
+! !     avh(i)      =  sl*sqrt(2.*tke(i))*L(i)
+! !     use old tke to compute diffusivity
+!       avh(i)      =  sl*sqrt(2.*tkeo(i))*L(i)
+! !Qing:^^^
+
 !     compute psi diffusivity U03a eq.(12)
       avh(i) = num(i)/sig_psi
 
@@ -202,7 +211,7 @@
 
 !     compute production terms in psi-equation U03a eq.(6)
       PsiOverTke  = psi(i)/tkeo(i)
-      prod        = cpsi1*PsiOverTke*P(i)+cpsi1*PsiOverTke*PIW(i)*piw_production
+      prod        = cpsi1*PsiOverTke*P(i)+PsiOverTke*PS(i)*e6
       buoyan      = cpsi3*PsiOverTke*B(i)
       diss        = cpsi2*PsiOverTke*eps(i)
 
@@ -296,7 +305,7 @@
    endif
 
    return
-   end subroutine genericeq
+   end subroutine genericeq_lt
 !EOC
 
 !-----------------------------------------------------------------------

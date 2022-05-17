@@ -5,7 +5,7 @@
 ! !ROUTINE: Calculation of the vertical shear \label{sec:shear}
 !
 ! !INTERFACE:
-   subroutine shear(nlev,cnpar)
+   subroutine shear(nlev,cnpar,dt)
 !
 ! !DESCRIPTION:
 !%  The (square of the) shear frequency is defined as
@@ -113,6 +113,9 @@
    use meanflow,   only: SS,SSU,SSV
    use meanflow,     only: CSSTK,SSSTK
    use observations, only: dusdz,dvsdz
+! yucc Axell 2002 2021/1/6 13:46:24
+   use meanflow,   only: E0,E0o
+!    use gotm,       only: dt
 
    IMPLICIT NONE
 !
@@ -123,6 +126,9 @@
 
 !  numerical "implicitness" parameter
    REALTYPE, intent(in)                :: cnpar
+
+!   time step (s)
+   REALTYPE, intent(in)                :: dt
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
@@ -185,7 +191,6 @@
 
    SSSTK (0   ) = SSSTK (1     )
    SSSTK (nlev) = SSSTK (nlev-1)
-
    return
    end subroutine shear
 !EOC

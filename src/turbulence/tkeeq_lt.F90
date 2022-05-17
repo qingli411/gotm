@@ -5,7 +5,7 @@
 ! !ROUTINE: The dynamic k-equation \label{sec:tkeeq}
 !
 ! !INTERFACE:
-   subroutine tkeeq(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
+   subroutine tkeeq_lt(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
 
 ! !DESCRIPTION:
 ! The transport equation for the turbulent kinetic energy, $k$,
@@ -58,14 +58,12 @@
 ! where $c_\mu^0$ is a constant of the model.
 !
 ! !USES:
-   use turbulence,   only: P,B,num
-   use turbulence,   only: tke,tkeo,k_min,eps
+   use turbulence,   only: P,B,num,nucl,nuh
+   use turbulence,   only: PS, cmue2
+   use turbulence,   only: tke,tkeo,k_min,eps,L
    use turbulence,   only: k_bc, k_ubc, k_lbc, ubc_type, lbc_type
    use turbulence,   only: sig_k
    use util,         only: Dirichlet,Neumann
-!  yucc 2021/1/5 21:10:18
-   use meanflow,     only: PIW
-   USE meanflow,     only: piw_production
 
    IMPLICIT NONE
 !
@@ -106,7 +104,7 @@
    REALTYPE                  :: cnpar=_ONE_
    REALTYPE                  :: avh(0:nlev)
    REALTYPE                  :: Lsour(0:nlev),Qsour(0:nlev)
-
+   REALTYPE                  :: sq
    integer                   :: i
 !
 !------------------------------------------------------------------------
@@ -117,11 +115,19 @@
 
    do i=1,nlev-1
 
+!       ! Eq (37) of Harcourt, 2015
+!       sq = sqrt(0.04+(0.41*cmue2(i)/sqrt(2.0))**2.)
+! 
+! !     compute diffusivity
+!       avh(i) = sq*sqrt( 2.*tke(i) )*L(i)
+
 !     compute diffusivity
       avh(i) = num(i)/sig_k
+!       avh(i) = (num(i)+nucl(i))/sig_k
 
 !     compute production terms in k-equation
-      prod     = P(i)
+      ! add Stokes production
+      prod     = P(i) + PS(i)
       buoyan   = B(i)
       diss     = eps(i)
 
@@ -179,7 +185,7 @@
    enddo
 
    return
-   end subroutine tkeeq
+   end subroutine tkeeq_lt
 !EOC
 
 !-----------------------------------------------------------------------

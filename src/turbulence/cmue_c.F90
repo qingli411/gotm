@@ -85,7 +85,9 @@
 !
 ! !USES:
    use turbulence, only: an,as,at
+   use turbulence, only: av, aw
    use turbulence, only: cmue1,cmue2
+   use turbulence, only: cmue3
    use turbulence, only: cm0
    use turbulence, only: cc1
    use turbulence, only: ct1,ctt
@@ -113,9 +115,9 @@
 !
      integer                 ::   i
      REALTYPE                ::   N,Nt
-     REALTYPE                ::   d0,d1,d2,d3,d4,d5
-     REALTYPE                ::   n0,n1,n2,nt0,nt1,nt2
-     REALTYPE                ::   dCm,nCm,nCmp,cm3_inv
+     REALTYPE                ::   d0,d1,d2,d3,d4,d5,d6,d7,d8,d9
+     REALTYPE                ::   n0,n1,n1_1,n2,n3,nt0,nt1,nt2,nt3,nt4
+     REALTYPE                ::   dCm,nCm,nCms,nCmp,cm3_inv
      REALTYPE                ::   tmp0,tmp1,tmp2
      REALTYPE                ::   asMax,asMaxNum,asMaxDen
      REALTYPE                ::   anMin,anMinNum,anMinDen
@@ -143,7 +145,6 @@
      nt1  =   12.*a5*at3**2.  * N**2.
      nt2  =   9.*a1*at3*(at1-at2) * N**2. + (  6.*a1*(a2-3.*a3)                         &
             - 4.*(a2**2.-3.*a3**2.) )*at3 * N * Nt
-
 
      cm3_inv = 1./cm0**3.
 

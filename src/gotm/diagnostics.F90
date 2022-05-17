@@ -120,6 +120,10 @@
          j = maxloc(NN(1:nlev))
          mld_surf = sum(h(j(1):nlev))
          mld_bott = _ZERO_
+      case(4)          ! potential density changes by 0.03 kg/m3 from its surface value
+         j = maxloc(NN(1:nlev))
+         mld_surf = sum(h(j(1):nlev))
+         mld_bott = _ZERO_
       case default
    end select
 

@@ -311,7 +311,7 @@
 
 !  Call stratification to make sure density has sensible value.
 !  This is needed to ensure the initial density is saved correctly, and also for FABM.
-   call stratification(nlev,buoy_method,dt,cnpar,nuh,gamh)
+   call stratification(nlev,buoy_method,dt,depth,cnpar,nuh,gamh)
 
 #ifdef _FABM_
 
@@ -475,8 +475,8 @@
       endif
 
 !     update shear and stratification
-      call shear(nlev,cnpar)
-      call stratification(nlev,buoy_method,dt,cnpar,nuh,gamh)
+      call shear(nlev,cnpar,dt)
+      call stratification(nlev,buoy_method,dt,depth,cnpar,nuh,gamh)
 
 #ifdef SPM
       if (spm_calc) then
@@ -518,13 +518,22 @@
 
       case default
 !        update one-point models
+!# ifdef SEAGRASS
+!         call do_turbulence(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,      &
+!                            NN,SS,CSSTK,SSSTK,xP)
+!# else
+!         call do_turbulence(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,      &
+!                            NN,SS,CSSTK,SSSTK)
+!# endif
+!yucc 2020/12/16 16:16:54
 # ifdef SEAGRASS
          call do_turbulence(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,      &
-                            NN,SS,CSSTK,SSSTK,xP)
+                            NN,SS,ustokes,vstokes,CSSTK,SSSTK,xP)
 # else
          call do_turbulence(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,      &
-                            NN,SS,CSSTK,SSSTK)
+                            NN,SS,ustokes,vstokes,CSSTK,SSSTK)
 # endif
+!yucc 2020/12/16 16:16:54
       end select
 
       call do_diagnostics(nlev)

@@ -4,7 +4,7 @@
 ! !ROUTINE: The Langmuir turbulence quasi-equilibrium stability functions  after Harcourt (2015)\label{sec:cmueDH15}
 !
 ! !INTERFACE:
-   subroutine cmue_d_h15(nlev)
+   subroutine cmue_d_y22(nlev)
 !
 ! !DESCRIPTION:
 !
@@ -119,12 +119,10 @@
      REALTYPE :: T1, T2, T3, T4, T5
      REALTYPE :: H1, H2, H3, H4, H5, H6
      REALTYPE :: F, F1, F2
-     REALTYPE :: ab3, N, Nb, AA1, AA2
-     REALTYPE :: d0,d1,d2,d3,d4,d5,d10
+     REALTYPE :: ab3, N, Nb
      REALTYPE, parameter :: Gh_off = 0.06D0
      REALTYPE, parameter :: Gv_off = 0.12D0
      REALTYPE, parameter :: Gh_min = -19.31D0
-
 ! yucc ^^^
 !-----------------------------------------------------------------------
 ! yucc VVV
@@ -143,135 +141,33 @@
 		 T3=l2**2/3-3*l3**2
 		 T4=l2**2/3+6*l2*l3+3*l3**2
 		 T5=l2**2/3-6*l2*l3+3*l3**2
-		 AA1=T2/2
-		 AA2=T1/2
 ! yucc new
-			d0=- 1
-			d1=(l8 + (5*ab3*l4)/(3*Nb))
-			d2=((7*l2**2)/12 - (5*l3**2)/4 + l6**2/4 - l7**2/4)
-			d3=((7*l2**2)/6 + (5*l3**2)/2 + l6**2/2 + l7**2/2)
-			d4=((7*l2**2)/12 - (5*l3**2)/4 + l6**2/4 - l7**2/4)
-			d5=(- (ab3**2*l4**2)/(4*Nb**2) - (ab3*l4*(l8 + (2*ab3*l4)/(3*Nb)))/Nb)
-			d10=((ab3*l4*((2*l2**2)/3 + 6*l3**2))/(8*Nb) - (ab3*l4*((2*l2**2)/3 + 2*l3**2))/Nb    &
-			   - (l8 + (2*ab3*l4)/(3*Nb))*((7*l2**2)/6 + (5*l3**2)/2) - (ab3*l4*(l6**2/2 + l7**2/2))/Nb    &
-			   + (AA1*T2*ab3*l4)/(4*Nb) + (AA2*T1*ab3*l4)/(4*Nb))
-! yucc new
+
 
 		do i=1,nlev-1
       	
 				Gh = -an(i)
-				Gh = max(Gh,-1.4045)
-				Gh = min(Gh,0.145)
+				Gh = max(Gh,-1.4045) ! -0.28
+				Gh = min(Gh,0.145) ! 0.029
 				Gm = as(i)
 				Gm = min(Gm,5+1.875*Gh)
 				Gv = av(i)
 				Gs = aw(i)
-! Limitation on the stable side
-! if length scale is not strictly limited by stratification, limit it here within the ARSM:
 
-         if (.not.(length_lim)) then
-            tmp1=1.D0
- 
-            tmp2=Gh_min/min(Gh_min,Gh)
- 
-            tmp1=min(tmp1,tmp2)
- 
-            if (tmp1.lt.1.D0) then
-               Gh=Gh*tmp1
-               Gv=Gv*tmp1
-               Gs=Gs*tmp1
-            endif
-         endif
-! Find ratio to rescale to critical Sh & l/q with offset of -Gvoff and -Ghoff from critical to equilibrium curve for Gm=Gs=0
-! Substituting Gh=R*Gh+Ghoff, Gv=R*Gv+Gvoff to find R such that R*Gh, R*Gv are offset by [-Ghoff, -Gvoff] from critical [Gh, Gv]
-
-         tmp0=2.D0
-
-         if(Gv.gt._ZERO_) then
-
-! Coefficient of R^2
-        tmp2=d5*Gh**2+d10*Gh*Gv
-! Coefficient of linear R with contributions from offsets in terms ~Gx*Gy
-        tmp1=d1*Gh+d3*Gv+2*d5*Gh*Gh_off+d10*Gh*Gv_off+d10*Gv*Gh_off
-! Constant term, something a bit smaller than 1 because of offset
-        tmp4=d0+d1*Gh_off+d3*Gv_off+d5*Gh_off**2+d10*Gh_off*Gv_off
-
-! Solve for ratio rescaling to critical a*r^2+b*r+c=0; c=tmp4, b=tmp1, a=tmp2
-! Check determinant
-
-        tmp3=tmp1*tmp1-4.D0*tmp2*tmp4
-
-! We need the smallest positive root R
-        if ((tmp3.ge._ZERO_).and.(tmp2.lt._ZERO_)) then
-               tmp3=(-tmp1+sqrt(tmp3))/(2.D0*tmp2)
-        elseif ((tmp3.ge._ZERO_).and.(tmp2.gt._ZERO_)) then
-               tmp3=(-tmp1-sqrt(tmp3))/(2.D0*tmp2)
-        else
-! there is no root i.e. direction of [Gh, Gv] is in stable sector. Set tmp3>1 for no rescaling
-               tmp3=2.D0
-        endif
-
-        if ((tmp3.gt.0.D0).and.(tmp3.lt.1.D0)) then
-           tmp0=min(tmp0,tmp3)
-        endif
-
-        endif
-        
-! Second limitation after Umlauf & Burchard (2005), Eq 47, approximating -d( Sh/Gh )/d(Gh) > 0
-         if(Gh.gt._ZERO_) then
-
-! This curve is approximated on the Gs=0 plane using the critical Den{Sh}=0 curve but with
-! Sh(Gh->2*Gh) when Gh>0, no offsets needed. Bit of a coincidence that hasn't yet been worked out.
-! Coefficient (a) of R^2
-        tmp2=d5*(2*Gh)**2+2*d10*Gh*Gv
-! tmp1 is coefficient (b) of linear R with contributions from offsets in terms ~Gx*Gy
-        tmp1= 2*d1*Gh+d2*Gm+d3*Gv
-!        tmp1= 2*d1*Gh+d3*Gv
-! Constant term is c=1
-        tmp4=d0
-
-! Solve for ratio rescaling to critical a*r^2+b*r+c=0; c=tmp4, b=tmp1, a=tmp2
-! Check determinant
-
-        tmp3=tmp1*tmp1-4.D0*tmp2*tmp4
-
-        if ((tmp3.ge._ZERO_).and.(tmp2.lt._ZERO_)) then
-               tmp3=(-tmp1+sqrt(tmp3))/(2.D0*tmp2)
-        elseif ((tmp3.ge._ZERO_).and.(tmp2.gt._ZERO_)) then
-               tmp3=(-tmp1-sqrt(tmp3))/(2.D0*tmp2)
-        else
-! there is no root i.e. direction of [Gh, Gv] is in stable sector say tmp3>1 for no rescaling
-               tmp3=2.D0
-        endif
-
-        if ((tmp3.gt.0.D0).and.(tmp3.lt.1.D0)) then
-           tmp0=min(tmp0,tmp3)
-        endif
-
-        endif
-
-! only rescale if R*Gh is less than Gh and same sign, i.e. tmp0 between 0 & 1
-        if ((tmp0.gt.0.D0).and.(tmp0.lt.1.D0)) then
-           Gh = tmp0*Gh
-           Gm = tmp0*Gm
-           Gv = tmp0*Gv
-           Gs = tmp0*Gs
-        endif
-
-				F=1-1/3*(l2**2-3*l3**2)*(Gm+Gs)-2/3*(l2**2+3*l3**2)*Gv-1/2*l4*ab3/Nb*Gh
-				F1=F**2+2*l2**2*l3**2*(Gm*Gs-Gv**2)+1/4*F*((1/3*l2**2-3*l3**2)*(Gm+Gs)+2*(1/3*l2**2+3*l3**2)*Gv)
-				F2=1-1/4*(l6**2-l7**2)*(Gm+Gs)-1/2*(l6**2+l7**2)*Gv-(2*ab3/3/Nb*l4+ctt*l8)*Gh
+				F=1.D0-1.D0/3.D0*(l2**2-3*l3**2)*(Gm+Gs)-2.D0/3.D0*(l2**2+3*l3**2)*Gv-1.D0/2.D0*l4*ab3/Nb*Gh
+				F1=F**2+2*l2**2*l3**2*(Gm*Gs-Gv**2)+1.D0/4.D0*F*((1.D0/3.D0*l2**2-3*l3**2)*(Gm+Gs)+2*(1.D0/3.D0*l2**2+3*l3**2)*Gv)
+				F2=1.D0-1.D0/4.D0*(l6**2-l7**2)*(Gm+Gs)-1.D0/2.D0*(l6**2+l7**2)*Gv-(2*ab3/3.D0/Nb*l4+ctt*l8)*Gh
 								
-				H1=1/8*l1*(4*F+T3*Gm+T4*Gs+(T3+T4)*Gv)
-				H2=1/8*l4*(4*F*T1+T3*T1*Gm+T4*T2*Gs+(T3*T2+T4*T1)*Gv)*Gh
-				H3=1/8*l1*(4*F+T5*Gm+T3*Gs+(T3+T5)*Gv)
-				H4=1/8*l4*(4*F*T2+T5*T1*Gm+T3*T2*Gs+(T3*T1+T5*T2)*Gv)*Gh
-				H5=ab3/4/Nb*(T2*Gm+T1*Gv)
-				H6=ab3/4/Nb*(T2*Gv+T1*Gs)
+				H1=1.D0/8.D0*l1*(4*F+T3*Gm+T4*Gs+(T3+T4)*Gv)
+				H2=1.D0/8.D0*l4*(4*F*T1+T3*T1*Gm+T4*T2*Gs+(T3*T2+T4*T1)*Gv)*Gh
+				H3=1.D0/8.D0*l1*(4*F+T5*Gm+T3*Gs+(T3+T5)*Gv)
+				H4=1.D0/8.D0*l4*(4*F*T2+T5*T1*Gm+T3*T2*Gs+(T3*T1+T5*T2)*Gv)*Gh
+				H5=ab3/4.D0/Nb*(T2*Gm+T1*Gv)
+				H6=ab3/4.D0/Nb*(T2*Gv+T1*Gs)
 				
-				tmp1=1/4*l1*l4*(T2-T1)*H6*Gh-ab3/3/Nb*H2-H1*F2
-				tmp2=-1/4*l1*l4*(T2-T1)*H5*Gh-ab3/3/Nb*H4-H3*F2
-				tmp3=-ab3/3/F1-H1*H5-H3*H6
+				tmp1=1.D0/4.D0*l1*l4*(T2-T1)*H6*Gh-ab3/3.D0/Nb*H2-H1*F2
+				tmp2=-1.D0/4.D0*l1*l4*(T2-T1)*H5*Gh-ab3/3.D0/Nb*H4-H3*F2
+				tmp3=-ab3/3.D0/Nb*F1-H1*H5-H3*H6
 				tmp0=H2*H5+H4*H6-F1*F2
 
 				Sm=tmp1/tmp0
@@ -290,7 +186,7 @@
 ! yucc ******
 
      return
-   end subroutine cmue_d_h15
+   end subroutine cmue_d_y22
 
 
 !-----------------------------------------------------------------------

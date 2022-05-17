@@ -235,6 +235,9 @@
    ! MY style with Stokes production (Kantha & Clayson, 2004)
    ! Qing Li, 20180419
    integer, parameter, public                    :: tke_KC04=4
+! YCC vvv
+   integer, parameter, public                    :: tke_keps_lt=5
+! YCC ^^^
 
 !  stability functions
    integer, parameter, public                    :: Constant=1
@@ -256,6 +259,9 @@
    ! MY style with Stokes production (Kantha & Clayson, 2004)
    ! Qing Li, 20180419
    integer, parameter, public                    :: length_eq_KC04=11
+! YCC vvv
+   integer, parameter, public                    :: generic_eq_lt=12
+! YCC ^^^
 
 !  boundary conditions
    integer, parameter, public                    :: Dirichlet=0
@@ -271,6 +277,9 @@
    ! SMC of Langmuir turbulence (Harcourt, 2015)
    ! Qing Li, 20180419
    integer, parameter                            :: quasiEqH15=4
+! YCC vvv
+   integer, parameter                            :: quasiEqlt=5
+! YCC ^^^
 
 !  method to solve equation for k_b
    integer, parameter                            :: kb_algebraic=1
@@ -1761,15 +1770,15 @@
          stop
       endif
       sig_k      = sig_kpsi
-      gen_d      = -2.*gen_n/(2.*gen_m + gen_n - 2.*cpsi2)
+      gen_d      = -2.*gen_n/(2.*gen_m + gen_n - 2.*cpsi2) ! U03a eq(16)
       gen_alpha  = -4.*gen_n*sqrt(sig_k) / &
                     ( (1.+4.*gen_m)*sqrt(sig_k) &
-                     - sqrt(sig_k + 24.*sig_psi*cpsi2 ) )
+                     - sqrt(sig_k + 24.*sig_psi*cpsi2 ) ) ! U03a eq(33)
       gen_l      = cm0*sqrt(rcm)* &
                   sqrt( ( (1.+4.*gen_m+8.*gen_m**2)*sig_k &
                          + 12.*sig_psi*cpsi2 &
                          - (1.+4.*gen_m) &
-                            *sqrt(sig_k*(sig_k+24.*sig_psi*cpsi2)) ) &
+                            *sqrt(sig_k*(sig_k+24.*sig_psi*cpsi2)) ) & ! U03a eq(33)
                        /(12.*gen_n**2.) )
 
       ! compute c3 from given steady-state Richardson-number, or vice-versa
@@ -1783,6 +1792,45 @@
       ! ce3 for the k-epsilon model
       cpsi3plus=(1.5-ce3plus)*gen_n+gen_m
 
+! YCC vvv
+   case(generic_eq_lt)
+      rad=sig_psi*(cpsi2-cpsi1)/gen_n**2. ! U03a eq(14)
+      if (rad.gt.0) then
+         kappa=cm0*sqrt(rad)
+      else
+         STDERR 'Negative radicand discovered in computing'
+         STDERR 'kappa for the generic model.'
+         STDERR 'Possible reason: you took cpsi2 < cpsi1'
+         STDERR 'Please change gotmturb.nml accordingly.'
+         STDERR 'Program aborts now in turbulence.F90'
+!         stop
+! YCC vvv
+         kappa=0.4
+! YCC ^^^
+      endif
+      sig_k      = sig_kpsi
+      gen_d      = -2.*gen_n/(2.*gen_m + gen_n - 2.*cpsi2) ! U03a eq(16)
+      gen_alpha  = -4.*gen_n*sqrt(sig_k) / &
+                    ( (1.+4.*gen_m)*sqrt(sig_k) &
+                     - sqrt(sig_k + 24.*sig_psi*cpsi2 ) ) ! U03a eq(33)
+      gen_l      = cm0*sqrt(rcm)* &
+                  sqrt( ( (1.+4.*gen_m+8.*gen_m**2)*sig_k &
+                         + 12.*sig_psi*cpsi2 &
+                         - (1.+4.*gen_m) &
+                            *sqrt(sig_k*(sig_k+24.*sig_psi*cpsi2)) ) & ! U03a eq(33)
+                       /(12.*gen_n**2.) )
+
+      ! compute c3 from given steady-state Richardson-number, or vice-versa
+      if (compute_c3)  then
+         cpsi3minus  =  compute_cpsi3(cpsi1,cpsi2,Ri_st)
+      else
+         ri_st       =  compute_rist(cpsi1,cpsi2,cpsi3minus)
+      endif
+
+      ! compute c3 for unstable stratification from corresponding value of
+      ! ce3 for the k-epsilon model
+      cpsi3plus=(1.5-ce3plus)*gen_n+gen_m
+! YCC ^^^
 
    case(length_eq)
       ! compute kappa from the parameters or vice-versa
@@ -2071,7 +2119,7 @@
 !
 ! !INTERFACE:
    subroutine do_turbulence(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,      &
-                            NN,SS,CSSTK,SSSTK,xP)
+                            NN,SS,ustokes,vstokes,CSSTK,SSSTK,xP)
 !
 ! !DESCRIPTION: This routine is the central point of the
 ! turbulence scheme. It determines the order, in which! turbulence variables are updated, and calls
@@ -2170,6 +2218,12 @@
 !  shear-frequency squared (1/s^2)
    REALTYPE, intent(in)                :: SS(0:nlev)
 
+!  ustokes,vstokes
+!  yucc, 2020/12/16 16:17:59
+   REALTYPE, intent(in)                :: ustokes(0:nlev)
+   REALTYPE, intent(in)                :: vstokes(0:nlev)
+!  yucc, 2020/12/16 16:21:04
+
 !  CSSTK, SSSTK
 !  Qing Li, 20180419
 !  Stokes-Eulerian cross-shear (1/s^2)
@@ -2181,6 +2235,11 @@
 !  TKE production due to seagrass
 !  friction (m^2/s^3)
    REALTYPE, intent(in), optional      :: xP(0:nlev)
+
+! yucc 2020/12/16 16:21:16
+		integer :: stokes_level
+		REALTYPE, dimension(0:nlev)  :: S_NN,s_stokes
+! yucc 
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard,
@@ -2226,7 +2285,7 @@
       call stabilityfunctions(nlev)
       call do_tke(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
       call do_lengthscale(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,NN,SS)
-      call kolpran(nlev)
+      call kolpran(nlev,NN,SS)
 
       call internal_wave(nlev,NN,SS)
 
@@ -2249,7 +2308,15 @@
 !RRH:^^^
       end if
 
+
       select case(scnd_method)
+!   integer, parameter                            :: quasiEq=1
+!   integer, parameter                            :: weakEqKbEq=2
+!   integer, parameter                            :: weakEqKb=3
+!   ! SMC of Langmuir turbulence (Harcourt, 2015)
+!   ! Qing Li, 20180419
+!   integer, parameter                            :: quasiEqH15=4
+!   integer, parameter                            :: quasiEqlt=5
       case (quasiEq)
          ! quasi-equilibrium model
 
@@ -2260,7 +2327,7 @@
          call do_lengthscale(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,NN,SS)
          call do_epsb(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
          call alpha_mnb(nlev,NN,SS)
-         call kolpran(nlev)
+         call kolpran(nlev,NN,SS)
 
       case (weakEqKbEq)
 
@@ -2271,7 +2338,20 @@
          call do_lengthscale(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,NN,SS)
          call do_epsb(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
          call alpha_mnb(nlev,NN,SS)
-         call kolpran(nlev)
+         call kolpran(nlev,NN,SS)
+
+! YCC vvv
+      case (quasiEqlt)
+
+         call alpha_mvwnb(nlev,NN,SS,CSSTK,SSSTK)
+         call cmue_d_y22(nlev)
+         call do_tke(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
+         call do_kb(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
+         call do_lengthscale(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,NN,SS)
+         call do_epsb(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
+         call alpha_mvwnb(nlev,NN,SS,CSSTK,SSSTK)
+         call kolpran(nlev,NN,SS)
+! YCC ^^^
 
       case (weakEqKb)
 
@@ -2293,7 +2373,7 @@
          call do_lengthscale(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,NN,SS)
          call do_epsb(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
          call alpha_mvwnb(nlev,NN,SS,CSSTK,SSSTK)
-         call kolpran(nlev)
+         call kolpran(nlev,NN,SS)
 
       case default
 
@@ -2356,6 +2436,16 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
+!!  method to update TKE
+!   integer, parameter, public                    :: tke_local_eq=1
+!   integer, parameter, public                    :: tke_keps=2
+!   integer, parameter, public                    :: tke_MY=3
+!   ! MY style with Stokes production (Kantha & Clayson, 2004)
+!   ! Qing Li, 20180419
+!   integer, parameter, public                    :: tke_KC04=4
+!! YCC vvv
+!   integer, parameter, public                    :: tke_keps_lt=5
+!! YCC ^^^
    select case (tke_method)
       case(tke_local_eq)
          ! use algebraic length scale equation
@@ -2363,6 +2453,11 @@
       case(tke_keps)
          ! use differential equation for tke (k-epsilon style)
          call tkeeq(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
+! YCC vvv
+      case(tke_keps_lt)
+         ! use differential equation for tke (k-epsilon style)
+         call tkeeq_lt(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
+! YCC ^^^
       case(tke_MY)
          ! use differential equation for q^2/2 (Mellor-Yamada style)
          call q2over2eq(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
@@ -2473,11 +2568,32 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
+!!  method to update length scale
+!   integer, parameter                            :: Parabola=1
+!   integer, parameter                            :: Triangle=2
+!   integer, parameter                            :: Xing=3
+!   integer, parameter                            :: RobertOuellet=4
+!   integer, parameter                            :: Blackadar=5
+!   integer, parameter                            :: BougeaultAndre=6
+!   integer, parameter                            :: ispra_length=7
+!   integer, parameter, public                    :: diss_eq=8
+!   integer, parameter, public                    :: length_eq=9
+!   integer, parameter, public                    :: generic_eq=10
+!   ! MY style with Stokes production (Kantha & Clayson, 2004)
+!   ! Qing Li, 20180419
+!   integer, parameter, public                    :: length_eq_KC04=11
+!! YCC vvv
+!   integer, parameter, public                    :: generic_eq_lt=12
+!! YCC ^^^
    select case(len_scale_method)
       case(diss_eq)
          call dissipationeq(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
       case(generic_eq)
          call genericeq(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
+! YCC vvv
+      case(generic_eq_lt)
+         call genericeq_lt(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
+! YCC ^^^
       case(length_eq)
          call lengthscaleeq(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,NN,SS)
       case(BougeaultAndre)
@@ -2561,7 +2677,7 @@
 ! !IROUTINE: Update diffusivities (Kolmogorov-Prandtl relation)\label{sec:kolpran}
 !
 ! !INTERFACE:
-   subroutine kolpran(nlev)
+   subroutine kolpran(nlev,NN,SS)
 !
 ! !DESCRIPTION:
 ! Eddy viscosity and diffusivity are calculated by means of the relation of
@@ -2580,6 +2696,7 @@
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)       :: nlev
+   REALTYPE, intent(in)                :: NN(0:nlev),SS(0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard,
@@ -2589,11 +2706,16 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: i
-   REALTYPE                  :: x
+   REALTYPE                  :: x,k_r
+   REALTYPE                  :: rig_iw(0:nlev)
 !
 !-----------------------------------------------------------------------
 !BOC
 
+!-----------------------------------------------------------------------
+! Compute gradient Richardson number
+!-----------------------------------------------------------------------
+!
 !  update the turbulent diffusivities
    do i=0,nlev
       x        =  sqrt(tke(i))*L(i)
@@ -2609,6 +2731,10 @@
       nuh(i)   =  cmue2(i)*x
 !     salinity
       nus(i)   =  cmue2(i)*x
+				num(i)=min(num(i),2.0)
+				nucl(i)=min(nucl(i),2.0)
+				nuh(i)=min(nuh(i),2.0)
+				nus(i)=min(nus(i),2.0)
    end do
 
    return

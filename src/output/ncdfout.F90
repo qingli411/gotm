@@ -90,7 +90,7 @@
    integer, private          :: rad_id
    integer, private          :: temp_id,temp_obs_id
    integer, private          :: salt_id,salt_obs_id
-   integer, private          :: num_id,nuh_id,nus_id
+   integer, private          :: num_id,nuh_id,nus_id,nucl_id
    integer, private          :: gamu_id,gamv_id,gamh_id,gams_id
    integer, private          :: SS_id,SS_obs_id
    integer, private          :: NN_id,NN_obs_id
@@ -331,6 +331,8 @@
    call check_err(iret)
    iret = nf90_def_var(ncid,'nus',NCDF_FLOAT_PRECISION,dim4d,nus_id)
    call check_err(iret)
+   iret = nf90_def_var(ncid,'nucl',NCDF_FLOAT_PRECISION,dim4d,nucl_id)
+   call check_err(iret)
    iret = nf90_def_var(ncid,'gamu',NCDF_FLOAT_PRECISION,dim4d,gamu_id)
    call check_err(iret)
    iret = nf90_def_var(ncid,'gamv',NCDF_FLOAT_PRECISION,dim4d,gamv_id)
@@ -504,6 +506,7 @@
    iret = set_attributes(ncid,num_id,units='m2/s',long_name='viscosity')
    iret = set_attributes(ncid,nuh_id,units='m2/s',long_name='heat diffusivity')
    iret = set_attributes(ncid,nus_id,units='m2/s',long_name='salt diffusivity')
+   iret = set_attributes(ncid,nucl_id,units='m2/s',long_name='viscosity for down-stokes gradient flux')
    iret = set_attributes(ncid,gamu_id,units='m2/s2',long_name='non-local x-momentum flux')
    iret = set_attributes(ncid,gamv_id,units='m2/s2',long_name='non-local y-momentum flux')
    iret = set_attributes(ncid,gamh_id,units='K m/s',long_name='non-local heat flux')
@@ -587,7 +590,7 @@
    use meanflow,     only: depth0,u_taub,u_taus,rho_0,gravity
    use meanflow,     only: h,u,v,z,S,rad,T,buoy,SS,NN
    use turbulence,   only: P,B,Pb,PS
-   use turbulence,   only: num,nuh,nus
+   use turbulence,   only: num,nuh,nus,nucl
    use turbulence,   only: gamu,gamv,gamh,gams
    use turbulence,   only: tke,kb,eps,epsb,L,uu,vv,ww
    use kpp,          only: zsbl,zbbl
@@ -752,6 +755,7 @@
    iret = store_data(ncid,num_id,XYZT_SHAPE,nlev,array=num)
    iret = store_data(ncid,nuh_id,XYZT_SHAPE,nlev,array=nuh)
    iret = store_data(ncid,nus_id,XYZT_SHAPE,nlev,array=nus)
+   iret = store_data(ncid,nucl_id,XYZT_SHAPE,nlev,array=nucl)
    iret = store_data(ncid,gamu_id,XYZT_SHAPE,nlev,array=gamu)
    iret = store_data(ncid,gamv_id,XYZT_SHAPE,nlev,array=gamv)
    iret = store_data(ncid,gamh_id,XYZT_SHAPE,nlev,array=gamh)
